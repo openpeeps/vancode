@@ -802,8 +802,6 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         restoreFrame()
         when defined(hayaVmWriteStackOps):
           display(span("return:", fgGreen), span("void", fgCyan))
-      of opcViewLoader:
-        result.add(staticString.get())
       of opcHalt:
         if stack.len > 0:
           echo "Warning: stack not empty at halt, contains ", stack.len, " items."
