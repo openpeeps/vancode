@@ -1,6 +1,7 @@
 <p align="center">
   <img src="https://github.com/openpeeps/vancode/blob/main/.github/vancode.png" width="200px"><br>
-  OpenPeeps repository template for developing libraries,<br>projects and other cool things. 👑 Written in Nim language
+  A flexible AST, Codegen and Virtual Machine library<br>
+  for building your own toy language, scripting engines and DSLs.
 </p>
 
 <p align="center">
