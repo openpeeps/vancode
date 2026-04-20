@@ -34,12 +34,62 @@ Vancode is a tiny library for building bytecode interpreters and virtual machine
 
 Vancode is a bring-your-own-parsing library, so it doesn't come with a built-in Parser or Lexer. When impplementing your own Parser you must use the VanCode AST provided by the library. No worries, most of the AST is pretty self-explanatory and easy to use. It's also pretty flexible so you can easily extend it with your own custom nodes via Nim's macro system at compile-time without having to modify the library's source code.
 
-The AST provides a macro-like API for constructing nodes, so you can easily create nodes like this:
+
+### Calculator example
+
+Here is a simple calculator example that demonstrates how to use VanCode to construct the AST for a simple expression, pass it trough the code generator to produce bytecode, and then execute it in the VM
 
 ```nim
-import vancode/interpreter/ast
+import std/options
+import vancode/interpreter/[ast, codegen, chunk, value, vm, sym]
+import vancode/interpreter/stdlib/syslib
 
-var node = ast.newIntLit(10)
+# 1. Build the AST for: 1 + 2 * 3
+let astExpr =
+  ast.newCall(
+    ast.newIdent("echo"),
+    ast.newTree(nkInfix,
+      ast.newIdent("+"),
+      ast.newIntLit(1),
+      ast.newTree(nkInfix,
+        ast.newIdent("*"),
+        ast.newIntLit(2),
+        ast.newIntLit(3)
+      )
+    )
+  )
+
+# 2. Wrap in a script AST node
+let astScript = Ast(
+  sourcePath: "calculator",
+  nodes: @[astExpr]
+)
+
+# 3. Prepare codegen context
+let mainChunk = newChunk("calculator")
+let script = newScript(mainChunk)
+
+let module = newModule("calculator", some("calculator"))
+block init_system_module:
+  module.initSystemTypes()
+  script.initSystemOps(module)
+
+  # Adding a FFI proc for `echo` so we can see the output of the calculation
+  script.addProc(module, "echo", @[paramDef("x", ttyInt)], ttyVoid,
+    proc (args: StackView, argc: int): Value =
+      echo args[0].intVal)
+
+  script.addProc(module, "echo", @[paramDef("x", ttyFloat)], ttyVoid,
+    proc (args: StackView, argc: int): Value =
+      echo args[0].floatVal)
+
+# 4. Generate bytecode from AST
+let gen = initCompiler(script, module, mainChunk, nil, nil)
+gen.genScript(astScript, none(string))
+
+# 5. Run in the VM
+let vmInstance = newVm()
+discard vmInstance.interpret(script, mainChunk)
 ```
 
 > [!NOTE]

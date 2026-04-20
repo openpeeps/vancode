@@ -21,7 +21,7 @@ import std/[macros, options, os, hashes,
             sequtils, strutils, tables, json]
 
 import ./[ast, chunk, errors, sym, value, resolver]
-import pkg/vancode/manager/packager
+import ../manager/packager
 import pkg/voodoo/extensibles
 
 type
@@ -213,7 +213,6 @@ proc genExpr*(node: Node, varUnwrap = true): Sym {.codegen.}
 proc genBlock*(node: Node, isStmt: bool): Sym {.codegen.}
 proc genStmt*(node: Node) {.codegen.}
 proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.}
-proc genMacro*(node: Node, isInstantiation = false): Sym {.codegen.}
 proc genIterator*(node: Node, isInstantiation = false): Sym {.codegen.}
 proc genObject*(node: Node, isInstantiation = false): Sym {.codegen.}
 proc genObjectStorage*(node: Node, isInstantiation = false): Sym {.codegen.}
@@ -2374,13 +2373,6 @@ proc genStmt*(node: Node) {.codegen.} =
     of nkTypeDef: discard gen.genTypeDef(node)    # type definition
     of nkImport, nkInclude: gen.genImport(node) # import statement
     of nkDocComment: gen.genComment(node) # generate HTML comment
-    of nkViewLoader: gen.chunk.emit(opcViewLoader)
-    of nkClientBlock:
-      # gen.chunk.emit(opcClientBlock)
-      # var jst = jsgen.initCodeGen(gen.script, gen.module, gen.chunk)
-      # let jsSnippet: Rope = jsgen.genScript(jst, node[0].children)
-      # gen.chunk.emit(opcClientBlockEnd)
-      discard
     else:                                         # expression statement
       let ty = gen.genExpr(node)
       if ty != gen.module.sym"void":
