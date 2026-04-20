@@ -1,0 +1,36 @@
+nimTitle	value	vancode/interpreter/value.html	module vancode/interpreter/value		0
+nim	ValueSize	vancode/interpreter/value.html#ValueSize	const ValueSize		26
+nim	tyNil	vancode/interpreter/value.html#tyNil	const tyNil		33
+nim	tyBool	vancode/interpreter/value.html#tyBool	const tyBool		34
+nim	tyInt	vancode/interpreter/value.html#tyInt	const tyInt		35
+nim	tyFloat	vancode/interpreter/value.html#tyFloat	const tyFloat		36
+nim	tyString	vancode/interpreter/value.html#tyString	const tyString		37
+nim	tyFirstObject	vancode/interpreter/value.html#tyFirstObject	const tyFirstObject		38
+nim	tyJsonStorage	vancode/interpreter/value.html#tyJsonStorage	const tyJsonStorage		39
+nim	tyArrayObject	vancode/interpreter/value.html#tyArrayObject	const tyArrayObject		40
+nim	tyHtmlObject	vancode/interpreter/value.html#tyHtmlObject	const tyHtmlObject		41
+nim	tyPointer	vancode/interpreter/value.html#tyPointer	const tyPointer		42
+nim	TypeId	vancode/interpreter/value.html#TypeId	type TypeId		45
+nim	Object	vancode/interpreter/value.html#Object	type Object		47
+nim	HtmlObject	vancode/interpreter/value.html#HtmlObject	object HtmlObject		63
+nim	Value	vancode/interpreter/value.html#Value	type Value		65
+nim	ValuePtr	vancode/interpreter/value.html#ValuePtr	type ValuePtr		82
+nim	Stack	vancode/interpreter/value.html#Stack	type Stack		85
+nim	StackView	vancode/interpreter/value.html#StackView	type StackView		88
+nim	ForeignProc	vancode/interpreter/value.html#ForeignProc	type ForeignProc		91
+nim	`$`	vancode/interpreter/value.html#$,Value	proc `$`(value: Value): string		95
+nim	toString	vancode/interpreter/value.html#toString,JsonNode	proc toString(value: JsonNode): string		124
+nim	initValue	vancode/interpreter/value.html#initValue,bool	proc initValue(v: bool): Value		135
+nim	initValue	vancode/interpreter/value.html#initValue,int64	proc initValue(v: int64): Value		139
+nim	initValue	vancode/interpreter/value.html#initValue,float64	proc initValue(v: float64): Value		143
+nim	initValue	vancode/interpreter/value.html#initValue,string	proc initValue(v: string): Value		147
+nim	initValue	vancode/interpreter/value.html#initValue,JsonNode	proc initValue(v: JsonNode): Value		153
+nim	initValue	vancode/interpreter/value.html#initValue,pointer,string	proc initValue(nptr: pointer; libpath: string): Value		158
+nim	initValue	vancode/interpreter/value.html#initValue,TypeId,T	proc initValue[T: tuple | object | ref](id: TypeId; value: T): Value		163
+nim	foreign	vancode/interpreter/value.html#foreign,Value,typedesc	proc foreign(value: var Value; T: typedesc): T:type		183
+nim	foreign	vancode/interpreter/value.html#foreign,Value,typedesc_2	proc foreign(value: Value; T: typedesc): T:type		186
+nim	nilObject	vancode/interpreter/value.html#nilObject	const nilObject		191
+nim	initObject	vancode/interpreter/value.html#initObject,TypeId,int	proc initObject(id: TypeId; fieldCount: int): Value		193
+nim	initArray	vancode/interpreter/value.html#initArray,int	proc initArray(length: int): Value		202
+nimgrp	foreign	vancode/interpreter/value.html#foreign-procs-all	proc		183
+nimgrp	initvalue	vancode/interpreter/value.html#initValue-procs-all	proc		135

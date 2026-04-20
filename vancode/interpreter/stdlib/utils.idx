@@ -1,0 +1,5 @@
+nimTitle	utils	vancode/interpreter/stdlib/utils.html	module vancode/interpreter/stdlib/utils		0
+nim	TempParamDef	vancode/interpreter/stdlib/utils.html#TempParamDef	tuple TempParamDef		16
+nim	defaultNodeFromValue	vancode/interpreter/stdlib/utils.html#defaultNodeFromValue,Value	proc defaultNodeFromValue(v: Value): Node		30
+nim	addProc	vancode/interpreter/stdlib/utils.html#addProc,Script,Module,string,seq[TempParamDef],TypeKind,ForeignProc	proc addProc(script: Script; module: Module; name: string;\n        params: seq[TempParamDef] = @[]; returnTy: TypeKind;\n        impl: ForeignProc = nil; exportSym = true)		52
+nim	paramDef	vancode/interpreter/stdlib/utils.html#paramDef,string,TypeKind,Value,Sym,bool,bool,string	proc paramDef(name: string; kind: TypeKind; val: Value = nil; sym: Sym = nil;\n         mut: bool = false; isOpt: bool = false; kindStr = ""): TempParamDef		100

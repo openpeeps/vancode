@@ -1,0 +1,11 @@
+nimTitle	resolver	vancode/interpreter/resolver.html	module vancode/interpreter/resolver		0
+nim	FileResolver	vancode/interpreter/resolver.html#FileResolver	object FileResolver		24
+nim	ResolverError	vancode/interpreter/resolver.html#ResolverError	object ResolverError		29
+nim	initResolver	vancode/interpreter/resolver.html#initResolver	proc initResolver(): FileResolver		31
+nim	fileExists	vancode/interpreter/resolver.html#fileExists,FileResolver,string	proc fileExists(resolver: FileResolver; filePath: string): bool		35
+nim	isResolved	vancode/interpreter/resolver.html#isResolved,FileResolver,string	proc isResolved(resolver: FileResolver; filePath: string): bool		39
+nim	dependencies	vancode/interpreter/resolver.html#dependencies,FileResolver,string	proc dependencies(resolver: FileResolver; filePath: string): seq[string]		47
+nim	setDependencies	vancode/interpreter/resolver.html#setDependencies,FileResolver,string,openArray[string]	proc setDependencies(resolver: var FileResolver; aFile: string;\n                deps: openArray[string])		50
+nim	clearFile	vancode/interpreter/resolver.html#clearFile,FileResolver,string	proc clearFile(resolver: var FileResolver; filePath: string)		62
+nim	dependants	vancode/interpreter/resolver.html#dependants,FileResolver,string	proc dependants(resolver: FileResolver; target: string; recursive = true): seq[string]		69
+nim	resolveFile	vancode/interpreter/resolver.html#resolveFile,FileResolver,string,string	proc resolveFile(resolver: var FileResolver; aFile, bFile: string)		91

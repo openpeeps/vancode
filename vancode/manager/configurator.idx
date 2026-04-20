@@ -1,0 +1,27 @@
+nimTitle	configurator	vancode/manager/configurator.html	module vancode/manager/configurator		0
+nim	tsNim	vancode/manager/configurator.html#tsNim	TargetSource.tsNim		15
+nim	tsJS	vancode/manager/configurator.html#tsJS	TargetSource.tsJS		15
+nim	tsHtml	vancode/manager/configurator.html#tsHtml	TargetSource.tsHtml		15
+nim	tsRuby	vancode/manager/configurator.html#tsRuby	TargetSource.tsRuby		15
+nim	tsPython	vancode/manager/configurator.html#tsPython	TargetSource.tsPython		15
+nim	TargetSource	vancode/manager/configurator.html#TargetSource	enum TargetSource		15
+nim	BrowserSync	vancode/manager/configurator.html#BrowserSync	type BrowserSync		22
+nim	typeProject	vancode/manager/configurator.html#typeProject	ConfigType.typeProject		26
+nim	typePackage	vancode/manager/configurator.html#typePackage	ConfigType.typePackage		26
+nim	ConfigType	vancode/manager/configurator.html#ConfigType	enum ConfigType		26
+nim	Requirement	vancode/manager/configurator.html#Requirement	object Requirement		30
+nim	policyAny	vancode/manager/configurator.html#policyAny	PolicyName.policyAny		34
+nim	policyStdlib	vancode/manager/configurator.html#policyStdlib	PolicyName.policyStdlib		34
+nim	policyPackages	vancode/manager/configurator.html#policyPackages	PolicyName.policyPackages		34
+nim	policyImports	vancode/manager/configurator.html#policyImports	PolicyName.policyImports		34
+nim	policyLoops	vancode/manager/configurator.html#policyLoops	PolicyName.policyLoops		34
+nim	policyConditionals	vancode/manager/configurator.html#policyConditionals	PolicyName.policyConditionals		34
+nim	policyAssignments	vancode/manager/configurator.html#policyAssignments	PolicyName.policyAssignments		34
+nim	policyLoadDynlib	vancode/manager/configurator.html#policyLoadDynlib	PolicyName.policyLoadDynlib		34
+nim	PolicyName	vancode/manager/configurator.html#PolicyName	enum PolicyName		34
+nim	CompilationPolicy	vancode/manager/configurator.html#CompilationPolicy	object CompilationPolicy		52
+nim	CompilationSettings	vancode/manager/configurator.html#CompilationSettings	object CompilationSettings		55
+nim	TimConfig	vancode/manager/configurator.html#TimConfig	type TimConfig		63
+nim	generateYaml	vancode/manager/configurator.html#generateYaml,TimConfig	proc generateYaml(c: TimConfig): string		85
+nim	`$`	vancode/manager/configurator.html#$,TimConfig	proc `$`(c: TimConfig): string		97
+nim	getBasePath	vancode/manager/configurator.html#getBasePath,TimConfig	proc getBasePath(config: TimConfig): string		102

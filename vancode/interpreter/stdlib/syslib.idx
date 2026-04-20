@@ -1,0 +1,2 @@
+nimTitle	syslib	vancode/interpreter/stdlib/syslib.html	module vancode/interpreter/stdlib/syslib		0
+nim	initSystemOps	vancode/interpreter/stdlib/syslib.html#initSystemOps,Script,Module	proc initSystemOps(script: Script; module: Module)		18
