@@ -5,8 +5,6 @@ author        = "George Lemon"
 description   = "A flexible AST, Codegen and Virtual Machine library"
 license       = "LGPL-3.0-or-later"
 srcDir        = "src"
-binDir        = "bin"
-bin           = @["vancode"]
 
 
 # Dependencies
