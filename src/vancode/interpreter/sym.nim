@@ -48,7 +48,7 @@ type
     src*: Option[string]
       ## the source file where the module was defined
       ## this is used for type checking and error reporting
-    modules*: TableRef[string, Module]
+    modules*: Table[string, Module]
       ## a table of modules imported by this module
       ## where the key is the path to the module
 

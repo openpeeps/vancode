@@ -97,7 +97,6 @@ type
     opcImportModuleAlias = "importModuleAlias"  ## import a module with an alias
     opcImportFromModule = "importFromModule"  ## import a symbol from a module
 
-    opcViewLoader = "viewLoader"  ## load a view
     opcHalt = "halt"              ## halt the VM
 
   Script* {.acyclic.} = ref object
