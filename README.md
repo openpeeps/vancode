@@ -13,7 +13,7 @@
 </p>
 
 ## About
-Vancode is a tiny library for building bytecode interpreters and virtual machines in Nim. It provides a simple and efficient way to define and execute bytecode instructions, making it easier to create custom programming languages, scripting engines and DSLs (domain-specific languages).
+VanCode is a tiny library for building bytecode interpreters and virtual machines in Nim. It provides a simple and efficient way to define and execute bytecode instructions, making it easier to create custom programming languages, scripting engines and DSLs (domain-specific languages).
 
 ## 😍 Key Features
 - [x] Bring-your-own Lexer and Parser for maximum flexibility
@@ -29,7 +29,7 @@ Vancode is a tiny library for building bytecode interpreters and virtual machine
 
 ## Examples
 
-Vancode is a bring-your-own-parsing library, so it doesn't come with a built-in Parser or Lexer. When impplementing your own Parser you must use the VanCode AST provided by the library. No worries, most of the AST is pretty self-explanatory and easy to use.
+VanCode is a bring-your-own-parsing library, so it doesn't come with a built-in Parser or Lexer. When impplementing your own Parser you must use the VanCode AST provided by the library. No worries, most of the AST is pretty self-explanatory and easy to use.
 
 It's also pretty flexible so you can easily extend it with your own custom nodes via Nim's macro system at compile-time without having to modify the library's source code.
 
@@ -92,10 +92,15 @@ discard vmInstance.interpret(script, mainChunk)
 
 👉 Check the [examples/calculator.nim](https://github.com/openpeeps/vancode/blob/main/examples/calculator.nim) for a more complete REPL implementation of the calculator example.
 
-> [!NOTE]
-> Vancode is far from being a complete solution, I'm planning to add more features and improvements as I go, while still learning about how to design a good flexible interpreter and VM.
+## Extend AST, Codegen and VM with Voodoo
+VanCode provides a powerful and flexible way to extend the AST, Codegen and VM with your own custom nodes, instructions and operations using Nim's macro system.
 
-## Projects using Vancode
+For a full example of how to use Voodoo to extend the AST, Codegen and VM, check the [Tim Engine](https://github.com/openpeeps/tim/blob/main/src/tim/engine/transformers.nim) transformers module.
+
+> [!NOTE]
+> VanCode is far from being a complete solution, I'm planning to add more features and improvements as I go, while still learning about how to design a good flexible interpreter and VM.
+
+## Projects using VanCode
 - [Tim Engine](https://github.com/openpeeps/tim) - A beautiful template engine and DSL for generating HTML templates
 
 ## Roadmap
@@ -106,7 +111,7 @@ discard vmInstance.interpret(script, mainChunk)
 
 Notes:
 - https://vivekn.dev/blog/bytecode-vm-scratch/
-- https://github.com/liquidev/hayago - Vancode contains work from hayago, a very interesting project that is no longer maintained but provides a good reference for Nim-based bytecode VMs. Cheers to the author! 😻
+- https://github.com/liquidev/hayago - VanCode contains work from hayago, a very interesting project that is no longer maintained but provides a good reference for Nim-based bytecode VMs. Cheers to the author! 😻
 
 ### ❤ Contributions & Support
 - 🐛 Found a bug? [Create a new Issue](https://github.com/openpeeps/vancode/issues)
