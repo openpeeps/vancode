@@ -2,7 +2,7 @@
 
 version       = "0.1.0"
 author        = "George Lemon"
-description   = "A cool Codegen and VM library for Nim"
+description   = "A flexible AST, Codegen and Virtual Machine library"
 license       = "LGPL-3.0-or-later"
 srcDir        = "src"
 binDir        = "bin"
