@@ -16,6 +16,10 @@
 ## About
 VanCode is a tiny library for building bytecode interpreters and virtual machines in Nim. It provides a simple and efficient way to define and execute bytecode instructions, making it easier to create custom programming languages, scripting engines and DSLs (domain-specific languages).
 
+This is a _bring-your-own-parsing_ library, so it doesn't come with a built-in Parser or Lexer. When implementing your own Parser you must use the [VanCode AST](https://openpeeps.github.io/vancode/vancode/interpreter/ast.html) provided by the library. No worries, most of the AST is pretty self-explanatory and easy to use.
+
+It's also pretty flexible so you can easily extend it with your own custom nodes via Nim's macro system at compile-time without having to modify the library's source code.
+
 ## 😍 Key Features
 - [x] Bring-your-own Lexer and Parser for maximum flexibility
 - [x] Built-in AST (Abstract Syntax Tree) representation
@@ -28,11 +32,11 @@ VanCode is a tiny library for building bytecode interpreters and virtual machine
 - [ ] Built-in package manager for easy distribution and installation
 - [x] Written in Nim language
 
+> [!NOTE]
+> VanCode is far from being a complete solution, I'm planning to add more features and improvements as I go, while still learning about how to design a good flexible interpreter and VM.
+
 ## Examples
-
-VanCode is a bring-your-own-parsing library, so it doesn't come with a built-in Parser or Lexer. When impplementing your own Parser you must use the VanCode AST provided by the library. No worries, most of the AST is pretty self-explanatory and easy to use.
-
-It's also pretty flexible so you can easily extend it with your own custom nodes via Nim's macro system at compile-time without having to modify the library's source code.
+Let's showcase some cool examples!
 
 ### Calculator example
 
@@ -98,8 +102,6 @@ VanCode provides a powerful and flexible way to extend the AST, Codegen and VM w
 
 For a full example of how to use Voodoo to extend the AST, Codegen and VM, check the [Tim Engine](https://github.com/openpeeps/tim/blob/main/src/tim/engine/transformers.nim) transformers module.
 
-> [!NOTE]
-> VanCode is far from being a complete solution, I'm planning to add more features and improvements as I go, while still learning about how to design a good flexible interpreter and VM.
 
 ## Projects using VanCode
 - [Tim Engine](https://github.com/openpeeps/tim) - A beautiful template engine and DSL for generating HTML templates
