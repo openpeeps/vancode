@@ -16,7 +16,7 @@
 Vancode is a tiny library for building bytecode interpreters and virtual machines in Nim. It provides a simple and efficient way to define and execute bytecode instructions, making it easier to create custom programming languages, scripting engines and DSLs (domain-specific languages).
 
 > [!NOTE]
-> Vancode contains work from [hayago](https://github.com/liquidev/hayago), a very interesting project that is no longer maintained but has some really good ideas on designing a bytecode generator and VM in Nim.
+> Vancode contains work from [hayago](https://github.com/liquidev/hayago), a very interesting project that is no longer maintained but had a good starting point so I decided to bring it back to life and work on it while still learning about, bytecode VMs and interpreter desing in general.
 
 ## 😍 Key Features
 - [x] Bring-your-own Lexer and Parser for maximum flexibility
