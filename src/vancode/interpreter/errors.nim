@@ -10,6 +10,12 @@
 #          Made by Humans from OpenPeeps
 #          https://github.com/openpeeps/vancode
 
+## This module defines the various error messages used by the interpreter. These
+## are used for error reporting throughout the interpreter, and are formatted
+## using the ErrorFmt constant, which defines the format for error messages. The
+## error messages themselves are defined as constants, and can be used throughout
+## the interpreter for consistent error reporting.
+
 const
   ErrorFmt* = "$1($2:$3): $4"
 

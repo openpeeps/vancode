@@ -10,6 +10,13 @@
 #          Made by Humans from OpenPeeps
 #          https://github.com/openpeeps/vancode
 
+## This module defines a file resolver for managing file imports and includes. It tracks
+## which files have been resolve (imported/included) by which other files, and provides 
+## utilities for checking dependencies and resolving files.
+## 
+## This is used by the interpreter to manage file imports and includes, and
+## to detect circular dependencies.
+
 import std/[os, tables, sequtils, sets]
 
 type

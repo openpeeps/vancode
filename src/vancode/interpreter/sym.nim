@@ -10,6 +10,10 @@
 #          Made by Humans from OpenPeeps
 #          https://github.com/openpeeps/vancode
 
+## Implements the symbol and scope system for the interpreter. This is used to manage
+## variables, functions, types, and other symbols in the interpreter. It also
+## handles symbol lookup, overloading, and type checking.
+
 import std/[tables, json, hashes, options, sequtils, strutils, os]
 import ./[ast, value]
 
@@ -44,7 +48,7 @@ type
     src*: Option[string]
       ## the source file where the module was defined
       ## this is used for type checking and error reporting
-    modules*: Table[string, Module]
+    modules*: TableRef[string, Module]
       ## a table of modules imported by this module
       ## where the key is the path to the module
 
@@ -324,46 +328,6 @@ proc `$`*(sym: Sym): string =
   of skChoice:
     result = sym.choices.mapIt($it).join("\n").indent(2)
   else: discard
-
-# proc `$$`*(sym: Sym): string =
-#   ## Stringify a symbol verbosely for debugging purposes.
-#   case sym.kind
-#   of skVar, skLet, skConst:
-#     result = $(sym.kind) & " of type " & sym.varTy.name.ident
-#   of skType:
-#     result = "type"
-#     if sym.genericParams.isSome:
-#       result.add('[')
-#       result.add(sym.genericParams.get.join(", "))
-#       result.add(']')
-#     result.add(" = ")
-#     case sym.tyKind
-#     of tyPrimitives: result.add($sym.tyKind)
-#     of ttyObject:
-#       result.add("object {")
-#       for name, field in sym.objectFields:
-#         result.add(" " & name & ": " & $field.ty.name & ";")
-#       result.add(" }")
-#     of ttyAlias:
-#       discard # todo
-#     of ttyCustom:
-#       discard # todo
-#     of ttyJson:
-#       discard
-#     of ttyHtmlElement: discard # todo
-#   of skProc:
-#     result = "proc " & $sym.name & "{" & $sym.procId & "}" & $sym.procParams
-#   of skIterator:
-#     result = "iterator " & $sym.name & $sym.iterParams
-#   of skGenericParam:
-#     result = $sym.name
-#     if sym.constraint != nil:
-#       result.add(": " & $sym.constraint)
-#   of skChoice:
-#     result = "choice between " & $sym.choices.len & " {"
-#     for choice in sym.choices:
-#       result.add(" " & $choice & ",")
-#     result.add(" }")
 
 proc isGeneric*(sym: Sym): bool =
   ## Returns whether the symbol is generic or not.

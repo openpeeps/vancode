@@ -12,7 +12,13 @@
 
 import std/[tables, hashes, dynlib, strutils]
 import pkg/voodoo/extensibles
-import value
+import ./value
+
+## This module defines the Chunk type, which represents a chunk of bytecode. It also
+## defines the Script type, which represents a script being executed by the interpreter.
+## 
+## This module provides utilities for emitting bytecode into a chunk, as well as for
+## managing line information for error reporting
 
 type
   Opcode* {.extensible.} = enum

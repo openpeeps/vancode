@@ -15,9 +15,6 @@
 ## About
 Vancode is a tiny library for building bytecode interpreters and virtual machines in Nim. It provides a simple and efficient way to define and execute bytecode instructions, making it easier to create custom programming languages, scripting engines and DSLs (domain-specific languages).
 
-> [!NOTE]
-> Vancode contains work from [hayago](https://github.com/liquidev/hayago), a very interesting project that is no longer maintained but had a good starting point so I decided to bring it back to life and work on it while still learning about, bytecode VMs and interpreter desing in general.
-
 ## 😍 Key Features
 - [x] Bring-your-own Lexer and Parser for maximum flexibility
 - [x] Built-in AST (Abstract Syntax Tree) representation
@@ -32,12 +29,13 @@ Vancode is a tiny library for building bytecode interpreters and virtual machine
 
 ## Examples
 
-Vancode is a bring-your-own-parsing library, so it doesn't come with a built-in Parser or Lexer. When impplementing your own Parser you must use the VanCode AST provided by the library. No worries, most of the AST is pretty self-explanatory and easy to use. It's also pretty flexible so you can easily extend it with your own custom nodes via Nim's macro system at compile-time without having to modify the library's source code.
+Vancode is a bring-your-own-parsing library, so it doesn't come with a built-in Parser or Lexer. When impplementing your own Parser you must use the VanCode AST provided by the library. No worries, most of the AST is pretty self-explanatory and easy to use.
 
+It's also pretty flexible so you can easily extend it with your own custom nodes via Nim's macro system at compile-time without having to modify the library's source code.
 
 ### Calculator example
 
-Here is a simple calculator example that demonstrates how to use VanCode to construct the AST for a simple expression, pass it trough the code generator to produce bytecode, and then execute it in the VM
+Here is a simple calculator example that demonstrates how to use VanCode to construct the AST for a simple expression, pass it trough the code generator to produce bytecode, and then execute it in the VM.
 
 ```nim
 import std/options
@@ -92,6 +90,8 @@ let vmInstance = newVm()
 discard vmInstance.interpret(script, mainChunk)
 ```
 
+👉 Check the [examples/calculator.nim](https://github.com/openpeeps/vancode/blob/main/examples/calculator.nim) for a more complete REPL implementation of the calculator example.
+
 > [!NOTE]
 > Vancode is far from being a complete solution, I'm planning to add more features and improvements as I go, while still learning about how to design a good flexible interpreter and VM.
 
@@ -106,7 +106,7 @@ discard vmInstance.interpret(script, mainChunk)
 
 Notes:
 - https://vivekn.dev/blog/bytecode-vm-scratch/
-- https://github.com/liquidev/hayago
+- https://github.com/liquidev/hayago - Vancode contains work from hayago, a very interesting project that is no longer maintained but provides a good reference for Nim-based bytecode VMs. Cheers to the author! 😻
 
 ### ❤ Contributions & Support
 - 🐛 Found a bug? [Create a new Issue](https://github.com/openpeeps/vancode/issues)

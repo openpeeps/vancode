@@ -13,6 +13,15 @@
 import std/[strutils, json]
 import pkg/openparser/json
 
+## This module defines the Value type, which represents a value in the
+## interpreter. This represents all the possible values that can be
+## manipulated by the interpreter, including primitive types like bools and
+## ints, as well as complex types like objects and arrays.
+## 
+## It also includes utilities for initializing and converting values, as well as a
+## foreign proc system for handling native code in the standard library and
+## user-defined foreign procs in general.
+
 const
   ValueSize* = max([
     sizeof(bool),
