@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/openpeeps/PKG/blob/main/.github/logo.png" width="90px"><br>
+  <img src="https://github.com/openpeeps/vancode/blob/main/.github/vancode.png" width="200px"><br>
   OpenPeeps repository template for developing libraries,<br>projects and other cool things. 👑 Written in Nim language
 </p>
 
