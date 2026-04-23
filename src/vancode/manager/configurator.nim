@@ -12,17 +12,6 @@ when not defined napibuild:
 export `$`
 
 type
-  TargetSource* = enum
-    tsNim    = "nim"
-    tsJS     = "js"
-    tsHtml   = "html"
-    tsRuby   = "rb"
-    tsPython = "py"
-
-  BrowserSync* = ref object
-    port*: Port
-    delay*: uint # ms todo use jsony hooks + std/times
-
   ConfigType* = enum
     typeProject = "project"
     typePackage = "package"
@@ -53,14 +42,13 @@ type
     allow: set[PolicyName]
 
   CompilationSettings* = object
-    target*: TargetSource
     source*, output*: string
     layoutsPath*, viewsPath*, partialsPath*: string
     basePath*: string
     policy*: CompilationPolicy
     release*: bool
 
-  TimConfig* = ref object
+  PackageConfig* = ref object
     name*: string
       ## Name of the package or project
       ## This must be a valid identifier
@@ -78,26 +66,25 @@ type
     case `type`*: ConfigType
     of ConfigType.typeProject:
       compilation*: CompilationSettings
-      browser_sync*: BrowserSync
     else: discard
 
-when not defined napibuild:
-  proc generateYaml*(c: TimConfig): string =
-    ## Generate a YAML representation of the TimConfig
-    ## This is used to generate the `tim.yml` file
-    let str =
-      if c.`type` == ConfigType.typePackage:
-        json.toJson(c, JsonOptions(
-          skipFields: @["type", "compilation", "browser_sync"]
-        ))
-      else:
-        json.toJson(c)
-    dump(json.fromJson(str))
+# when not defined napibuild:
+#   proc generateYaml*(c: TimConfig): string =
+#     ## Generate a YAML representation of the TimConfig
+#     ## This is used to generate the `tim.yml` file
+#     let str =
+#       if c.`type` == ConfigType.typePackage:
+#         json.toJson(c, JsonOptions(
+#           skipFields: @["type", "compilation", "browser_sync"]
+#         ))
+#       else:
+#         json.toJson(c)
+#     dump(json.fromJson(str))
 
-  proc `$`*(c: TimConfig): string = 
-    ## Generate a string representation of the TimConfig
-    ## using `pkg/voodoo`
-    json.toJson(c)
+#   proc `$`*(c: TimConfig): string = 
+#     ## Generate a string representation of the TimConfig
+#     ## using `pkg/voodoo`
+#     json.toJson(c)
 
-proc getBasePath*(config: TimConfig): string =
-  return config.compilation.basePath
+# proc getBasePath*(config: TimConfig): string =
+#   return config.compilation.basePath

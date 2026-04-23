@@ -11,7 +11,7 @@ import ../interpreter/ast
 import ./remote, ./configurator
 
 type
-  VersionedPackage = OrderedTableRef[string, TimConfig]
+  VersionedPackage = OrderedTableRef[string, PackageConfig]
   PackagesTable* = OrderedTableRef[string, VersionedPackage]
   Packager* = ref object
     remote*: RemoteSource
@@ -58,7 +58,7 @@ proc updatePackages*(pkgr: Packager) =
   ## Update packages index
   writeFile(pkgrIndexPath, toJson(pkgr.packages))
 
-proc createPackage*(pkgr: Packager, orgName, pkgName: string, pkgConfig: TimConfig): bool =
+proc createPackage*(pkgr: Packager, orgName, pkgName: string, pkgConfig: PackageConfig): bool =
   ## Create package directory for `pkgConfig`
   ## Returns `true` if succeed.
   let v = pkgConfig.version
