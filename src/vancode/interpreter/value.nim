@@ -92,34 +92,54 @@ type
     ## A foreign proc implementation, used for native code in
     ## the standard library and user-defined foreign procs in general
 
+proc dumpHook*(s: var string, val: Value) =
+  ## OpenParser JSON dumping hook for Values
+  case val.typeId
+  of tyNil: s.add("nil")
+  of tyBool: s.add($val.boolVal)
+  of tyInt: s.add($val.intVal)
+  of tyFloat: s.add($val.floatVal)
+  of tyString: s.add(val.stringVal[])
+  of tyJsonStorage: 
+    dumpHook(s, val.jsonVal)
+  of tyArrayObject: 
+    for i in 0..<val.objectVal.fields.len:
+      if i > 0: s.add(", ")
+      case val.objectVal.fields[i].typeId
+      of tyString:
+        s.add("\"" & val.objectVal.fields[i].stringVal[] & "\"")
+      else:
+        dumpHook(s, val.objectVal.fields[i])
+  of tyPointer:
+    case val.objectVal.isForeign:
+    of true:
+      if val.objectVal == nil or val.objectVal.data == nil:
+        s.add("pointer<nil>")
+      else:
+        s.add("pointer<0x" & $cast[uint](val.objectVal.data) & ">")
+    else: s.add("")
+  else: s.add("<object>")
+
 proc `$`*(value: Value): string =
   ## Returns a value's string representation.
-  case value.typeId
-  of tyNil: result = "nil"
-  of tyBool: result = $value.boolVal
-  of tyInt: result = $value.intVal
-  of tyFloat: result = $value.floatVal
-  # of tyString: result = escape($value.stringVal[])
-  of tyString:
-    result = value.stringVal[]
-  of tyJsonStorage:
-    result = toJson(value.jsonVal)
-  of tyArrayObject:
-    let len = value.objectVal.fields.len
-    result.add("[")
-    for i in 0 ..< len:
-      result.add(escape($value.objectVal.fields[i]))
-      if i < len - 1:
-        result.add(", ")
-    result.add("]")
-  of tyPointer:
-    case value.objectVal.isForeign:
-    of true:
-      if value.objectVal == nil or value.objectVal.data == nil:
-        result = "pointer<nil>"
-      else: result = "pointer<0x" & $cast[uint](value.objectVal.data) & ">"
-    else: discard
-  else: result = "<object>"
+  result = 
+    case value.typeId
+    of tyNil: "nil"
+    of tyBool: $value.boolVal
+    of tyInt: $value.intVal
+    of tyFloat: $value.floatVal
+    of tyString: value.stringVal[]
+    of tyJsonStorage: toJson(value.jsonVal)
+    of tyArrayObject: toJson(value.objectVal.fields)
+    of tyPointer:
+      case value.objectVal.isForeign:
+      of true:
+        if value.objectVal == nil or value.objectVal.data == nil:
+          "pointer<nil>"
+        else:
+          "pointer<0x" & $cast[uint](value.objectVal.data) & ">"
+      else: ""
+    else: "<object>"
 
 proc toString*(value: JsonNode): string =
   ## Converts a JSON node to a string.
