@@ -366,8 +366,8 @@ proc prewarmScriptOps*(vm: Vm, s: Script) =
 proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         staticString: Option[string] = none(string),
         globaldata = newJObject(),
-        localData = newJObject()): string =
-  ## Interpret the given chunk in the context of the provided script.
+        localData = newJObject()): Value =
+  ## Interpret the given chunk in the context of the provided script
   var
     stack: Stack = newSeqOfCap[Value](VMInitialPreallocatedStackSize)
     callStack: seq[CallFrame] = newSeqOfCap[CallFrame](256)
@@ -486,6 +486,10 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       display(span("Ensure local:", fgCyan),
         span("idx=" & $idx & " stackLen=" & $stack.len))
 
+  # Voodoo placeholder for injecting custom code at the start of the main loop
+  placeholderSnippet"VanCodeVMBeforeMainLoop"
+
+  # Main execution loop
   while true:
     frameChanged = false
     if pcIdx < 0 or pcIdx >= co.opcodes.len: break
@@ -495,6 +499,8 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
     when defined(hayaVmWriteStackOps):
       display(span("OPCODE:", fgMagenta),
               span($oc), span("chunk=" & $currentChunk & " pcIdx=" & $pcIdx & " stack=" & $stack))
+    
+    # Main opcode dispatch
     extendableCase "vmInterpretCase":
       case oc
       #
@@ -551,24 +557,11 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           arr = stack.pop()
         arr.objectVal.fields[idxVal.intVal] = val
       of opcConstrObj:
-        # let count = co.getArg1Int(pcIdx)
-        # var obj = initObject(15, count)
-        # if count > 0:
-        #   let vals = stack{^(count * 2)} # pairs: (key, value), (key, value)
-        #   for i in 0 ..< count:
-        #     let fieldKey = vals[2*i]
-        #     let fieldValue = vals[2*i + 1]
-        #     obj.objectVal.keys.add(fieldKey.stringVal[])
-        #     obj.objectVal.fields[i] = fieldValue
-        #   stack.setLen(stack.len - (count * 2))
-        # stack.push(obj)
         let count = co.getArg1Int(pcIdx)
         var obj = initObject(15, count)
-
         if count > 0:
           let needPairs = count * 2
-
-          # Mode A: dynamic object storage => stack has (key, value) pairs
+          # dynamic object storage => stack has (key, value) pairs
           var canUsePairs = stack.len >= needPairs
           if canUsePairs:
             let vals = stack{^needPairs}
@@ -576,7 +569,6 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
               if vals[2 * i].typeId != tyString:
                 canUsePairs = false
                 break
-
             if canUsePairs:
               for i in 0 ..< count:
                 let fieldKey = vals[2 * i]
@@ -584,8 +576,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                 obj.objectVal.keys.add(fieldKey.stringVal[])
                 obj.objectVal.fields[i] = fieldValue
               stack.setLen(stack.len - needPairs)
-
-          # Mode B: typed object constructor => stack has values only
+          # typed object constructor => stack has values only
           if not canUsePairs:
             if stack.len < count:
               raise newException(IndexDefect,
