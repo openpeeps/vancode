@@ -101,7 +101,7 @@ when isMainModule:
 
     # Execute the bytecode in the VM
     let vmInstance = newVm()
-    discard vmInstance.interpret(script, mainChunk)
+    vmInstance.interpret(script, mainChunk)
   
   # cli stuff
   echo "Calculator REPL. Type expressions like: 1 + 1 * 3"
