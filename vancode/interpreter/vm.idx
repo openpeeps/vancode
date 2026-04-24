@@ -1,11 +1,10 @@
 nimTitle	vm	vancode/interpreter/vm.html	module vancode/interpreter/vm		0
 nim	VMPreferences	vancode/interpreter/vm.html#VMPreferences	object VMPreferences		29
-nim	Vm	vancode/interpreter/vm.html#Vm	type Vm		59
-nim	CallFrame	vancode/interpreter/vm.html#CallFrame	tuple CallFrame		72
-nim	Operation	vancode/interpreter/vm.html#Operation	object Operation		79
-nim	VMInitialPreallocatedStackSize	vancode/interpreter/vm.html#VMInitialPreallocatedStackSize	const VMInitialPreallocatedStackSize		85
-nim	VMPreallocatedStackSize	vancode/interpreter/vm.html#VMPreallocatedStackSize	const VMPreallocatedStackSize		88
-nim	newVm	vancode/interpreter/vm.html#newVm	proc newVm(): Vm		92
-nim	newVirtualMachine	vancode/interpreter/vm.html#newVirtualMachine,VMPreferences	proc newVirtualMachine(prefs: VMPreferences): Vm		95
-nim	prewarmScriptOps	vancode/interpreter/vm.html#prewarmScriptOps,Vm,Script	proc prewarmScriptOps(vm: Vm; s: Script)		359
-nim	interpret	vancode/interpreter/vm.html#interpret,Vm,Script,Chunk,Option[string]	proc interpret(vm: Vm; script: Script; startChunk: Chunk;\n          staticString: Option[string] = none(string);\n          globaldata = newJObject(); localData = newJObject()): string		366
+nim	Vm	vancode/interpreter/vm.html#Vm	type Vm		60
+nim	CallFrame	vancode/interpreter/vm.html#CallFrame	tuple CallFrame		70
+nim	VMInitialPreallocatedStackSize	vancode/interpreter/vm.html#VMInitialPreallocatedStackSize	const VMInitialPreallocatedStackSize		80
+nim	VMPreallocatedStackSize	vancode/interpreter/vm.html#VMPreallocatedStackSize	const VMPreallocatedStackSize		83
+nim	newVm	vancode/interpreter/vm.html#newVm	proc newVm(): Vm		87
+nim	newVirtualMachine	vancode/interpreter/vm.html#newVirtualMachine,VMPreferences	proc newVirtualMachine(prefs: VMPreferences): Vm		90
+nim	prewarmScriptOps	vancode/interpreter/vm.html#prewarmScriptOps,Vm,Script	proc prewarmScriptOps(vm: Vm; s: Script)		344
+nim	interpret	vancode/interpreter/vm.html#interpret,Vm,Script,Chunk,Option[string]	proc interpret(vm: Vm; script: Script; startChunk: Chunk;\n          staticString: Option[string] = none(string);\n          globaldata = newJObject(); localData = newJObject()): Value		351

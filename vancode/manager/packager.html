@@ -91,7 +91,7 @@
 
 </ul>
 <ul class="simple nested-toc-section">createPackage
-  <li><a class="reference" href="#createPackage%2CPackager%2Cstring%2Cstring%2CTimConfig" title="createPackage(pkgr: Packager; orgName, pkgName: string; pkgConfig: TimConfig): bool">createPackage(pkgr: Packager; orgName, pkgName: string; pkgConfig: TimConfig): bool</a></li>
+  <li><a class="reference" href="#createPackage%2CPackager%2Cstring%2Cstring%2CPackageConfig" title="createPackage(pkgr: Packager; orgName, pkgName: string; pkgConfig: PackageConfig): bool">createPackage(pkgr: Packager; orgName, pkgName: string; pkgConfig: PackageConfig): bool</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">deletePackage
@@ -260,9 +260,9 @@
 
 </div>
 <div id="createPackage-procs-all">
-  <div id="createPackage,Packager,string,string,TimConfig">
-  <dt><pre><span class="Keyword">proc</span> <a href="#createPackage%2CPackager%2Cstring%2Cstring%2CTimConfig"><span class="Identifier">createPackage</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="packager.html#Packager"><span class="Identifier">Packager</span></a><span class="Other">;</span> <span class="Identifier">orgName</span><span class="Other">,</span> <span class="Identifier">pkgName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span>
-                   <span class="Identifier">pkgConfig</span><span class="Other">:</span> <a href="configurator.html#TimConfig"><span class="Identifier">TimConfig</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">IOError</span><span class="Other">,</span>
+  <div id="createPackage,Packager,string,string,PackageConfig">
+  <dt><pre><span class="Keyword">proc</span> <a href="#createPackage%2CPackager%2Cstring%2Cstring%2CPackageConfig"><span class="Identifier">createPackage</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="packager.html#Packager"><span class="Identifier">Packager</span></a><span class="Other">;</span> <span class="Identifier">orgName</span><span class="Other">,</span> <span class="Identifier">pkgName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span>
+                   <span class="Identifier">pkgConfig</span><span class="Other">:</span> <a href="configurator.html#PackageConfig"><span class="Identifier">PackageConfig</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">IOError</span><span class="Other">,</span>
     <span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">HttpRequestError</span><span class="Other">,</span> <span class="Identifier">LibraryError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">SslError</span><span class="Other">,</span>
     <span class="Identifier">TimeoutError</span><span class="Other">,</span> <span class="Identifier">ProtocolError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">WriteDirEffect</span><span class="Other">,</span> <span class="Identifier">ReadDirEffect</span><span class="Other">,</span>
     <span class="Identifier">RootEffect</span><span class="Other">,</span> <span class="Identifier">ReadIOEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">,</span> <span class="Identifier">TimeEffect</span><span class="Other">,</span> <span class="Identifier">ExecIOEffect</span><span class="Other">]</span><span class="Other">,</span>
@@ -408,7 +408,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-04-20 21:39:31 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-04-24 06:26:41 UTC</small>
       </div>
     </div>
   </div>

@@ -44,7 +44,7 @@
           <li><a class="reference external"
           data-doc-search-tag="value: proc `$`(value: Value): string" href="vancode/interpreter/value.html#%24%2CValue">value: proc `$`(value: Value): string</a></li>
           <li><a class="reference external"
-          data-doc-search-tag="configurator: proc `$`(c: TimConfig): string" href="vancode/manager/configurator.html#%24%2CTimConfig">configurator: proc `$`(c: TimConfig): string</a></li>
+          data-doc-search-tag="configurator: proc `$`(c: PackageConfig): string" href="vancode/manager/configurator.html#%24%2CPackageConfig">configurator: proc `$`(c: PackageConfig): string</a></li>
           </ul></dd>
 <dt><a name="%60%3D%3D%60" href="#%60%3D%3D%60"><span>`==`:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -117,10 +117,6 @@
 <dt><a name="Ast" href="#Ast"><span>Ast:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="ast: type Ast" href="vancode/interpreter/ast.html#Ast">ast: type Ast</a></li>
-          </ul></dd>
-<dt><a name="BrowserSync" href="#BrowserSync"><span>BrowserSync:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="configurator: type BrowserSync" href="vancode/manager/configurator.html#BrowserSync">configurator: type BrowserSync</a></li>
           </ul></dd>
 <dt><a name="cacheModule" href="#cacheModule"><span>cacheModule:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -202,7 +198,7 @@
           </ul></dd>
 <dt><a name="createPackage" href="#createPackage"><span>createPackage:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="packager: proc createPackage(pkgr: Packager; orgName, pkgName: string; pkgConfig: TimConfig): bool" href="vancode/manager/packager.html#createPackage%2CPackager%2Cstring%2Cstring%2CTimConfig">packager: proc createPackage(pkgr: Packager; orgName, pkgName: string; pkgConfig: TimConfig): bool</a></li>
+          data-doc-search-tag="packager: proc createPackage(pkgr: Packager; orgName, pkgName: string; pkgConfig: PackageConfig): bool" href="vancode/manager/packager.html#createPackage%2CPackager%2Cstring%2Cstring%2CPackageConfig">packager: proc createPackage(pkgr: Packager; orgName, pkgName: string; pkgConfig: PackageConfig): bool</a></li>
           </ul></dd>
 <dt><a name="debugEcho" href="#debugEcho"><span>debugEcho:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -241,6 +237,10 @@
 <dt><a name="download" href="#download"><span>download:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="remote: proc download(client: RemoteSource; path, tmpPath: string; args: seq[string] = @[]): bool" href="vancode/manager/remote.html#download%2CRemoteSource%2Cstring%2Cstring%2Cseq%5Bstring%5D">remote: proc download(client: RemoteSource; path, tmpPath: string; args: seq[string] = @[]): bool</a></li>
+          </ul></dd>
+<dt><a name="dumpHook" href="#dumpHook"><span>dumpHook:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="value: proc dumpHook(s: var string; val: Value)" href="vancode/interpreter/value.html#dumpHook%2Cstring%2CValue">value: proc dumpHook(s: var string; val: Value)</a></li>
           </ul></dd>
 <dt><a name="emit" href="#emit"><span>emit:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -516,7 +516,7 @@
           </ul></dd>
 <dt><a name="generateYaml" href="#generateYaml"><span>generateYaml:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: proc generateYaml(c: TimConfig): string" href="vancode/manager/configurator.html#generateYaml%2CTimConfig">configurator: proc generateYaml(c: TimConfig): string</a></li>
+          data-doc-search-tag="configurator: proc generateYaml(c: PackageConfig): string" href="vancode/manager/configurator.html#generateYaml%2CPackageConfig">configurator: proc generateYaml(c: PackageConfig): string</a></li>
           </ul></dd>
 <dt><a name="genExpr" href="#genExpr"><span>genExpr:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -589,10 +589,6 @@
 <dt><a name="genYield" href="#genYield"><span>genYield:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc genYield(gen: CodeGen; node: Node)" href="vancode/interpreter/codegen.html#genYield%2CCodeGen%2CNode">codegen: proc genYield(gen: CodeGen; node: Node)</a></li>
-          </ul></dd>
-<dt><a name="getBasePath" href="#getBasePath"><span>getBasePath:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="configurator: proc getBasePath(config: TimConfig): string" href="vancode/manager/configurator.html#getBasePath%2CTimConfig">configurator: proc getBasePath(config: TimConfig): string</a></li>
           </ul></dd>
 <dt><a name="getCachedModule" href="#getCachedModule"><span>getCachedModule:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -784,9 +780,9 @@
 <li><a class="reference external"
           data-doc-search-tag="vm: proc interpret(vm: Vm; script: Script; startChunk: Chunk;
           staticString: Option[string] = none(string);
-          globaldata = newJObject(); localData = newJObject()): string" href="vancode/interpreter/vm.html#interpret%2CVm%2CScript%2CChunk%2COption%5Bstring%5D">vm: proc interpret(vm: Vm; script: Script; startChunk: Chunk;
+          globaldata = newJObject(); localData = newJObject()): Value" href="vancode/interpreter/vm.html#interpret%2CVm%2CScript%2CChunk%2COption%5Bstring%5D">vm: proc interpret(vm: Vm; script: Script; startChunk: Chunk;
           staticString: Option[string] = none(string);
-          globaldata = newJObject(); localData = newJObject()): string</a></li>
+          globaldata = newJObject(); localData = newJObject()): Value</a></li>
           </ul></dd>
 <dt><a name="isGeneric" href="#isGeneric"><span>isGeneric:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -948,9 +944,9 @@
 <li><a class="reference external"
           data-doc-search-tag="chunk: enum Opcode" href="vancode/interpreter/chunk.html#Opcode">chunk: enum Opcode</a></li>
           </ul></dd>
-<dt><a name="Operation" href="#Operation"><span>Operation:</span></a></dt><dd><ul class="simple">
+<dt><a name="PackageConfig" href="#PackageConfig"><span>PackageConfig:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="vm: object Operation" href="vancode/interpreter/vm.html#Operation">vm: object Operation</a></li>
+          data-doc-search-tag="configurator: type PackageConfig" href="vancode/manager/configurator.html#PackageConfig">configurator: type PackageConfig</a></li>
           </ul></dd>
 <dt><a name="Packager" href="#Packager"><span>Packager:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1236,17 +1232,9 @@
 <li><a class="reference external"
           data-doc-search-tag="sym: enum SymKind" href="vancode/interpreter/sym.html#SymKind">sym: enum SymKind</a></li>
           </ul></dd>
-<dt><a name="TargetSource" href="#TargetSource"><span>TargetSource:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="configurator: enum TargetSource" href="vancode/manager/configurator.html#TargetSource">configurator: enum TargetSource</a></li>
-          </ul></dd>
 <dt><a name="TempParamDef" href="#TempParamDef"><span>TempParamDef:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="utils: tuple TempParamDef" href="vancode/interpreter/stdlib/utils.html#TempParamDef">utils: tuple TempParamDef</a></li>
-          </ul></dd>
-<dt><a name="TimConfig" href="#TimConfig"><span>TimConfig:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="configurator: type TimConfig" href="vancode/manager/configurator.html#TimConfig">configurator: type TimConfig</a></li>
           </ul></dd>
 <dt><a name="toString" href="#toString"><span>toString:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1259,26 +1247,6 @@
 <dt><a name="tryElideWhile" href="#tryElideWhile"><span>tryElideWhile:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc tryElideWhile(gen: CodeGen; node: Node): bool" href="vancode/interpreter/codegen.html#tryElideWhile%2CCodeGen%2CNode">codegen: proc tryElideWhile(gen: CodeGen; node: Node): bool</a></li>
-          </ul></dd>
-<dt><a name="tsHtml" href="#tsHtml"><span>tsHtml:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="configurator: TargetSource.tsHtml" href="vancode/manager/configurator.html#tsHtml">configurator: TargetSource.tsHtml</a></li>
-          </ul></dd>
-<dt><a name="tsJS" href="#tsJS"><span>tsJS:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="configurator: TargetSource.tsJS" href="vancode/manager/configurator.html#tsJS">configurator: TargetSource.tsJS</a></li>
-          </ul></dd>
-<dt><a name="tsNim" href="#tsNim"><span>tsNim:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="configurator: TargetSource.tsNim" href="vancode/manager/configurator.html#tsNim">configurator: TargetSource.tsNim</a></li>
-          </ul></dd>
-<dt><a name="tsPython" href="#tsPython"><span>tsPython:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="configurator: TargetSource.tsPython" href="vancode/manager/configurator.html#tsPython">configurator: TargetSource.tsPython</a></li>
-          </ul></dd>
-<dt><a name="tsRuby" href="#tsRuby"><span>tsRuby:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="configurator: TargetSource.tsRuby" href="vancode/manager/configurator.html#tsRuby">configurator: TargetSource.tsRuby</a></li>
           </ul></dd>
 <dt><a name="ttyAlias" href="#ttyAlias"><span>ttyAlias:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1448,7 +1416,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-04-20 21:39:32 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-04-24 06:26:41 UTC</small>
       </div>
     </div>
   </div>

@@ -66,7 +66,8 @@
     nil
   of gkProc, gkBlockProc:
   of gkIterator:
-  parserCallback*: ParserCallback ## a callback used to parse custom nodes">CodeGen</a></li>
+  parserCallback*: ParserCallback ## a callback used to parse custom nodes
+  allowExprResult*: bool">CodeGen</a></li>
 <li><a class="reference" href="#CodeGenCache" title="CodeGenCache = object
   cachedAst*: Table[string, Ast]">CodeGenCache</a></li>
 <li><a class="reference" href="#ParserCallback" title="ParserCallback = proc (astProgram: var Ast; path: string)">ParserCallback</a></li>
@@ -322,7 +323,8 @@
     <span class="Keyword">nil</span>
   <span class="Keyword">of</span> <span class="Identifier">gkProc</span><span class="Other">,</span> <span class="Identifier">gkBlockProc</span><span class="Other">:</span>
   <span class="Keyword">of</span> <span class="Identifier">gkIterator</span><span class="Other">:</span>
-  <span class="Identifier">parserCallback</span><span class="Operator">*</span><span class="Other">:</span> <a href="codegen.html#ParserCallback"><span class="Identifier">ParserCallback</span></a> <span class="Comment">## a callback used to parse custom nodes</span></pre></dt>
+  <span class="Identifier">parserCallback</span><span class="Operator">*</span><span class="Other">:</span> <a href="codegen.html#ParserCallback"><span class="Identifier">ParserCallback</span></a> <span class="Comment">## a callback used to parse custom nodes</span>
+  <span class="Identifier">allowExprResult</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span></pre></dt>
   <dd>
     
     a code generator for a module or proc.
@@ -954,7 +956,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-04-20 21:39:32 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-04-24 06:26:41 UTC</small>
       </div>
     </div>
   </div>

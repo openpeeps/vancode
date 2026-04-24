@@ -60,7 +60,6 @@
     <ul class="simple simple-toc-section">
       <li><a class="reference" href="#CallFrame" title="CallFrame = tuple[currentChunk: Chunk, cachedOps: CachedOps, pcIdx: int,
                   stackBottom: int, script: Script]">CallFrame</a></li>
-<li><a class="reference" href="#Operation" title="Operation = object">Operation</a></li>
 <li><a class="reference" href="#Vm" title="Vm {.acyclic.} = ref object
   importedModules*: Table[string, Script] ## Maps module paths to their loaded Script objects">Vm</a></li>
 <li><a class="reference" href="#VMPreferences" title="VMPreferences = object
@@ -98,9 +97,9 @@
       <ul class="simple nested-toc-section">interpret
   <li><a class="reference" href="#interpret%2CVm%2CScript%2CChunk%2COption%5Bstring%5D" title="interpret(vm: Vm; script: Script; startChunk: Chunk;
           staticString: Option[string] = none(string);
-          globaldata = newJObject(); localData = newJObject()): string">interpret(vm: Vm; script: Script; startChunk: Chunk;
+          globaldata = newJObject(); localData = newJObject()): Value">interpret(vm: Vm; script: Script; startChunk: Chunk;
           staticString: Option[string] = none(string);
-          globaldata = newJObject(); localData = newJObject()): string</a></li>
+          globaldata = newJObject(); localData = newJObject()): Value</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">newVirtualMachine
@@ -142,15 +141,7 @@
                   <span class="Identifier">stackBottom</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">,</span> <span class="Identifier">script</span><span class="Other">:</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">]</span></pre></dt>
   <dd>
     
-    
-    
-  </dd>
-</div>
-<div id="Operation">
-  <dt><pre><a href="vm.html#Operation"><span class="Identifier">Operation</span></a> <span class="Other">=</span> <span class="Keyword">object</span></pre></dt>
-  <dd>
-    
-    
+    Represents a call frame for function/procedure calls. This is used to store the execution context when calling into a new chunk
     
   </dd>
 </div>
@@ -159,7 +150,7 @@
   <span class="Identifier">importedModules</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">]</span> <span class="Comment">## Maps module paths to their loaded Script objects</span></pre></dt>
   <dd>
     
-    
+    The main VM object that holds the execution state and caches
     
   </dd>
 </div>
@@ -180,7 +171,7 @@
                                 <span class="Comment">## number of times, it will be marked as hot.</span></pre></dt>
   <dd>
     
-    
+    Preferences for configuring the VM's behavior. These can be set when creating a new VM instance
     
   </dd>
 </div>
@@ -216,11 +207,12 @@
   <div id="interpret,Vm,Script,Chunk,Option[string]">
   <dt><pre><span class="Keyword">proc</span> <a href="#interpret%2CVm%2CScript%2CChunk%2COption%5Bstring%5D"><span class="Identifier">interpret</span></a><span class="Other">(</span><span class="Identifier">vm</span><span class="Other">:</span> <a href="vm.html#Vm"><span class="Identifier">Vm</span></a><span class="Other">;</span> <span class="Identifier">script</span><span class="Other">:</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">;</span> <span class="Identifier">startChunk</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a><span class="Other">;</span>
                <span class="Identifier">staticString</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span> <span class="Other">=</span> <span class="Identifier">none</span><span class="Other">(</span><span class="Identifier">string</span><span class="Other">)</span><span class="Other">;</span>
-               <span class="Identifier">globaldata</span> <span class="Other">=</span> <span class="Identifier">newJObject</span><span class="Other">(</span><span class="Other">)</span><span class="Other">;</span> <span class="Identifier">localData</span> <span class="Other">=</span> <span class="Identifier">newJObject</span><span class="Other">(</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.
-    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+               <span class="Identifier">globaldata</span> <span class="Other">=</span> <span class="Identifier">newJObject</span><span class="Other">(</span><span class="Other">)</span><span class="Other">;</span> <span class="Identifier">localData</span> <span class="Other">=</span> <span class="Identifier">newJObject</span><span class="Other">(</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="value.html#Value"><span class="Identifier">Value</span></a> {.
+    <span class="Identifier">discardable</span><span class="Other">,</span> <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    Interpret the given chunk in the context of the provided script.
+    Interpret the given chunk in the context of the provided script
     
   </dd>
 </div>
@@ -271,7 +263,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-04-20 21:39:32 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-04-24 06:26:41 UTC</small>
       </div>
     </div>
   </div>
