@@ -27,6 +27,7 @@ when defined(hayaVmWriteStackOps):
 
 type
   VMPreferences* = object
+    ## Preferences for configuring the VM's behavior. These can be set when creating a new VM instance
     enableHotCodeDetection*: bool
       ## Whether to enable hot code detection. When enabled, the VM will keep
       ## track of how many times each chunk and procedure is executed,
@@ -57,29 +58,23 @@ type
     jumpTargets: seq[int]     # -1 if not a jump
 
   Vm* {.acyclic.} = ref object
+    ## The main VM object that holds the execution state and caches
     lvl: int
     opCache: Table[Hash, CachedOps]
     hotCounts: Table[Chunk, int]
     hotProcCounts: Table[Proc, int]
     preferences: VMPreferences
-      # configuration options for the VM, such as hot code
-      # detection thresholds
-    
-    # manage imported modules
     importedModules*: Table[string, Script]
       ## Maps module paths to their loaded Script objects
 
   CallFrame* = tuple
+    ## Represents a call frame for function/procedure calls. This is used to
+    ## store the execution context when calling into a new chunk
     currentChunk: Chunk
     cachedOps: CachedOps
     pcIdx: int
     stackBottom: int
     script: Script
-
-  Operation* = object
-    opcode: Opcode
-    args: seq[Value]      ## decoded arguments
-    byteOffset: int       ## original byte offset (opcode position in raw currentChunk)
 
 const
   VMInitialPreallocatedStackSize* {.intdefine.} = 64
@@ -143,16 +138,6 @@ template arg2Kind(f: int16): ArgKind = ArgKind(((f shr 2) and 0b11).int)
 # Forward declarations
 #
 proc parseChunk(currentChunk: Chunk): CachedOps
-
-proc computeForwardTarget(op: Operation, dist: int): int =
-  # Returns target raw byte offset (old encoding)
-  let operandStart = op.byteOffset + 1
-  let targetByte = operandStart + (dist - 1)
-  targetByte
-
-proc computeBackwardTarget(op: Operation, dist: int): int =
-  ## targetByte = op.byteOffset - dist  (old encoding derived)
-  op.byteOffset - dist
 
 # proc ffiTypeFor(typeId: TypeId): ptr Type =
 #   # FFI helpers
@@ -366,7 +351,7 @@ proc prewarmScriptOps*(vm: Vm, s: Script) =
 proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         staticString: Option[string] = none(string),
         globaldata = newJObject(),
-        localData = newJObject()): Value =
+        localData = newJObject()): Value {.discardable.} =
   ## Interpret the given chunk in the context of the provided script
   var
     stack: Stack = newSeqOfCap[Value](VMInitialPreallocatedStackSize)
@@ -794,11 +779,9 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         when defined(hayaVmWriteStackOps):
           display(span("return:", fgGreen), span("void", fgCyan))
       of opcHalt:
-        if stack.len > 0:
-          echo "Warning: stack not empty at halt, contains ", stack.len, " items."
-          echo stack[^1].typeId
-        stack.setLen(0)
         when defined(hayaVmWriteStackOps):
+          if stack.len > 0:
+            echo "Warning: stack not empty at halt, contains ", stack.len, " items."
           display(span("*** halt", fgRed), span("lvl=" & $vm.lvl))
         if vm.lvl == 0:
           break # top-level halt
@@ -806,6 +789,13 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           restoreFrame()
           dec(vm.lvl)
       of opcNoop: discard
-      else:
-        discard
+      else: discard # unhandled opcode (should not happen if parser is correct)
       inc(pcIdx)
+  
+  if result == nil:
+    # if the `result` is not set in any voodoo snippets,
+    # we return the top of the stack as the result of the chunk execution
+    if stack.len > 0:
+      return stack[^1]
+    else:
+      return Value(typeId: tyNil)

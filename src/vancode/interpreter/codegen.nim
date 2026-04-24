@@ -103,6 +103,9 @@ type
       ## a callback used to parse custom nodes
     stdlibs: StandardLibrary
     triggerFromPath: Option[string]
+    allowExprResult*: bool
+      # Whether to allow expressions to produce a value in
+      # statement position. This is used for the REPL or embedding codegen in other tools
     counter: uint16
       # a counter used for generating unique labels and symbols. this is used to
       # avoid name collisions when generating code for things like loops and if statements
@@ -150,7 +153,7 @@ proc freeCtx*(allocator: ContextAllocator, ctx: Context) =
 proc initCodeGen*(script: Script, module: Module, chunk: Chunk,
         kind = gkToplevel, ctxAllocator: ContextAllocator = nil,
         pkgr: Packager = nil,
-        parserCallback: ParserCallback = nil): CodeGen =
+        parserCallback: ParserCallback = nil,): CodeGen =
   result = CodeGen(
     script: script,
     module: module,
@@ -2376,10 +2379,8 @@ proc genStmt*(node: Node) {.codegen.} =
     else:                                         # expression statement
       let ty = gen.genExpr(node)
       if ty != gen.module.sym"void":
-        # if the expression's type is non-void, discard the result.
-        node.error(ErrUseOrDiscard % [node.render, $ty.name])
-        # gen.chunk.emit(opcDiscard)
-        # gen.chunk.emit(1'u8)
+        if not gen.allowExprResult:
+          node.error(ErrUseOrDiscard % [node.render, $ty.name])
 
 proc genBlock*(node: Node, isStmt: bool): Sym {.codegen.} =
   ## Generate a block of code. Every block creates a new scope
