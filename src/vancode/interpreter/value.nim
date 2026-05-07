@@ -40,6 +40,7 @@ const
   tyArrayObject* = 12
   tyHtmlObject* = 13
   tyPointer* = 15
+  tyAny* = 16
 
 type
   TypeId* = range[0..32766]  # max amount of case object branches
@@ -76,6 +77,8 @@ type
       jsonVal*: JsonNode
     of tyHtmlObject:
       htmlObject*: HtmlObject
+    of tyAny:
+      anyVal*: Value
     else:
       objectVal*: Object
 

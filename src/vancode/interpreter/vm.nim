@@ -734,14 +734,12 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                   "opcCallD: target module not found: " & chunkPath)
 
         let p = targetScript.procs[procId]
-
         # store the current frame
         storeFrame()
-
         if stack.len < p.paramCount:
           # not enough arguments on stack
           raise newException(ValueError,
-            "Not enough arguments on stack for call to " & p.name)
+            "Not enough arguments on stack for call to " & p.name & ": need " & $p.paramCount & ", have " & $stack.len)
         stackBottom = stack.len - p.paramCount
 
         when defined(hayaVmWriteStackOps):

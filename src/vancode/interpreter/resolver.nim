@@ -17,24 +17,64 @@
 ## This is used by the interpreter to manage file imports and includes, and
 ## to detect circular dependencies.
 
-import std/[os, tables, sequtils, sets]
+import std/[os, tables, sequtils, sets, strutils]
 
 type
   ResolvedFiles = Table[string, seq[string]]
+  VirtualFileSystem* = ref object
+    existsProc*: proc(path: string): bool
+    readProc*: proc(path: string): string
+
   FileResolver* = object
     ## Manages file resolution for imports/includes
     resolvedFiles*: ResolvedFiles
       # Tracks which files have been resolved (imported/included)
+    fs*: VirtualFileSystem
+      ## The virtual file system used to check for file existence and
+      ## read file contents. This allows us to swap out the actual disk FS for
+      ## an in-memory or embedded FS
 
   ResolverError* = object of CatchableError
+
+proc newDiskFS*(): VirtualFileSystem =
+  ## Create a virtual file system that interacts with the actual disk.
+  ## 
+  ## This is the default file system used by the resolver, but it can be replaced with
+  ## an in-memory or embedded file system for testing or special use cases.
+  result = VirtualFileSystem()
+  result.existsProc = proc(path: string): bool = os.fileExists(path)
+  result.readProc   = proc(path: string): string = readFile(path)
+
+proc newInMemoryFS*(map: TableRef[string, string]): VirtualFileSystem =
+  ## Create a virtual file system from an in-memory map of file paths to contents.
+  ## 
+  ## This is useful for testing or when you want to embed files directly into your application
+  result = VirtualFileSystem()
+  result.existsProc =
+    proc(path: string): bool =
+      let p = normalizedPath(path)
+      map.hasKey(p)
+  result.readProc =
+    proc(path: string): string =
+      let p = normalizedPath(path)
+      if not map.hasKey(p):
+        raise newException(ResolverError, "File not found in VFS: " & p)
+      return map[p]
 
 proc initResolver*(): FileResolver =
   ## Initialize a new FileResolver
   result.resolvedFiles = ResolvedFiles()
+  result.fs = newDiskFS()
 
 proc fileExists*(resolver: FileResolver, filePath: string): bool =
-  # Checks if the file exists on disk
-  return fileExists(filePath)
+  # Checks if the file exists using the configured FS
+  return resolver.fs.existsProc(filePath)
+
+proc readFile*(resolver: FileResolver, filePath: string): string =
+  # Read file using the configured FS; raise ResolverError if missing
+  if not resolver.fs.existsProc(filePath):
+    raise newException(ResolverError, "File does not exist: " & filePath)
+  return resolver.fs.readProc(filePath)
 
 proc isResolved*(resolver: FileResolver, filePath: string): bool =
   # Checks if the file has already been resolved (included/imported)

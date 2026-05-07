@@ -180,16 +180,17 @@ proc add*(node: Node, children: openarray[Node]): Node {.discardable.} =
 proc hash*(node: Node): Hash =
   var h = Hash(0)
   h = h !& hash(node.kind)
-  case node.kind
-  of nkEmpty: discard
-  of nkBool: h = h !& hash(node.boolVal)
-  of nkInt: h = h !& hash(node.intVal)
-  of nkFloat: h = h !& hash(node.floatVal)
-  of nkString: h = h !& hash(node.stringVal)
-  of nkIdent: h = h !& hash(node.ident)
-  else:
-    h = h !& hash(node.len)
-    h = h !& hash(node.children)
+  extendableCase "astHashCase":
+    case node.kind
+    of nkEmpty: discard
+    of nkBool: h = h !& hash(node.boolVal)
+    of nkInt: h = h !& hash(node.intVal)
+    of nkFloat: h = h !& hash(node.floatVal)
+    of nkString: h = h !& hash(node.stringVal)
+    of nkIdent: h = h !& hash(node.ident)
+    else:
+      h = h !& hash(node.len)
+      h = h !& hash(node.children)
   result = h
 
 proc `$`*(node: Node): string =
@@ -374,10 +375,12 @@ proc newStringLit*(val: string): Node =
   result = newNode(nkString)
   result.stringVal = val
 
-proc newIdent*(ident: string): Node =
+proc newIdent*(ident: string, ln, col: int = 0): Node =
   ## Construct a new ident node.
   result = newNode(nkIdent)
   result.ident = ident
+  result.ln = ln
+  result.col = col
 
 proc newIdentDefs*(names: openarray[Node], ty: Node, value = newEmpty()): Node =
   ## Construct a new nkIdentDefs node.

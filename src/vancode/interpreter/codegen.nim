@@ -63,7 +63,7 @@ type
     ## to be re-parsed every time they're included
     cachedAst*: Table[string, Ast]
 
-  ParserCallback* = proc(astProgram: var Ast, path: string)
+  ParserCallback* = proc(astProgram: var Ast, path: string, resolver: FileResolver)
     ## Used to parse custom nodes during code generation.
 
   CodeGen* {.acyclic.} = ref object
@@ -96,7 +96,9 @@ type
       iterForBody: Node         # the for loop's body
       iterForVar: Node          # the for loop variable's name
       iterForCtx: Context       # the for loop's context
-    resolver: FileResolver
+    resolver*: FileResolver
+      ## the file resolver used for resolving imports and includes. This is shared
+      ## between codegen instances to maintain a consistent cache of resolved files.
     pkgr: Packager
       # the package manager used for resolving packages
     parserCallback*: ParserCallback
@@ -109,6 +111,7 @@ type
     counter: uint16
       # a counter used for generating unique labels and symbols. this is used to
       # avoid name collisions when generating code for things like loops and if statements
+    # instantiationCache: Table[Hash, Sym]
 
   ModuleLibrary = proc(script: Script, systemModule: Module): Module
     # a procedure where we can add FFI procs and types to a module
@@ -160,16 +163,12 @@ proc initCodeGen*(script: Script, module: Module, chunk: Chunk,
     chunk: chunk,
     kind: kind,
     pkgr: pkgr,
-    parserCallback: parserCallback
+    parserCallback: parserCallback,
   )
   if ctxAllocator == nil:
     result.ctxAllocator = ContextAllocator()
     result.context = result.ctxAllocator.allocCtx()
   result.resolver = initResolver()
-  
-  # else:
-  #   result.ctxAllocator = ctxAllocator
-  #   result.context = ctxAllocator.allocCtx()
 
 proc clone(gen: CodeGen, kind: GenKind): CodeGen =
   # Clone a code generator, using a different kind for the new one.
@@ -222,6 +221,8 @@ proc genObjectStorage*(node: Node, isInstantiation = false): Sym {.codegen.}
 proc genArray*(node: Node, isInstantiation = false): Sym {.codegen.}
 proc genGetField*(node: Node): Sym {.codegen.}
 proc genTypeDef*(node: Node): Sym {.codegen.}
+proc genFor*(node: Node) {.codegen.}
+proc procCall*(node: Node, procSym: Sym): Sym {.codegen.}
 
 let callBuiltinEcho = ast.newCall(ast.newIdent"echo")
   # some cached nodes for codegen optimizations
@@ -638,7 +639,7 @@ proc pushVar(gen: CodeGen, sym: Sym) =
 proc pushDefault(gen: CodeGen, ty: Sym) =
   ## Push the default value for the type ``ty`` onto the stack.
   assert ty.kind == skType, "Only types have default values"
-  assert ty.tyKind notin tyMeta, "meta-types do not represent a value"
+  # assert ty.tyKind notin tyMeta, "Type `" & $ty.tyKind & "` does not have a default value"
   case ty.tyKind
   of ttyBool:
     gen.chunk.emit(opcPushFalse)
@@ -660,8 +661,14 @@ proc pushDefault(gen: CodeGen, ty: Sym) =
   of ttyPointer:
     gen.chunk.emit(opcPushPointer)
     gen.chunk.emit(uint16(ttyPointer))
-  # of tyNil:
-  #   gen.chunk.emit(opcNoop)
+  of ttyAny:
+    gen.chunk.emit(opcPushS)
+    gen.chunk.emit(gen.chunk.getString(""))
+  of ttyNil:
+    gen.chunk.emit(opcPushS)
+    gen.chunk.emit(gen.chunk.getString(""))
+    # gen.chunk.emit(opcPushNil)
+    # gen.chunk.emit(uint16(0))
   else: discard  # unreachable
 
 proc getDefaultSym*(gen: CodeGen, kind: NodeKind): Sym =
@@ -766,6 +773,24 @@ proc findOverload*(sym: Sym, args: seq[Sym],
     # the error
     errorNode.error(ErrTypeMismatchChoice % [paramList, overloadList])
 
+template withBlock*(node: Node, isStmt: bool = false, body: untyped) =
+  gen.pushScope()
+  for i, s in node:
+    if isStmt:
+      # if it's a statement block,
+      # generate its children normally
+      gen.genStmt(s)
+    else:
+      # otherwise, treat the last statement as
+      # an expression (and the value of the block)
+      if i < node.len - 1:
+        gen.genStmt(s)
+      else:
+        result = gen.genExpr(s)
+  body
+  # pop the block's scope
+  gen.popScope()
+
 proc splitCall*(ast: Node): tuple[callee: Sym, args: seq[Node]] {.codegen.} =
   ## Splits any call node (prefix, infix, call, dot access, dot call) into a
   ## callee (the thing being called) and parameters. The callee is resolved to a
@@ -856,7 +881,7 @@ proc resolveGenerics*(gen: CodeGen, callable: var Sym,
 
 proc callProc*(procSym: Sym, argTypes: seq[Sym],
               errorNode: Node = nil): Sym {.codegen.} =
-  ## Generate code that calls a procedure. ``errorNode``
+  ## Generate code that calls a procedure. `errorNode`
   ## is used for error reporting.
   if procSym.kind in {skProc, skChoice}:
     # find the overload
@@ -887,7 +912,10 @@ proc callProc*(procSym: Sym, argTypes: seq[Sym],
       else: gen.chunk.file # fallback to current file
     gen.chunk.emit(gen.chunk.getString(theSource))
     gen.chunk.emit(theProc.procId)
+    
+    # set the result type
     result = theProc.procReturnTy
+
   elif procSym.kind in skVars:
     discard # TODO: call through reference in variable
   # elif procSym.kind == skHtmlType:
@@ -1136,30 +1164,15 @@ proc objConstr*(node: Node, ty: Sym, constructFromIdent = false): Sym {.codegen.
   gen.chunk.emit(opcConstrObj)
   gen.chunk.emit(uint16(emittedCount))
 
-proc procCall*(node: Node, procSym: Sym): Sym {.codegen.} =
-  ## Generate code for a procedure call.
-  # we simply push all the arguments onto the stack
-  var argTypes: seq[Sym]
-  # if node[^1].kind in {nkHtmlElement, nkIf, nkFor, nkCall}:
-  #   # if the last argument is an HTML element
-  #   # it is a macro call, so we need to
-  #   # push the HTML element onto the stack
-  #   for arg in node[1..^2]:
-  #     let argSym: Sym = gen.genExpr(arg)
-  #     assert argSym != nil, "Expression must return a symbol"
-  #     argTypes.add(argSym)
-  #   # the last argument is a HTML element, so we need to
-  #   # create a symbol for it and add it to the argument types
-  #   let anyStmt = gen.module.sym"stmt" # gen.genExpr(node[^1])
-  #   anyStmt.impl = node[^1]
-  #   argTypes.add(anyStmt)
-  # else:
-  for arg in node[1..^1]:
-    let argSym: Sym = gen.genExpr(arg)
-    assert argSym != nil, "Expression must return a symbol"
-    argTypes.add(argSym)
-  # ...and delegate the call to callProc
-  result = gen.callProc(procSym, argTypes, errorNode = node)
+when not compiles(procCall):
+  proc procCall*(node: Node, procSym: Sym): Sym {.codegen.} =
+    ## Generate code for a procedure call
+    var argTypes: seq[Sym]
+    for arg in node[1..^1]:
+      let argSym: Sym = gen.genExpr(arg)
+      assert argSym != nil, "Expression must return a symbol"
+      argTypes.add(argSym)
+    return gen.callProc(procSym, argTypes, errorNode = node)
 
 proc call*(node: Node): Sym {.codegen.} =
   ## Generates code for an nkCall (proc call or object constructor).
@@ -1400,9 +1413,10 @@ proc genParam(name: Node, ty: Sym, sym: Sym = nil, isMut, isOpt = false): ProcPa
   (name, ty, sym, isMut, isOpt)
 
 proc collectParams*(formalParams: Node,
-      genericParams: Option[seq[Sym]] = none(seq[Sym])): seq[ProcParam] {.codegen.} =
+              genericParams: Option[seq[Sym]] = none(seq[Sym])): seq[ProcParam] {.codegen.} =
   # Helper used to collect parameters from an
   # `nkFormalParams` to a `seq[ProcParam]`
+  if formalParams.len == 0: return
   for defs in formalParams[1..^1]:
     let
       rawTyNode = defs[^2]
@@ -1451,7 +1465,6 @@ proc collectParams*(formalParams: Node,
           newIdent("__default_" & defName & "_" & $gen.count()),
           impl = defaultNode
         )
-
       result.add(
         genParam(
           name,
@@ -1510,8 +1523,7 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
   # we need to do this here, otherwise recursive
   # calls will be broken
   gen.addSym(sym, scopeOffset = ord(sym.genericParams.isSome))
-  # if we're in an instantiation or the proc is
-  # not generic, generate its code
+
   if not sym.isGeneric or isInstantiation:
     var
       chunk = newChunk(gen.chunk.file)
@@ -1525,15 +1537,13 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
     procGen.procReturnTy = returnTy
 
     # add the proc's parameters as locals
-    # TODO: closures and upvalues
-    if params.len > 0:
-      procGen.pushScope()
-      for (name, ty, implSym, isMut, isOpt) in params:
-        var varType =
-          if isMut: skVar # value is mutable
-          else: skLet # value is immutable
-        let param = procGen.declareVar(name, varType, ty)
-        param.varSet = true  # arguments are not assignable
+    procGen.pushScope()
+    for (name, ty, implSym, isMut, isOpt) in params:
+      var varType =
+        if isMut: skVar # value is mutable
+        else: skLet # value is immutable
+      let param = procGen.declareVar(name, varType, ty)
+      param.varSet = true  # arguments are not assignable
 
     # declare ``result`` if applicable
     if returnTy.tyKind != ttyVoid:
@@ -1541,10 +1551,11 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
       procGen.declareVar(res, skVar, returnTy, isMagic = true)
       procGen.pushDefault(returnTy)
       procGen.popVar(res)
-  
+
     # add the proc into the script
     gen.script.procs.add(theProc)
     if sym.procExport:
+      # export the proc if needed (exported procs need to be in procsExport for the runtime to find them, but they also need to be in procs for the compiler to compile them, so we add them to both)
       gen.script.procsExport.add(theProc)
 
     # compile the proc's body
@@ -1558,6 +1569,7 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
       procGen.chunk.emit(opcReturnVal)
     else:
       procGen.chunk.emit(opcReturnVoid)
+    procGen.popScope()
   else:
     # add the proc into the script
     gen.script.procs.add(theProc)
@@ -1584,8 +1596,6 @@ proc genExpr*(node: Node, varUnwrap = true): Sym {.codegen.} =
   case node.kind
   of nkBool, nkInt, nkFloat, nkString, nkNil:  # constants
     result = gen.pushConst(node)
-  # of nkHtmlElement:
-  #   result = gen.htmlConstr(node)
   of nkIdent:                     # variables
     var symNode = gen.lookup(node)
     case symNode.kind:
@@ -1602,10 +1612,9 @@ proc genExpr*(node: Node, varUnwrap = true): Sym {.codegen.} =
       if varUnwrap: symNode.varTy
       else: symNode
     )
-  of nkPrefix:                    # prefix operators
+  of nkPrefix:
     result = gen.prefix(node)
   of nkInfix:
-    # handle infix expressions
     result = gen.infix(node)
   of nkDot:
     # handle field access using dot notation `$a.b`
@@ -1622,12 +1631,21 @@ proc genExpr*(node: Node, varUnwrap = true): Sym {.codegen.} =
   of nkObjectStorage:
     result = gen.genObjectStorage(node)
   of nkObject:
-    # object literal
     result = gen.genObject(node)
   of nkProc:
-    # procedure definition
     result = gen.genProc(node)
   else:
+    # handle statement-like nodes used as lazy-injected macro bodies
+    if node.kind in {nkFor, nkWhile, nkIf, nkBlock, nkHtmlElement,
+                nkMacro, nkClientBlock, nkViewLoader}:
+      # emit the statement into the current chunk (this will produce the
+      # code the macro expects as the default 'body' param)
+      discard gen.genBlock(node, isStmt = true)
+      if gen.module.sym"stmt".isNil:
+        return gen.module.sym"any"
+      return gen.module.sym"stmt"
+
+    debugEcho "Unsupported node kind in genExpr: " & $node.kind
     node.error(ErrValueIsVoid)
 
 proc tryElideWhile*(node: Node): bool {.codegen.} =
@@ -1640,7 +1658,6 @@ proc tryElideWhile*(node: Node): bool {.codegen.} =
   ## Also allows extra trivially-dead local var/let/const declarations
   ## in the loop body (e.g. `var x = 0`), as long as they don't affect control flow.
   if node.len < 2: return false
-
   let
     cond = node[0]
     body = node[1]
@@ -1840,9 +1857,9 @@ proc genWhile*(node: Node) {.codegen.} =
   gen.chunk.emit(opcJumpBack)
   gen.chunk.emit(uint16(gen.chunk.code.len - beforeLoop - 1))
   if not isWhileTrue:
-    # if it wasn't a while true, we need to fill in the hole after the loop
+    # if it wasn't a while true, we need to fill in
+    # the hole after the loop
     gen.chunk.patchHole(afterLoop)
-    # ...and pop the condition off the stack after the loop is done
     gen.chunk.emit(opcDiscard)
     gen.chunk.emit(1'u8)
 
@@ -1856,9 +1873,6 @@ proc genFor*(node: Node) {.codegen.} =
   ## actually does use a loop, but it doesn't have to.
   ## All a ``for`` loop does is it walks the body of the iterator and replaces
   ## any ``yield``s with the for loop's body.
-
-  # this is some really fragile stuff, I wouldn't be surprised if it contains
-  # like, a million bugs
 
   # as of now, only one loop variable is supported
   # this will be changed when tuples are introduced
@@ -2291,7 +2305,8 @@ proc genImport*(node: Node) {.codegen.} =
         astProgram = codegenCache.cachedAst[path]
       else:
         # parse the module's source code into an AST
-        gen.parserCallback(astProgram, path)
+        # pass the active resolver so the callback can read from VFS
+        gen.parserCallback(astProgram, path, gen.resolver)
 
       var
         importChunk = newChunk(astProgram.sourcePath)
@@ -2341,7 +2356,7 @@ proc genImport*(node: Node) {.codegen.} =
         astProgram = codegenCache.cachedAst[path]
       else:
         # parse the module's source code into an AST
-        gen.parserCallback(astProgram, path)
+        gen.parserCallback(astProgram, path, gen.resolver)
       for n in astProgram.nodes:
         gen.genStmt(n)
     else: discard
