@@ -59,7 +59,7 @@ type
     nkIndex          # index expression - left[a, ...]
     nkCall           # call - left(a, ...)
     nkIf             # if expression - if expr {...} elif expr {...} else {...}
-
+    nkAssign         # assignment - left = right
     # types
     nkProcTy         # procedure type - proc (...) -> t
     nkTypeDef        # type definition - type t = s
@@ -241,6 +241,8 @@ proc render*(node: Node): string =
     result = node.children.join("\n")
   of nkStatic:
     result = "static"
+  of nkAssign:
+    result = node[0].render & " = " & node[1].render
   of nkBlock:
     result =
       if node.len == 0: "{}"
