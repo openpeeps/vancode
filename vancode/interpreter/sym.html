@@ -16,13 +16,16 @@
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA3XAAAN1wFCKJt4AAAAB3RJTUUH4QQQEwksSS9ZWwAAAk1JREFUWMPtll2ITVEUx39nn/O7Y5qR8f05wtCUUr6ZIS++8pEnkZInPImneaCQ5METNdOkeFBKUhMPRIkHKfEuUZSUlGlKPN2TrgfncpvmnntnmlEyq1Z7t89/rf9a6+y99oZxGZf/XeIq61EdtgKXgdXA0xrYAvBjOIF1AI9zvjcC74BSpndrJPkBWDScTF8Aa4E3wDlgHbASaANmVqlcCnwHvgDvgVfAJ+AikAAvgfVZwLnSVZHZaOuKoQi3ZOMi4NkYkpe1p4J7A8BpYAD49hfIy/oqG0+hLomiKP2L5L+1ubn5115S+3OAn4EnwBlgMzCjyt6ZAnQCJ4A7wOs88iRJHvw50HoujuPBoCKwHWiosy8MdfZnAdcHk8dxXFJ3VQbQlCTJvRBCGdRbD4M6uc5glpY3eAihpN5S5w12diSEcCCEcKUO4ljdr15T76ur1FDDLIQQ3qv71EdDOe3Kxj3leRXyk+pxdWnFWod6Wt2bY3de3aSuUHcPBVimHs7mK9WrmeOF6lR1o9qnzskh2ar2qm1qizpfXaPeVGdlmGN5pb09qMxz1Xb1kLqgzn1RyH7JUXW52lr5e/Kqi9qpto7V1atuUzfnARrV7jEib1T76gG2qxdGmXyiekkt1GswPTtek0aBfJp6YySGBfWg2tPQ0FAYgf1stUfdmdcjarbYJEniKIq6gY/Aw+zWHAC+p2labGpqiorFYgGYCEzN7oQdQClN07O1/EfDyGgC0ALMBdYAi4FyK+4H3gLPsxfR1zRNi+NP7nH5J+QntnXe5B5mpfQAAAAASUVORK5CYII=">
 
 <!-- CSS -->
-<link rel="stylesheet" type="text/css" href="../../nimdoc.out.css?v=2.2.8">
+<link rel="stylesheet" type="text/css" href="../../nimdoc.out.css?v=2.2.10">
 
 <!-- JS -->
-<script type="text/javascript" src="../../dochack.js?v=2.2.8"></script>
+<script type="text/javascript" src="../../dochack.js?v=2.2.10"></script>
 </head>
 <body>
   <div class="document" id="documentId">
+    <input type="checkbox" id="nav-toggle" hidden>
+    <label for="nav-toggle" id="nav-burger">&#9776;</label>
+    <label for="nav-toggle" id="nav-overlay"></label>
     <div class="container">
       <h1 class="title">vancode/interpreter/sym</h1>
       <div class="row">
@@ -311,7 +314,7 @@
   <h1><a class="toc-backref" href="#7">Types</a></h1>
   <dl class="item">
     <div id="ArgTuple">
-  <dt><pre><a href="sym.html#ArgTuple"><span class="Identifier">ArgTuple</span></a> <span class="Other">=</span> <span class="Keyword">tuple</span><span class="Other">[</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">,</span> <span class="Identifier">exprSym</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span></pre></dt>
+  <dt><pre><a href="#ArgTuple"><span class="Identifier">ArgTuple</span></a> <span class="Other">=</span> <span class="Keyword">tuple</span><span class="Other">[</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">,</span> <span class="Identifier">exprSym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span></pre></dt>
   <dd>
     
     
@@ -319,7 +322,7 @@
   </dd>
 </div>
 <div id="CodeGenError">
-  <dt><pre><a href="sym.html#CodeGenError"><span class="Identifier">CodeGenError</span></a> <span class="Other">=</span> <span class="Keyword">object</span> <span class="Keyword">of</span> <span class="Identifier">ValueError</span>
+  <dt><pre><a href="#CodeGenError"><span class="Identifier">CodeGenError</span></a> <span class="Other">=</span> <span class="Keyword">object</span> <span class="Keyword">of</span> <span class="Identifier">ValueError</span>
   <span class="Identifier">file</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>
   <span class="Identifier">ln</span><span class="Operator">*</span><span class="Other">,</span> <span class="Identifier">col</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
   <dd>
@@ -329,7 +332,7 @@
   </dd>
 </div>
 <div id="Context">
-  <dt><pre><a href="sym.html#Context"><span class="Identifier">Context</span></a> <span class="Other">=</span> <span class="Keyword">distinct</span> <span class="Identifier">uint16</span></pre></dt>
+  <dt><pre><a href="#Context"><span class="Identifier">Context</span></a> <span class="Other">=</span> <span class="Keyword">distinct</span> <span class="Identifier">uint16</span></pre></dt>
   <dd>
     
     A scope context.
@@ -337,11 +340,11 @@
   </dd>
 </div>
 <div id="Module">
-  <dt><pre><a href="sym.html#Module"><span class="Identifier">Module</span></a> {.<span class="Identifier">acyclic</span>.} <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span> <span class="Keyword">of</span> <a href="sym.html#Scope"><span class="Identifier">Scope</span></a>
+  <dt><pre><a href="#Module"><span class="Identifier">Module</span></a> {.<span class="Identifier">acyclic</span>.} <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span> <span class="Keyword">of</span> <a href="#Scope"><span class="Identifier">Scope</span></a>
   <span class="Identifier">name</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>              <span class="Comment">## the name of the module</span>
   <span class="Identifier">src</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span>       <span class="Comment">## the source file where the module was defined</span>
                              <span class="Comment">## this is used for type checking and error reporting</span>
-  <span class="Identifier">modules</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a><span class="Other">]</span> <span class="Comment">## a table of modules imported by this module</span>
+  <span class="Identifier">modules</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">]</span> <span class="Comment">## a table of modules imported by this module</span>
                                   <span class="Comment">## where the key is the path to the module</span></pre></dt>
   <dd>
     
@@ -350,7 +353,7 @@
   </dd>
 </div>
 <div id="ObjectField">
-  <dt><pre><a href="sym.html#ObjectField"><span class="Identifier">ObjectField</span></a> <span class="Other">=</span> <span class="Keyword">tuple</span><span class="Other">[</span><span class="Identifier">id</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">,</span> <span class="Identifier">name</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">,</span> <span class="Identifier">ty</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">,</span> <span class="Identifier">implVal</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span></pre></dt>
+  <dt><pre><a href="#ObjectField"><span class="Identifier">ObjectField</span></a> <span class="Other">=</span> <span class="Keyword">tuple</span><span class="Other">[</span><span class="Identifier">id</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">,</span> <span class="Identifier">name</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">,</span> <span class="Identifier">ty</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">,</span> <span class="Identifier">implVal</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span></pre></dt>
   <dd>
     
     
@@ -358,7 +361,7 @@
   </dd>
 </div>
 <div id="ProcParam">
-  <dt><pre><a href="sym.html#ProcParam"><span class="Identifier">ProcParam</span></a> <span class="Other">=</span> <span class="Keyword">tuple</span><span class="Other">[</span><span class="Identifier">name</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">,</span> <span class="Identifier">ty</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">,</span> <span class="Identifier">implSym</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">,</span> <span class="Identifier">isMut</span><span class="Other">:</span> <span class="Identifier">bool</span><span class="Other">,</span> <span class="Identifier">isOpt</span><span class="Other">:</span> <span class="Identifier">bool</span><span class="Other">]</span></pre></dt>
+  <dt><pre><a href="#ProcParam"><span class="Identifier">ProcParam</span></a> <span class="Other">=</span> <span class="Keyword">tuple</span><span class="Other">[</span><span class="Identifier">name</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">,</span> <span class="Identifier">ty</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">,</span> <span class="Identifier">implSym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">,</span> <span class="Identifier">isMut</span><span class="Other">:</span> <span class="Identifier">bool</span><span class="Other">,</span> <span class="Identifier">isOpt</span><span class="Other">:</span> <span class="Identifier">bool</span><span class="Other">]</span></pre></dt>
   <dd>
     
     A single param of a proc.
@@ -366,7 +369,7 @@
   </dd>
 </div>
 <div id="ProcType">
-  <dt><pre><a href="sym.html#ProcType"><span class="Identifier">ProcType</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
+  <dt><pre><a href="#ProcType"><span class="Identifier">ProcType</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">procTypeFunction</span><span class="Other">,</span> <span class="Identifier">procTypeMacro</span></pre></dt>
   <dd>
     
@@ -375,17 +378,17 @@
   </dd>
 </div>
 <div id="Scope">
-  <dt><pre><a href="sym.html#Scope"><span class="Identifier">Scope</span></a> {.<span class="Identifier">acyclic</span>.} <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span> <span class="Keyword">of</span> <span class="Identifier">RootObj</span>
-  <span class="Identifier">syms</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span>
-  <span class="Identifier">exportSyms</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span> <span class="Comment">## A table of exported symbols</span>
-  <span class="Identifier">otherSyms</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span> <span class="Comment">## A table of symbols imported from other modules</span>
-  <span class="Identifier">variables</span><span class="Operator">*</span><span class="Other">,</span> <span class="Identifier">exportVariables</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span> <span class="Comment">## A table of variables. This is used for fast lookups of variables</span>
+  <dt><pre><a href="#Scope"><span class="Identifier">Scope</span></a> {.<span class="Identifier">acyclic</span>.} <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span> <span class="Keyword">of</span> <span class="Identifier">RootObj</span>
+  <span class="Identifier">syms</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span>
+  <span class="Identifier">exportSyms</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span> <span class="Comment">## A table of exported symbols</span>
+  <span class="Identifier">otherSyms</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span> <span class="Comment">## A table of symbols imported from other modules</span>
+  <span class="Identifier">variables</span><span class="Operator">*</span><span class="Other">,</span> <span class="Identifier">exportVariables</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span> <span class="Comment">## A table of variables. This is used for fast lookups of variables</span>
                                                    <span class="Comment">## in the current scope. The key is the hash of the variable's name.</span>
-  <span class="Identifier">functions</span><span class="Operator">*</span><span class="Other">,</span> <span class="Identifier">exportFunctions</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span> <span class="Comment">## A table of functions. This is used for fast lookups of functions</span>
+  <span class="Identifier">functions</span><span class="Operator">*</span><span class="Other">,</span> <span class="Identifier">exportFunctions</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span> <span class="Comment">## A table of functions. This is used for fast lookups of functions</span>
                                                    <span class="Comment">## in the current scope.</span>
-  <span class="Identifier">typeDefs</span><span class="Operator">*</span><span class="Other">,</span> <span class="Identifier">exportTypeDefs</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span> <span class="Comment">## A table of type definitions. This is used for fast lookups of type</span>
+  <span class="Identifier">typeDefs</span><span class="Operator">*</span><span class="Other">,</span> <span class="Identifier">exportTypeDefs</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span> <span class="Comment">## A table of type definitions. This is used for fast lookups of type</span>
                                                  <span class="Comment">## definitions in the current scope.</span>
-  <span class="Identifier">context</span><span class="Operator">*</span><span class="Other">:</span> <a href="sym.html#Context"><span class="Identifier">Context</span></a>          <span class="Comment">## the scope's context. this is used for scope hygiene</span></pre></dt>
+  <span class="Identifier">context</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Context"><span class="Identifier">Context</span></a>          <span class="Comment">## the scope's context. this is used for scope hygiene</span></pre></dt>
   <dd>
     
     A local scope.
@@ -393,14 +396,14 @@
   </dd>
 </div>
 <div id="Sym">
-  <dt><pre><a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.<span class="Identifier">acyclic</span>.} <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span>
+  <dt><pre><a href="#Sym"><span class="Identifier">Sym</span></a> {.<span class="Identifier">acyclic</span>.} <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span>
   <span class="Identifier">name</span><span class="Operator">*</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a>                <span class="Comment">## the name of the symbol</span>
   <span class="Identifier">impl</span><span class="Operator">*</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a>                <span class="Comment">## the implementation of the symbol. may be ``nil`` if the symbol is generated</span>
   <span class="Identifier">src</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span>       <span class="Comment">## the source file where the symbol was defined</span>
                              <span class="Comment">## this is used for type checking and error reporting</span>
-  <span class="Keyword">case</span> <span class="Identifier">kind</span><span class="Operator">*</span><span class="Other">:</span> <a href="sym.html#SymKind"><span class="Identifier">SymKind</span></a>
+  <span class="Keyword">case</span> <span class="Identifier">kind</span><span class="Operator">*</span><span class="Other">:</span> <a href="#SymKind"><span class="Identifier">SymKind</span></a>
   <span class="Keyword">of</span> <span class="Identifier">skVar</span><span class="Other">,</span> <span class="Identifier">skLet</span><span class="Other">,</span> <span class="Identifier">skConst</span><span class="Other">:</span>
-    <span class="Identifier">varTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a>              <span class="Comment">## the type of the variable</span>
+    <span class="Identifier">varTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>              <span class="Comment">## the type of the variable</span>
     <span class="Identifier">varSet</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>            <span class="Comment">## is the variable set?</span>
     <span class="Identifier">varLocal</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>          <span class="Comment">## is the variable local?</span>
     <span class="Identifier">varStackPos</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>        <span class="Comment">## the position of this local variable on the stack</span>
@@ -408,7 +411,7 @@
   <span class="Keyword">of</span> <span class="Identifier">skType</span><span class="Other">:</span>
     <span class="Identifier">typeExport</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>        <span class="Comment">## This is used to determine whether the type</span>
                              <span class="Comment">## can be used in other modules or not.</span>
-    <span class="Keyword">case</span> <span class="Identifier">tyKind</span><span class="Operator">*</span><span class="Other">:</span> <a href="sym.html#TypeKind"><span class="Identifier">TypeKind</span></a>
+    <span class="Keyword">case</span> <span class="Identifier">tyKind</span><span class="Operator">*</span><span class="Other">:</span> <a href="#TypeKind"><span class="Identifier">TypeKind</span></a>
     <span class="Keyword">of</span> <span class="Identifier">ttyNil</span><span class="Other">:</span>
       <span class="Keyword">nil</span>
     <span class="Keyword">of</span> <span class="Identifier">ttyVoid</span> <span class="Operator">..</span> <span class="Identifier">ttyString</span><span class="Other">:</span>
@@ -417,44 +420,44 @@
       <span class="Identifier">jsonTy</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">JsonNodeKind</span>  <span class="Comment">## the type of the JSON value, used for type checking</span>
       <span class="Identifier">jsonNode</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">JsonNode</span>    <span class="Comment">## a statically defined JSON node (when available)</span>
     <span class="Keyword">of</span> <span class="Identifier">ttyArray</span><span class="Other">:</span>
-      <span class="Identifier">arrayTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a>          <span class="Comment">## the type of the array</span>
+      <span class="Identifier">arrayTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>          <span class="Comment">## the type of the array</span>
       <span class="Identifier">arrayMutable</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>    <span class="Comment">## used to determine whether the array is mutable or not</span>
-      <span class="Identifier">arrayItems</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span>  <span class="Comment">## the items of the array</span>
+      <span class="Identifier">arrayItems</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span>  <span class="Comment">## the items of the array</span>
     <span class="Keyword">of</span> <span class="Identifier">ttyObject</span><span class="Other">:</span>
       <span class="Identifier">objectId</span><span class="Operator">*</span><span class="Other">:</span> <a href="value.html#TypeId"><span class="Identifier">TypeId</span></a>
-      <span class="Identifier">objectFields</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">OrderedTable</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="sym.html#ObjectField"><span class="Identifier">ObjectField</span></a><span class="Other">]</span>
+      <span class="Identifier">objectFields</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">OrderedTable</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="#ObjectField"><span class="Identifier">ObjectField</span></a><span class="Other">]</span>
     <span class="Keyword">of</span> <span class="Identifier">ttyAlias</span><span class="Other">:</span>
       <span class="Identifier">aliasId</span><span class="Operator">*</span><span class="Other">:</span> <a href="value.html#TypeId"><span class="Identifier">TypeId</span></a>
-      <span class="Identifier">aliasTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a>
+      <span class="Identifier">aliasTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>
     <span class="Keyword">of</span> <span class="Identifier">ttyCustom</span><span class="Other">:</span>
       <span class="Keyword">nil</span>
     <span class="Keyword">of</span> <span class="Identifier">ttyHtmlElement</span><span class="Other">:</span>
       <span class="Keyword">nil</span>
     <span class="Keyword">of</span> <span class="Identifier">ttyPointer</span><span class="Other">:</span>
-      <span class="Identifier">pointerTarget</span><span class="Operator">*</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a>    <span class="Comment">## The type this pointer points to (type info only)</span>
+      <span class="Identifier">pointerTarget</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>    <span class="Comment">## The type this pointer points to (type info only)</span>
   <span class="Keyword">of</span> <span class="Identifier">skHtmlType</span><span class="Other">:</span>
     <span class="Identifier">tag</span><span class="Operator">*</span><span class="Other">,</span> <span class="Identifier">innerText</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>
     <span class="Identifier">isVoidElement</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>
   <span class="Keyword">of</span> <span class="Identifier">skProc</span><span class="Other">:</span>
     <span class="Identifier">procId</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">uint16</span>          <span class="Comment">## the unique number of the proc</span>
-    <span class="Identifier">procParams</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="sym.html#ProcParam"><span class="Identifier">ProcParam</span></a><span class="Other">]</span> <span class="Comment">## the proc's parameters</span>
-    <span class="Identifier">procReturnTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a>       <span class="Comment">## the return type of the proc</span>
-    <span class="Identifier">procType</span><span class="Operator">*</span><span class="Other">:</span> <a href="sym.html#ProcType"><span class="Identifier">ProcType</span></a>      <span class="Comment">## whether the proc is a normal function or a macro</span>
+    <span class="Identifier">procParams</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#ProcParam"><span class="Identifier">ProcParam</span></a><span class="Other">]</span> <span class="Comment">## the proc's parameters</span>
+    <span class="Identifier">procReturnTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>       <span class="Comment">## the return type of the proc</span>
+    <span class="Identifier">procType</span><span class="Operator">*</span><span class="Other">:</span> <a href="#ProcType"><span class="Identifier">ProcType</span></a>      <span class="Comment">## whether the proc is a normal function or a macro</span>
     <span class="Identifier">procExport</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>        <span class="Comment">## whether the proc is exported or not</span>
     <span class="Identifier">procMemoize</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>       <span class="Comment">## whether the proc is memoized or not.</span>
                              <span class="Comment">## todo: implement memoization</span>
   <span class="Keyword">of</span> <span class="Identifier">skIterator</span><span class="Other">:</span>
-    <span class="Identifier">iterParams</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="sym.html#ProcParam"><span class="Identifier">ProcParam</span></a><span class="Other">]</span> <span class="Comment">## the iterator's parameters</span>
-    <span class="Identifier">iterYieldTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a>        <span class="Comment">## the yield type of the iterator</span>
+    <span class="Identifier">iterParams</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#ProcParam"><span class="Identifier">ProcParam</span></a><span class="Other">]</span> <span class="Comment">## the iterator's parameters</span>
+    <span class="Identifier">iterYieldTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>        <span class="Comment">## the yield type of the iterator</span>
     <span class="Identifier">iterExport</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>        <span class="Comment">## whether the iterator is exported or not</span>
   <span class="Keyword">of</span> <span class="Identifier">skGenericParam</span><span class="Other">:</span>
-    <span class="Identifier">constraint</span><span class="Operator">*</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a>         <span class="Comment">## the generic type constraint</span>
+    <span class="Identifier">constraint</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>         <span class="Comment">## the generic type constraint</span>
   <span class="Keyword">of</span> <span class="Identifier">skChoice</span><span class="Other">:</span>
-    <span class="Identifier">choices</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span>
-  <span class="Identifier">genericParams</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">seq</span><span class="Other">[</span><a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">]</span>
-  <span class="Identifier">genericInstCache</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">seq</span><span class="Other">[</span><a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">,</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span>
-  <span class="Identifier">genericBase</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span>
-  <span class="Identifier">genericInstArgs</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">seq</span><span class="Other">[</span><a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">]</span></pre></dt>
+    <span class="Identifier">choices</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span>
+  <span class="Identifier">genericParams</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">seq</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">]</span>
+  <span class="Identifier">genericInstCache</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">seq</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">,</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span>
+  <span class="Identifier">genericBase</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span>
+  <span class="Identifier">genericInstArgs</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">seq</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">]</span></pre></dt>
   <dd>
     
     A symbol. This represents an ident that can be looked up.
@@ -462,7 +465,7 @@
   </dd>
 </div>
 <div id="SymKind">
-  <dt><pre><a href="sym.html#SymKind"><span class="Identifier">SymKind</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
+  <dt><pre><a href="#SymKind"><span class="Identifier">SymKind</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">skVar</span> <span class="Other">=</span> <span class="StringLit">&quot;var&quot;</span><span class="Other">,</span> <span class="Identifier">skConst</span> <span class="Other">=</span> <span class="StringLit">&quot;const&quot;</span><span class="Other">,</span> <span class="Identifier">skLet</span> <span class="Other">=</span> <span class="StringLit">&quot;let&quot;</span><span class="Other">,</span> <span class="Identifier">skType</span> <span class="Other">=</span> <span class="StringLit">&quot;type&quot;</span><span class="Other">,</span>
   <span class="Identifier">skProc</span> <span class="Other">=</span> <span class="StringLit">&quot;fn&quot;</span><span class="Other">,</span> <span class="Identifier">skIterator</span> <span class="Other">=</span> <span class="StringLit">&quot;iterator&quot;</span><span class="Other">,</span> <span class="Identifier">skGenericParam</span> <span class="Other">=</span> <span class="StringLit">&quot;generic param&quot;</span><span class="Other">,</span>
   <span class="Identifier">skHtmlType</span> <span class="Other">=</span> <span class="StringLit">&quot;html&quot;</span><span class="Other">,</span> <span class="Identifier">skChoice</span> <span class="Other">=</span> <span class="StringLit">&quot;(...)&quot;</span> <span class="Comment">## an overloaded symbol, stores many symbols with \</span>
@@ -474,7 +477,7 @@
   </dd>
 </div>
 <div id="TypeKind">
-  <dt><pre><a href="sym.html#TypeKind"><span class="Identifier">TypeKind</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
+  <dt><pre><a href="#TypeKind"><span class="Identifier">TypeKind</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">ttyVoid</span> <span class="Other">=</span> <span class="StringLit">&quot;void&quot;</span><span class="Other">,</span> <span class="Identifier">ttyAny</span> <span class="Other">=</span> <span class="StringLit">&quot;any&quot;</span><span class="Other">,</span> <span class="Identifier">ttyBool</span> <span class="Other">=</span> <span class="StringLit">&quot;bool&quot;</span><span class="Other">,</span> <span class="Identifier">ttyInt</span> <span class="Other">=</span> <span class="StringLit">&quot;int&quot;</span><span class="Other">,</span>
   <span class="Identifier">ttyFloat</span> <span class="Other">=</span> <span class="StringLit">&quot;float&quot;</span><span class="Other">,</span> <span class="Identifier">ttyString</span> <span class="Other">=</span> <span class="StringLit">&quot;string&quot;</span><span class="Other">,</span> <span class="Identifier">ttyPointer</span> <span class="Other">=</span> <span class="StringLit">&quot;pointer&quot;</span><span class="Other">,</span>
   <span class="Identifier">ttyJson</span> <span class="Other">=</span> <span class="StringLit">&quot;json&quot;</span><span class="Other">,</span> <span class="Identifier">ttyArray</span> <span class="Other">=</span> <span class="StringLit">&quot;array&quot;</span><span class="Other">,</span> <span class="Identifier">ttyNil</span> <span class="Other">=</span> <span class="StringLit">&quot;nil&quot;</span><span class="Other">,</span> <span class="Identifier">ttyObject</span> <span class="Other">=</span> <span class="StringLit">&quot;object&quot;</span><span class="Other">,</span>
@@ -492,7 +495,7 @@
   <h1><a class="toc-backref" href="#10">Consts</a></h1>
   <dl class="item">
     <div id="skCallable">
-  <dt><pre><a href="sym.html#skCallable"><span class="Identifier">skCallable</span></a> <span class="Other">=</span> <span class="Other">{</span><span class="DecNumber">skProc</span><span class="Other">,</span> <span class="DecNumber">skIterator</span><span class="Other">}</span></pre></dt>
+  <dt><pre><a href="#skCallable"><span class="Identifier">skCallable</span></a> <span class="Other">=</span> <span class="Other">{</span><span class="DecNumber">skProc</span><span class="Other">,</span> <span class="DecNumber">skIterator</span><span class="Other">}</span></pre></dt>
   <dd>
     
     
@@ -500,7 +503,7 @@
   </dd>
 </div>
 <div id="skDecl">
-  <dt><pre><a href="sym.html#skDecl"><span class="Identifier">skDecl</span></a> <span class="Other">=</span> <span class="Other">{</span><span class="DecNumber">skVar</span><span class="Other">..</span><span class="DecNumber">skIterator</span><span class="Other">}</span></pre></dt>
+  <dt><pre><a href="#skDecl"><span class="Identifier">skDecl</span></a> <span class="Other">=</span> <span class="Other">{</span><span class="DecNumber">skVar</span><span class="Other">..</span><span class="DecNumber">skIterator</span><span class="Other">}</span></pre></dt>
   <dd>
     
     
@@ -508,7 +511,7 @@
   </dd>
 </div>
 <div id="skTyped">
-  <dt><pre><a href="sym.html#skTyped"><span class="Identifier">skTyped</span></a> <span class="Other">=</span> <span class="Other">{</span><span class="DecNumber">skType</span><span class="Other">,</span> <span class="DecNumber">skHtmlType</span><span class="Other">,</span> <span class="DecNumber">skGenericParam</span><span class="Other">}</span></pre></dt>
+  <dt><pre><a href="#skTyped"><span class="Identifier">skTyped</span></a> <span class="Other">=</span> <span class="Other">{</span><span class="DecNumber">skType</span><span class="Other">,</span> <span class="DecNumber">skHtmlType</span><span class="Other">,</span> <span class="DecNumber">skGenericParam</span><span class="Other">}</span></pre></dt>
   <dd>
     
     
@@ -516,7 +519,7 @@
   </dd>
 </div>
 <div id="skVars">
-  <dt><pre><a href="sym.html#skVars"><span class="Identifier">skVars</span></a> <span class="Other">=</span> <span class="Other">{</span><span class="DecNumber">skVar</span><span class="Other">,</span> <span class="DecNumber">skLet</span><span class="Other">,</span> <span class="DecNumber">skConst</span><span class="Other">}</span></pre></dt>
+  <dt><pre><a href="#skVars"><span class="Identifier">skVars</span></a> <span class="Other">=</span> <span class="Other">{</span><span class="DecNumber">skVar</span><span class="Other">,</span> <span class="DecNumber">skLet</span><span class="Other">,</span> <span class="DecNumber">skConst</span><span class="Other">}</span></pre></dt>
   <dd>
     
     
@@ -524,7 +527,7 @@
   </dd>
 </div>
 <div id="tyMeta">
-  <dt><pre><a href="sym.html#tyMeta"><span class="Identifier">tyMeta</span></a> <span class="Other">=</span> <span class="Other">{</span><span class="DecNumber">ttyVoid</span><span class="Other">,</span> <span class="DecNumber">ttyAny</span><span class="Other">}</span></pre></dt>
+  <dt><pre><a href="#tyMeta"><span class="Identifier">tyMeta</span></a> <span class="Other">=</span> <span class="Other">{</span><span class="DecNumber">ttyVoid</span><span class="Other">,</span> <span class="DecNumber">ttyAny</span><span class="Other">}</span></pre></dt>
   <dd>
     
     
@@ -532,7 +535,7 @@
   </dd>
 </div>
 <div id="tyPrimitives">
-  <dt><pre><a href="sym.html#tyPrimitives"><span class="Identifier">tyPrimitives</span></a> <span class="Other">=</span> <span class="Other">{</span><span class="DecNumber">ttyVoid</span><span class="Other">..</span><span class="DecNumber">ttyString</span><span class="Other">}</span></pre></dt>
+  <dt><pre><a href="#tyPrimitives"><span class="Identifier">tyPrimitives</span></a> <span class="Other">=</span> <span class="Other">{</span><span class="DecNumber">ttyVoid</span><span class="Other">..</span><span class="DecNumber">ttyString</span><span class="Other">}</span></pre></dt>
   <dd>
     
     
@@ -547,7 +550,7 @@
   <dl class="item">
     <div id="$-procs-all">
   <div id="$,Module">
-  <dt><pre><span class="Keyword">proc</span> <a href="#%24%2CModule"><span class="Identifier">`$`</span></a><span class="Other">(</span><span class="Identifier">module</span><span class="Other">:</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#%24%2CModule"><span class="Identifier">`$`</span></a><span class="Other">(</span><span class="Identifier">module</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Stringifies a module. This is only really useful for debugging.
@@ -555,7 +558,7 @@
   </dd>
 </div>
 <div id="$,seq[ProcParam]">
-  <dt><pre><span class="Keyword">proc</span> <a href="#%24%2Cseq%5BProcParam%5D"><span class="Identifier">`$`</span></a><span class="Other">(</span><span class="Identifier">params</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="sym.html#ProcParam"><span class="Identifier">ProcParam</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#%24%2Cseq%5BProcParam%5D"><span class="Identifier">`$`</span></a><span class="Other">(</span><span class="Identifier">params</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#ProcParam"><span class="Identifier">ProcParam</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -564,7 +567,7 @@
   </dd>
 </div>
 <div id="$,Scope">
-  <dt><pre><span class="Keyword">proc</span> <a href="#%24%2CScope"><span class="Identifier">`$`</span></a><span class="Other">(</span><span class="Identifier">scope</span><span class="Other">:</span> <a href="sym.html#Scope"><span class="Identifier">Scope</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#%24%2CScope"><span class="Identifier">`$`</span></a><span class="Other">(</span><span class="Identifier">scope</span><span class="Other">:</span> <a href="#Scope"><span class="Identifier">Scope</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Stringifies a scope. This is only really useful for debugging.
@@ -572,7 +575,7 @@
   </dd>
 </div>
 <div id="$,Sym">
-  <dt><pre><span class="Keyword">proc</span> <a href="#%24%2CSym"><span class="Identifier">`$`</span></a><span class="Other">(</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#%24%2CSym"><span class="Identifier">`$`</span></a><span class="Other">(</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
                              <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -584,7 +587,7 @@
 </div>
 <div id="==-procs-all">
   <div id="==,Context,Context">
-  <dt><pre><span class="Keyword">proc</span> <a href="#%3D%3D%2CContext%2CContext"><span class="Identifier">`==`</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <a href="sym.html#Context"><span class="Identifier">Context</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span class="Identifier">borrow</span><span class="Other">,</span> <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#%3D%3D%2CContext%2CContext"><span class="Identifier">`==`</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <a href="#Context"><span class="Identifier">Context</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span class="Identifier">borrow</span><span class="Other">,</span> <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     
@@ -595,8 +598,8 @@
 </div>
 <div id="add-procs-all">
   <div id="add,Scope,Sym,Node,staticbool">
-  <dt><pre><span class="Keyword">proc</span> <a href="#add%2CScope%2CSym%2CNode%2Cstaticbool"><span class="Identifier">add</span></a><span class="Other">(</span><span class="Identifier">scope</span><span class="Other">:</span> <a href="sym.html#Scope"><span class="Identifier">Scope</span></a><span class="Other">;</span> <span class="Identifier">sym</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">;</span> <span class="Identifier">lookupName</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span>
-         <span class="Identifier">fromOtherModule</span><span class="Other">:</span> <span class="Identifier">static</span> <span class="Identifier">bool</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span class="Identifier">discardable</span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#add%2CScope%2CSym%2CNode%2Cstaticbool"><span class="Identifier">add</span></a><span class="Other">(</span><span class="Identifier">scope</span><span class="Other">:</span> <a href="#Scope"><span class="Identifier">Scope</span></a><span class="Other">;</span> <span class="Identifier">sym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">;</span> <span class="Identifier">lookupName</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span>
+         <span class="Identifier">fromOtherModule</span><span class="Other">:</span> <span class="Keyword">static</span> <span class="Identifier">bool</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span class="Identifier">discardable</span>.}</pre></dt>
   <dd>
     
     Add a symbol to the given scope. If a symbol under the given name already exists, it's added into an skChoice. The rules for overloading are:<ul class="simple"><li>there may only be one skVar or skLet under a given skChoice,</li>
@@ -612,8 +615,8 @@
 </div>
 <div id="addCallable-procs-all">
   <div id="addCallable,Scope,Sym,Node,staticbool">
-  <dt><pre><span class="Keyword">proc</span> <a href="#addCallable%2CScope%2CSym%2CNode%2Cstaticbool"><span class="Identifier">addCallable</span></a><span class="Other">(</span><span class="Identifier">scope</span><span class="Other">:</span> <a href="sym.html#Scope"><span class="Identifier">Scope</span></a><span class="Other">;</span> <span class="Identifier">sym</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">;</span> <span class="Identifier">lookupName</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span>
-                 <span class="Identifier">fromOtherModule</span><span class="Other">:</span> <span class="Identifier">static</span> <span class="Identifier">bool</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span class="Identifier">discardable</span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#addCallable%2CScope%2CSym%2CNode%2Cstaticbool"><span class="Identifier">addCallable</span></a><span class="Other">(</span><span class="Identifier">scope</span><span class="Other">:</span> <a href="#Scope"><span class="Identifier">Scope</span></a><span class="Other">;</span> <span class="Identifier">sym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">;</span> <span class="Identifier">lookupName</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span>
+                 <span class="Identifier">fromOtherModule</span><span class="Other">:</span> <span class="Keyword">static</span> <span class="Identifier">bool</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span class="Identifier">discardable</span>.}</pre></dt>
   <dd>
     
     Add a callable to the given scope.
@@ -624,8 +627,8 @@
 </div>
 <div id="addType-procs-all">
   <div id="addType,Scope,Sym,Node,staticbool">
-  <dt><pre><span class="Keyword">proc</span> <a href="#addType%2CScope%2CSym%2CNode%2Cstaticbool"><span class="Identifier">addType</span></a><span class="Other">(</span><span class="Identifier">scope</span><span class="Other">:</span> <a href="sym.html#Scope"><span class="Identifier">Scope</span></a><span class="Other">;</span> <span class="Identifier">sym</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">;</span> <span class="Identifier">lookupName</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span>
-             <span class="Identifier">fromOtherModule</span><span class="Other">:</span> <span class="Identifier">static</span> <span class="Identifier">bool</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span class="Identifier">discardable</span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#addType%2CScope%2CSym%2CNode%2Cstaticbool"><span class="Identifier">addType</span></a><span class="Other">(</span><span class="Identifier">scope</span><span class="Other">:</span> <a href="#Scope"><span class="Identifier">Scope</span></a><span class="Other">;</span> <span class="Identifier">sym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">;</span> <span class="Identifier">lookupName</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span>
+             <span class="Identifier">fromOtherModule</span><span class="Other">:</span> <span class="Keyword">static</span> <span class="Identifier">bool</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span class="Identifier">discardable</span>.}</pre></dt>
   <dd>
     
     Add a type to the given scope.
@@ -636,8 +639,8 @@
 </div>
 <div id="addVariable-procs-all">
   <div id="addVariable,Scope,Sym,Node,staticbool">
-  <dt><pre><span class="Keyword">proc</span> <a href="#addVariable%2CScope%2CSym%2CNode%2Cstaticbool"><span class="Identifier">addVariable</span></a><span class="Other">(</span><span class="Identifier">scope</span><span class="Other">:</span> <a href="sym.html#Scope"><span class="Identifier">Scope</span></a><span class="Other">;</span> <span class="Identifier">sym</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">;</span> <span class="Identifier">lookupName</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span>
-                 <span class="Identifier">fromOtherModule</span><span class="Other">:</span> <span class="Identifier">static</span> <span class="Identifier">bool</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span class="Identifier">discardable</span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#addVariable%2CScope%2CSym%2CNode%2Cstaticbool"><span class="Identifier">addVariable</span></a><span class="Other">(</span><span class="Identifier">scope</span><span class="Other">:</span> <a href="#Scope"><span class="Identifier">Scope</span></a><span class="Other">;</span> <span class="Identifier">sym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">;</span> <span class="Identifier">lookupName</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span>
+                 <span class="Identifier">fromOtherModule</span><span class="Other">:</span> <span class="Keyword">static</span> <span class="Identifier">bool</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span class="Identifier">discardable</span>.}</pre></dt>
   <dd>
     
     Add a variable to the given scope.
@@ -648,7 +651,7 @@
 </div>
 <div id="canAdd-procs-all">
   <div id="canAdd,Sym,Sym">
-  <dt><pre><span class="Keyword">proc</span> <a href="#canAdd%2CSym%2CSym"><span class="Identifier">canAdd</span></a><span class="Other">(</span><span class="Identifier">choice</span><span class="Other">,</span> <span class="Identifier">sym</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#canAdd%2CSym%2CSym"><span class="Identifier">canAdd</span></a><span class="Other">(</span><span class="Identifier">choice</span><span class="Other">,</span> <span class="Identifier">sym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Tests if <tt class="docutils literal"><span class="pre">sym</span></tt> can be added into <tt class="docutils literal"><span class="pre">choice</span></tt>. Refer to <tt class="docutils literal"><span class="pre">add</span></tt> documentation below for details.
@@ -659,7 +662,7 @@
 </div>
 <div id="clone-procs-all">
   <div id="clone,Sym">
-  <dt><pre><span class="Keyword">proc</span> <a href="#clone%2CSym"><span class="Identifier">clone</span></a><span class="Other">(</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#clone%2CSym"><span class="Identifier">clone</span></a><span class="Other">(</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Clones a symbol, returning a newly allocated instance with the same fields.
@@ -670,8 +673,8 @@
 </div>
 <div id="genType-procs-all">
   <div id="genType,TypeKind,string,bool,Option[seq[Sym]]">
-  <dt><pre><span class="Keyword">proc</span> <a href="#genType%2CTypeKind%2Cstring%2Cbool%2COption%5Bseq%5BSym%5D%5D"><span class="Identifier">genType</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="sym.html#TypeKind"><span class="Identifier">TypeKind</span></a><span class="Other">;</span> <span class="Identifier">name</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span> <span class="Identifier">exportSym</span><span class="Other">:</span> <span class="Identifier">bool</span><span class="Other">;</span>
-             <span class="Identifier">genericParams</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">seq</span><span class="Other">[</span><a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">]</span> <span class="Other">=</span> <span class="Identifier">none</span><span class="Other">(</span><span class="Identifier">seq</span><span class="Other">[</span><a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.
+  <dt><pre><span class="Keyword">proc</span> <a href="#genType%2CTypeKind%2Cstring%2Cbool%2COption%5Bseq%5BSym%5D%5D"><span class="Identifier">genType</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="#TypeKind"><span class="Identifier">TypeKind</span></a><span class="Other">;</span> <span class="Identifier">name</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span> <span class="Identifier">exportSym</span><span class="Other">:</span> <span class="Identifier">bool</span><span class="Other">;</span>
+             <span class="Identifier">genericParams</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">seq</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">]</span> <span class="Other">=</span> <span class="Identifier">none</span><span class="Other">(</span><span class="Identifier">seq</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -683,7 +686,7 @@
 </div>
 <div id="getModuleName-procs-all">
   <div id="getModuleName,Module">
-  <dt><pre><span class="Keyword">proc</span> <a href="#getModuleName%2CModule"><span class="Identifier">getModuleName</span></a><span class="Other">(</span><span class="Identifier">module</span><span class="Other">:</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#getModuleName%2CModule"><span class="Identifier">getModuleName</span></a><span class="Other">(</span><span class="Identifier">module</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Get the module name for the JS export This proc will transform the file name into a valid JS identifier
@@ -694,7 +697,7 @@
 </div>
 <div id="hash-procs-all">
   <div id="hash,Sym">
-  <dt><pre><span class="Keyword">proc</span> <a href="#hash%2CSym"><span class="Identifier">hash</span></a><span class="Other">(</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Hash</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#hash%2CSym"><span class="Identifier">hash</span></a><span class="Other">(</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Hash</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Hashes a sym (for use in Tables).
@@ -705,7 +708,7 @@
 </div>
 <div id="initSystemTypes-procs-all">
   <div id="initSystemTypes,Module">
-  <dt><pre><span class="Keyword">proc</span> <a href="#initSystemTypes%2CModule"><span class="Identifier">initSystemTypes</span></a><span class="Other">(</span><span class="Identifier">module</span><span class="Other">:</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#initSystemTypes%2CModule"><span class="Identifier">initSystemTypes</span></a><span class="Other">(</span><span class="Identifier">module</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Add primitive types into the module. This should only ever be called when creating the <tt class="docutils literal"><span class="pre">system</span></tt> module.
@@ -716,7 +719,7 @@
 </div>
 <div id="isGeneric-procs-all">
   <div id="isGeneric,Sym">
-  <dt><pre><span class="Keyword">proc</span> <a href="#isGeneric%2CSym"><span class="Identifier">isGeneric</span></a><span class="Other">(</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#isGeneric%2CSym"><span class="Identifier">isGeneric</span></a><span class="Other">(</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Returns whether the symbol is generic or not. A symbol is generic if it has generic params or <em>is</em> a generic param.
@@ -727,7 +730,7 @@
 </div>
 <div id="isInstantiation-procs-all">
   <div id="isInstantiation,Sym">
-  <dt><pre><span class="Keyword">proc</span> <a href="#isInstantiation%2CSym"><span class="Identifier">isInstantiation</span></a><span class="Other">(</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#isInstantiation%2CSym"><span class="Identifier">isInstantiation</span></a><span class="Other">(</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Returns whether the symbol is an instantiation.
@@ -738,7 +741,7 @@
 </div>
 <div id="load-procs-all">
   <div id="load,Module,Module,staticbool">
-  <dt><pre><span class="Keyword">proc</span> <a href="#load%2CModule%2CModule%2Cstaticbool"><span class="Identifier">load</span></a><span class="Other">(</span><span class="Identifier">module</span><span class="Other">:</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">other</span><span class="Other">:</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">fromOtherModule</span><span class="Other">:</span> <span class="Identifier">static</span> <span class="Identifier">bool</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.
+  <dt><pre><span class="Keyword">proc</span> <a href="#load%2CModule%2CModule%2Cstaticbool"><span class="Identifier">load</span></a><span class="Other">(</span><span class="Identifier">module</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">other</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">fromOtherModule</span><span class="Other">:</span> <span class="Keyword">static</span> <span class="Identifier">bool</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.
     <span class="Identifier">discardable</span>.}</pre></dt>
   <dd>
     
@@ -750,7 +753,7 @@
 </div>
 <div id="newModule-procs-all">
   <div id="newModule,string,Option[string]">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newModule%2Cstring%2COption%5Bstring%5D"><span class="Identifier">newModule</span></a><span class="Other">(</span><span class="Identifier">name</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span> <span class="Identifier">src</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span> <span class="Other">=</span> <span class="Identifier">none</span><span class="Other">(</span><span class="Identifier">string</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a> {.
+  <dt><pre><span class="Keyword">proc</span> <a href="#newModule%2Cstring%2COption%5Bstring%5D"><span class="Identifier">newModule</span></a><span class="Other">(</span><span class="Identifier">name</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span> <span class="Identifier">src</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span> <span class="Other">=</span> <span class="Identifier">none</span><span class="Other">(</span><span class="Identifier">string</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -762,7 +765,7 @@
 </div>
 <div id="newSym-procs-all">
   <div id="newSym,SymKind,Node,Node">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newSym%2CSymKind%2CNode%2CNode"><span class="Identifier">newSym</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="sym.html#SymKind"><span class="Identifier">SymKind</span></a><span class="Other">;</span> <span class="Identifier">name</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">impl</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#newSym%2CSymKind%2CNode%2CNode"><span class="Identifier">newSym</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="#SymKind"><span class="Identifier">SymKind</span></a><span class="Other">;</span> <span class="Identifier">name</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">impl</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">)</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -774,7 +777,7 @@
 </div>
 <div id="newType-procs-all">
   <div id="newType,TypeKind,Node,Node">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newType%2CTypeKind%2CNode%2CNode"><span class="Identifier">newType</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="sym.html#TypeKind"><span class="Identifier">TypeKind</span></a><span class="Other">;</span> <span class="Identifier">name</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">impl</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#newType%2CTypeKind%2CNode%2CNode"><span class="Identifier">newType</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="#TypeKind"><span class="Identifier">TypeKind</span></a><span class="Other">;</span> <span class="Identifier">name</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">impl</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">)</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -786,7 +789,7 @@
 </div>
 <div id="params-procs-all">
   <div id="params,Sym">
-  <dt><pre><span class="Keyword">proc</span> <a href="#params%2CSym"><span class="Identifier">params</span></a><span class="Other">(</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="sym.html#ProcParam"><span class="Identifier">ProcParam</span></a><span class="Other">]</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#params%2CSym"><span class="Identifier">params</span></a><span class="Other">(</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#ProcParam"><span class="Identifier">ProcParam</span></a><span class="Other">]</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Get the proc/iterator's params.
@@ -797,7 +800,7 @@
 </div>
 <div id="returnTy-procs-all">
   <div id="returnTy,Sym">
-  <dt><pre><span class="Keyword">proc</span> <a href="#returnTy%2CSym"><span class="Identifier">returnTy</span></a><span class="Other">(</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#returnTy%2CSym"><span class="Identifier">returnTy</span></a><span class="Other">(</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Get the proc/iterator's return or yield type.
@@ -808,7 +811,7 @@
 </div>
 <div id="sameParams-procs-all">
   <div id="sameParams,Sym,Sym">
-  <dt><pre><span class="Keyword">proc</span> <a href="#sameParams%2CSym%2CSym"><span class="Identifier">sameParams</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#sameParams%2CSym%2CSym"><span class="Identifier">sameParams</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Overload of <tt class="docutils literal"><span class="pre">sameParams</span></tt> for two symbols.
@@ -816,7 +819,7 @@
   </dd>
 </div>
 <div id="sameParams,Sym,seq[Sym]">
-  <dt><pre><span class="Keyword">proc</span> <a href="#sameParams%2CSym%2Cseq%5BSym%5D"><span class="Identifier">sameParams</span></a><span class="Other">(</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">;</span> <span class="Identifier">args</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#sameParams%2CSym%2Cseq%5BSym%5D"><span class="Identifier">sameParams</span></a><span class="Other">(</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">;</span> <span class="Identifier">args</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -828,7 +831,7 @@
 </div>
 <div id="sameType-procs-all">
   <div id="sameType,Sym,Sym">
-  <dt><pre><span class="Keyword">proc</span> <a href="#sameType%2CSym%2CSym"><span class="Identifier">sameType</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#sameType%2CSym%2CSym"><span class="Identifier">sameType</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Returns <tt class="docutils literal"><span class="pre">true</span></tt> if <tt class="docutils literal"><span class="pre">a</span></tt> and <tt class="docutils literal"><span class="pre">b</span></tt> are compatible types.
@@ -839,7 +842,7 @@
 </div>
 <div id="sym-procs-all">
   <div id="sym,Module,string">
-  <dt><pre><span class="Keyword">proc</span> <a href="#sym%2CModule%2Cstring"><span class="Identifier">sym</span></a><span class="Other">(</span><span class="Identifier">module</span><span class="Other">:</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">name</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#sym%2CModule%2Cstring"><span class="Identifier">sym</span></a><span class="Other">(</span><span class="Identifier">module</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">name</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -851,7 +854,7 @@
 </div>
 <div id="unwrapType-procs-all">
   <div id="unwrapType,Sym">
-  <dt><pre><span class="Keyword">proc</span> <a href="#unwrapType%2CSym"><span class="Identifier">unwrapType</span></a><span class="Other">(</span><span class="Identifier">ty</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#unwrapType%2CSym"><span class="Identifier">unwrapType</span></a><span class="Other">(</span><span class="Identifier">ty</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Unwraps a type from any <tt class="docutils literal"><span class="pre"><span class="Identifier">skVar</span></span></tt> or <tt class="docutils literal"><span class="pre"><span class="Identifier">skLet</span></span></tt> wrappers.
@@ -870,7 +873,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-04-24 06:29:02 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-05-20 18:53:18 UTC</small>
       </div>
     </div>
   </div>

@@ -16,13 +16,16 @@
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA3XAAAN1wFCKJt4AAAAB3RJTUUH4QQQEwksSS9ZWwAAAk1JREFUWMPtll2ITVEUx39nn/O7Y5qR8f05wtCUUr6ZIS++8pEnkZInPImneaCQ5METNdOkeFBKUhMPRIkHKfEuUZSUlGlKPN2TrgfncpvmnntnmlEyq1Z7t89/rf9a6+y99oZxGZf/XeIq61EdtgKXgdXA0xrYAvBjOIF1AI9zvjcC74BSpndrJPkBWDScTF8Aa4E3wDlgHbASaANmVqlcCnwHvgDvgVfAJ+AikAAvgfVZwLnSVZHZaOuKoQi3ZOMi4NkYkpe1p4J7A8BpYAD49hfIy/oqG0+hLomiKP2L5L+1ubn5115S+3OAn4EnwBlgMzCjyt6ZAnQCJ4A7wOs88iRJHvw50HoujuPBoCKwHWiosy8MdfZnAdcHk8dxXFJ3VQbQlCTJvRBCGdRbD4M6uc5glpY3eAihpN5S5w12diSEcCCEcKUO4ljdr15T76ur1FDDLIQQ3qv71EdDOe3Kxj3leRXyk+pxdWnFWod6Wt2bY3de3aSuUHcPBVimHs7mK9WrmeOF6lR1o9qnzskh2ar2qm1qizpfXaPeVGdlmGN5pb09qMxz1Xb1kLqgzn1RyH7JUXW52lr5e/Kqi9qpto7V1atuUzfnARrV7jEib1T76gG2qxdGmXyiekkt1GswPTtek0aBfJp6YySGBfWg2tPQ0FAYgf1stUfdmdcjarbYJEniKIq6gY/Aw+zWHAC+p2labGpqiorFYgGYCEzN7oQdQClN07O1/EfDyGgC0ALMBdYAi4FyK+4H3gLPsxfR1zRNi+NP7nH5J+QntnXe5B5mpfQAAAAASUVORK5CYII=">
 
 <!-- CSS -->
-<link rel="stylesheet" type="text/css" href="../../nimdoc.out.css?v=2.2.8">
+<link rel="stylesheet" type="text/css" href="../../nimdoc.out.css?v=2.2.10">
 
 <!-- JS -->
-<script type="text/javascript" src="../../dochack.js?v=2.2.8"></script>
+<script type="text/javascript" src="../../dochack.js?v=2.2.10"></script>
 </head>
 <body>
   <div class="document" id="documentId">
+    <input type="checkbox" id="nav-toggle" hidden>
+    <label for="nav-toggle" id="nav-burger">&#9776;</label>
+    <label for="nav-toggle" id="nav-overlay"></label>
     <div class="container">
       <h1 class="title">vancode/manager/packager</h1>
       <div class="row">
@@ -159,7 +162,7 @@
   <h1><a class="toc-backref" href="#7">Types</a></h1>
   <dl class="item">
     <div id="Packager">
-  <dt><pre><a href="packager.html#Packager"><span class="Identifier">Packager</span></a> <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span>
+  <dt><pre><a href="#Packager"><span class="Identifier">Packager</span></a> <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span>
   <span class="Identifier">remote</span><span class="Operator">*</span><span class="Other">:</span> <a href="remote.html#RemoteSource"><span class="Identifier">RemoteSource</span></a>
   <span class="Identifier">flagNoCache</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>
   <span class="Identifier">flagRecache</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span></pre></dt>
@@ -170,7 +173,7 @@
   </dd>
 </div>
 <div id="PackagesTable">
-  <dt><pre><a href="packager.html#PackagesTable"><span class="Identifier">PackagesTable</span></a> <span class="Other">=</span> <span class="Identifier">OrderedTableRef</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <span class="Identifier">VersionedPackage</span><span class="Other">]</span></pre></dt>
+  <dt><pre><a href="#PackagesTable"><span class="Identifier">PackagesTable</span></a> <span class="Other">=</span> <span class="Identifier">OrderedTableRef</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <span class="Identifier">VersionedPackage</span><span class="Other">]</span></pre></dt>
   <dd>
     
     
@@ -184,7 +187,7 @@
   <h1><a class="toc-backref" href="#10">Consts</a></h1>
   <dl class="item">
     <div id="pkgrHomeDir">
-  <dt><pre><a href="packager.html#pkgrHomeDir"><span class="Identifier">pkgrHomeDir</span></a> <span class="Other">=</span> <span class="StringLit">&quot;/home/runner/.tim&quot;</span></pre></dt>
+  <dt><pre><a href="#pkgrHomeDir"><span class="Identifier">pkgrHomeDir</span></a> <span class="Other">=</span> <span class="StringLit">&quot;/home/runner/.tim&quot;</span></pre></dt>
   <dd>
     
     
@@ -192,7 +195,7 @@
   </dd>
 </div>
 <div id="pkgrHomeDirTemp">
-  <dt><pre><a href="packager.html#pkgrHomeDirTemp"><span class="Identifier">pkgrHomeDirTemp</span></a> <span class="Other">=</span> <span class="StringLit">&quot;/home/runner/.tim/tmp&quot;</span></pre></dt>
+  <dt><pre><a href="#pkgrHomeDirTemp"><span class="Identifier">pkgrHomeDirTemp</span></a> <span class="Other">=</span> <span class="StringLit">&quot;/home/runner/.tim/tmp&quot;</span></pre></dt>
   <dd>
     
     
@@ -200,7 +203,7 @@
   </dd>
 </div>
 <div id="pkgrIndexPath">
-  <dt><pre><a href="packager.html#pkgrIndexPath"><span class="Identifier">pkgrIndexPath</span></a> <span class="Other">=</span> <span class="StringLit">&quot;/home/runner/.tim/packages/index.json&quot;</span></pre></dt>
+  <dt><pre><a href="#pkgrIndexPath"><span class="Identifier">pkgrIndexPath</span></a> <span class="Other">=</span> <span class="StringLit">&quot;/home/runner/.tim/packages/index.json&quot;</span></pre></dt>
   <dd>
     
     
@@ -208,7 +211,7 @@
   </dd>
 </div>
 <div id="pkgrPackageCachedDir">
-  <dt><pre><a href="packager.html#pkgrPackageCachedDir"><span class="Identifier">pkgrPackageCachedDir</span></a> <span class="Other">=</span> <span class="StringLit">&quot;/home/runner/.tim/packages/$1/$2/.cache&quot;</span></pre></dt>
+  <dt><pre><a href="#pkgrPackageCachedDir"><span class="Identifier">pkgrPackageCachedDir</span></a> <span class="Other">=</span> <span class="StringLit">&quot;/home/runner/.tim/packages/$1/$2/.cache&quot;</span></pre></dt>
   <dd>
     
     
@@ -216,7 +219,7 @@
   </dd>
 </div>
 <div id="pkgrPackagesDir">
-  <dt><pre><a href="packager.html#pkgrPackagesDir"><span class="Identifier">pkgrPackagesDir</span></a> <span class="Other">=</span> <span class="StringLit">&quot;/home/runner/.tim/packages&quot;</span></pre></dt>
+  <dt><pre><a href="#pkgrPackagesDir"><span class="Identifier">pkgrPackagesDir</span></a> <span class="Other">=</span> <span class="StringLit">&quot;/home/runner/.tim/packages&quot;</span></pre></dt>
   <dd>
     
     
@@ -224,7 +227,7 @@
   </dd>
 </div>
 <div id="pkgrPackageSourceDir">
-  <dt><pre><a href="packager.html#pkgrPackageSourceDir"><span class="Identifier">pkgrPackageSourceDir</span></a> <span class="Other">=</span> <span class="StringLit">&quot;/home/runner/.tim/packages/$1/$2/src&quot;</span></pre></dt>
+  <dt><pre><a href="#pkgrPackageSourceDir"><span class="Identifier">pkgrPackageSourceDir</span></a> <span class="Other">=</span> <span class="StringLit">&quot;/home/runner/.tim/packages/$1/$2/src&quot;</span></pre></dt>
   <dd>
     
     
@@ -232,7 +235,7 @@
   </dd>
 </div>
 <div id="pkgrTokenPath">
-  <dt><pre><a href="packager.html#pkgrTokenPath"><span class="Identifier">pkgrTokenPath</span></a> <span class="Other">=</span> <span class="StringLit">&quot;/home/runner/.tim/.env&quot;</span></pre></dt>
+  <dt><pre><a href="#pkgrTokenPath"><span class="Identifier">pkgrTokenPath</span></a> <span class="Other">=</span> <span class="StringLit">&quot;/home/runner/.tim/.env&quot;</span></pre></dt>
   <dd>
     
     
@@ -247,7 +250,7 @@
   <dl class="item">
     <div id="cacheModule-procs-all">
   <div id="cacheModule,Packager,string,Ast">
-  <dt><pre><span class="Keyword">proc</span> <a href="#cacheModule%2CPackager%2Cstring%2CAst"><span class="Identifier">cacheModule</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="packager.html#Packager"><span class="Identifier">Packager</span></a><span class="Other">;</span> <span class="Identifier">pkgName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span> <span class="Identifier">ast</span><span class="Other">:</span> <a href="../interpreter/ast.html#Ast"><span class="Identifier">Ast</span></a><span class="Other">)</span> {.
+  <dt><pre><span class="Keyword">proc</span> <a href="#cacheModule%2CPackager%2Cstring%2CAst"><span class="Identifier">cacheModule</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="#Packager"><span class="Identifier">Packager</span></a><span class="Other">;</span> <span class="Identifier">pkgName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span> <span class="Identifier">ast</span><span class="Other">:</span> <a href="../interpreter/ast.html#Ast"><span class="Identifier">Ast</span></a><span class="Other">)</span> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">IOError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">WriteDirEffect</span><span class="Other">,</span> <span class="Identifier">ReadDirEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">,</span> <span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
@@ -261,7 +264,7 @@
 </div>
 <div id="createPackage-procs-all">
   <div id="createPackage,Packager,string,string,PackageConfig">
-  <dt><pre><span class="Keyword">proc</span> <a href="#createPackage%2CPackager%2Cstring%2Cstring%2CPackageConfig"><span class="Identifier">createPackage</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="packager.html#Packager"><span class="Identifier">Packager</span></a><span class="Other">;</span> <span class="Identifier">orgName</span><span class="Other">,</span> <span class="Identifier">pkgName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#createPackage%2CPackager%2Cstring%2Cstring%2CPackageConfig"><span class="Identifier">createPackage</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="#Packager"><span class="Identifier">Packager</span></a><span class="Other">;</span> <span class="Identifier">orgName</span><span class="Other">,</span> <span class="Identifier">pkgName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span>
                    <span class="Identifier">pkgConfig</span><span class="Other">:</span> <a href="configurator.html#PackageConfig"><span class="Identifier">PackageConfig</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">IOError</span><span class="Other">,</span>
     <span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">HttpRequestError</span><span class="Other">,</span> <span class="Identifier">LibraryError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">SslError</span><span class="Other">,</span>
     <span class="Identifier">TimeoutError</span><span class="Other">,</span> <span class="Identifier">ProtocolError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">WriteDirEffect</span><span class="Other">,</span> <span class="Identifier">ReadDirEffect</span><span class="Other">,</span>
@@ -277,7 +280,7 @@
 </div>
 <div id="deletePackage-procs-all">
   <div id="deletePackage,Packager,string,Option[Version]">
-  <dt><pre><span class="Keyword">proc</span> <a href="#deletePackage%2CPackager%2Cstring%2COption%5BVersion%5D"><span class="Identifier">deletePackage</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="packager.html#Packager"><span class="Identifier">Packager</span></a><span class="Other">;</span> <span class="Identifier">pkgName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#deletePackage%2CPackager%2Cstring%2COption%5BVersion%5D"><span class="Identifier">deletePackage</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="#Packager"><span class="Identifier">Packager</span></a><span class="Other">;</span> <span class="Identifier">pkgName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span>
                    <span class="Identifier">pkgVersion</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">Version</span><span class="Other">]</span> <span class="Other">=</span> <span class="Identifier">none</span><span class="Other">(</span><span class="Identifier">Version</span><span class="Other">)</span><span class="Other">)</span> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
@@ -290,7 +293,7 @@
 </div>
 <div id="getCachedModule-procs-all">
   <div id="getCachedModule,Packager,string">
-  <dt><pre><span class="Keyword">proc</span> <a href="#getCachedModule%2CPackager%2Cstring"><span class="Identifier">getCachedModule</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="packager.html#Packager"><span class="Identifier">Packager</span></a><span class="Other">;</span> <span class="Identifier">pkgName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="../interpreter/ast.html#Ast"><span class="Identifier">Ast</span></a> {.
+  <dt><pre><span class="Keyword">proc</span> <a href="#getCachedModule%2CPackager%2Cstring"><span class="Identifier">getCachedModule</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="#Packager"><span class="Identifier">Packager</span></a><span class="Other">;</span> <span class="Identifier">pkgName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="../interpreter/ast.html#Ast"><span class="Identifier">Ast</span></a> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -302,7 +305,7 @@
 </div>
 <div id="getModulePath-procs-all">
   <div id="getModulePath,Packager,string,string">
-  <dt><pre><span class="Keyword">proc</span> <a href="#getModulePath%2CPackager%2Cstring%2Cstring"><span class="Identifier">getModulePath</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="packager.html#Packager"><span class="Identifier">Packager</span></a><span class="Other">;</span> <span class="Identifier">pkgName</span><span class="Other">,</span> <span class="Identifier">path</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.
+  <dt><pre><span class="Keyword">proc</span> <a href="#getModulePath%2CPackager%2Cstring%2Cstring"><span class="Identifier">getModulePath</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="#Packager"><span class="Identifier">Packager</span></a><span class="Other">;</span> <span class="Identifier">pkgName</span><span class="Other">,</span> <span class="Identifier">path</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -314,7 +317,7 @@
 </div>
 <div id="hasLoadedPackages-procs-all">
   <div id="hasLoadedPackages,Packager">
-  <dt><pre><span class="Keyword">proc</span> <a href="#hasLoadedPackages%2CPackager"><span class="Identifier">hasLoadedPackages</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="packager.html#Packager"><span class="Identifier">Packager</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#hasLoadedPackages%2CPackager"><span class="Identifier">hasLoadedPackages</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="#Packager"><span class="Identifier">Packager</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Determine if packager has loaded the local database in memory
@@ -325,7 +328,7 @@
 </div>
 <div id="hasPackage-procs-all">
   <div id="hasPackage,Packager,string">
-  <dt><pre><span class="Keyword">proc</span> <a href="#hasPackage%2CPackager%2Cstring"><span class="Identifier">hasPackage</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="packager.html#Packager"><span class="Identifier">Packager</span></a><span class="Other">;</span> <span class="Identifier">pkgName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#hasPackage%2CPackager%2Cstring"><span class="Identifier">hasPackage</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="#Packager"><span class="Identifier">Packager</span></a><span class="Other">;</span> <span class="Identifier">pkgName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ReadDirEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -337,7 +340,7 @@
 </div>
 <div id="initPackager-procs-all">
   <div id="initPackager">
-  <dt><pre><span class="Keyword">proc</span> <a href="#initPackager"><span class="Identifier">initPackager</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <a href="packager.html#Packager"><span class="Identifier">Packager</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">IOError</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#initPackager"><span class="Identifier">initPackager</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <a href="#Packager"><span class="Identifier">Packager</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">IOError</span><span class="Other">]</span><span class="Other">,</span>
                                 <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">WriteDirEffect</span><span class="Other">,</span> <span class="Identifier">ReadDirEffect</span><span class="Other">]</span><span class="Other">,</span>
                                 <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
@@ -350,7 +353,7 @@
 </div>
 <div id="initPackageRemote-procs-all">
   <div id="initPackageRemote">
-  <dt><pre><span class="Keyword">proc</span> <a href="#initPackageRemote"><span class="Identifier">initPackageRemote</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <a href="packager.html#Packager"><span class="Identifier">Packager</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">IOError</span><span class="Other">,</span> <span class="Identifier">ParseError</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#initPackageRemote"><span class="Identifier">initPackageRemote</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <a href="#Packager"><span class="Identifier">Packager</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">IOError</span><span class="Other">,</span> <span class="Identifier">ParseError</span><span class="Other">,</span>
     <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">WriteDirEffect</span><span class="Other">,</span> <span class="Identifier">ReadDirEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">,</span>
                                   <span class="Identifier">ReadIOEffect</span><span class="Other">,</span> <span class="Identifier">ReadEnvEffect</span><span class="Other">,</span> <span class="Identifier">WriteEnvEffect</span><span class="Other">]</span><span class="Other">,</span>
                                      <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
@@ -364,7 +367,7 @@
 </div>
 <div id="loadModule-procs-all">
   <div id="loadModule,Packager,string">
-  <dt><pre><span class="Keyword">proc</span> <a href="#loadModule%2CPackager%2Cstring"><span class="Identifier">loadModule</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="packager.html#Packager"><span class="Identifier">Packager</span></a><span class="Other">;</span> <span class="Identifier">pkgName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.
+  <dt><pre><span class="Keyword">proc</span> <a href="#loadModule%2CPackager%2Cstring"><span class="Identifier">loadModule</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="#Packager"><span class="Identifier">Packager</span></a><span class="Other">;</span> <span class="Identifier">pkgName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">IOError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ReadIOEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -376,7 +379,7 @@
 </div>
 <div id="loadPackages-procs-all">
   <div id="loadPackages,Packager">
-  <dt><pre><span class="Keyword">proc</span> <a href="#loadPackages%2CPackager"><span class="Identifier">loadPackages</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="packager.html#Packager"><span class="Identifier">Packager</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">IOError</span><span class="Other">,</span> <span class="Identifier">OpenParserJsonError</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#loadPackages%2CPackager"><span class="Identifier">loadPackages</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="#Packager"><span class="Identifier">Packager</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">IOError</span><span class="Other">,</span> <span class="Identifier">OpenParserJsonError</span><span class="Other">,</span>
     <span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ReadDirEffect</span><span class="Other">,</span> <span class="Identifier">ReadIOEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -388,7 +391,7 @@
 </div>
 <div id="updatePackages-procs-all">
   <div id="updatePackages,Packager">
-  <dt><pre><span class="Keyword">proc</span> <a href="#updatePackages%2CPackager"><span class="Identifier">updatePackages</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="packager.html#Packager"><span class="Identifier">Packager</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">IOError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">WriteIOEffect</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#updatePackages%2CPackager"><span class="Identifier">updatePackages</span></a><span class="Other">(</span><span class="Identifier">pkgr</span><span class="Other">:</span> <a href="#Packager"><span class="Identifier">Packager</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">IOError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">WriteIOEffect</span><span class="Other">]</span><span class="Other">,</span>
                                       <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -408,7 +411,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-04-24 06:29:03 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-05-20 18:53:19 UTC</small>
       </div>
     </div>
   </div>

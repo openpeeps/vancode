@@ -16,13 +16,16 @@
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA3XAAAN1wFCKJt4AAAAB3RJTUUH4QQQEwksSS9ZWwAAAk1JREFUWMPtll2ITVEUx39nn/O7Y5qR8f05wtCUUr6ZIS++8pEnkZInPImneaCQ5METNdOkeFBKUhMPRIkHKfEuUZSUlGlKPN2TrgfncpvmnntnmlEyq1Z7t89/rf9a6+y99oZxGZf/XeIq61EdtgKXgdXA0xrYAvBjOIF1AI9zvjcC74BSpndrJPkBWDScTF8Aa4E3wDlgHbASaANmVqlcCnwHvgDvgVfAJ+AikAAvgfVZwLnSVZHZaOuKoQi3ZOMi4NkYkpe1p4J7A8BpYAD49hfIy/oqG0+hLomiKP2L5L+1ubn5115S+3OAn4EnwBlgMzCjyt6ZAnQCJ4A7wOs88iRJHvw50HoujuPBoCKwHWiosy8MdfZnAdcHk8dxXFJ3VQbQlCTJvRBCGdRbD4M6uc5glpY3eAihpN5S5w12diSEcCCEcKUO4ljdr15T76ur1FDDLIQQ3qv71EdDOe3Kxj3leRXyk+pxdWnFWod6Wt2bY3de3aSuUHcPBVimHs7mK9WrmeOF6lR1o9qnzskh2ar2qm1qizpfXaPeVGdlmGN5pb09qMxz1Xb1kLqgzn1RyH7JUXW52lr5e/Kqi9qpto7V1atuUzfnARrV7jEib1T76gG2qxdGmXyiekkt1GswPTtek0aBfJp6YySGBfWg2tPQ0FAYgf1stUfdmdcjarbYJEniKIq6gY/Aw+zWHAC+p2labGpqiorFYgGYCEzN7oQdQClN07O1/EfDyGgC0ALMBdYAi4FyK+4H3gLPsxfR1zRNi+NP7nH5J+QntnXe5B5mpfQAAAAASUVORK5CYII=">
 
 <!-- CSS -->
-<link rel="stylesheet" type="text/css" href="nimdoc.out.css?v=2.2.8">
+<link rel="stylesheet" type="text/css" href="nimdoc.out.css?v=2.2.10">
 
 <!-- JS -->
-<script type="text/javascript" src="dochack.js?v=2.2.8"></script>
+<script type="text/javascript" src="dochack.js?v=2.2.10"></script>
 </head>
 <body>
   <div class="document" id="documentId">
+    <input type="checkbox" id="nav-toggle" hidden>
+    <label for="nav-toggle" id="nav-burger">&#9776;</label>
+    <label for="nav-toggle" id="nav-overlay"></label>
     <div class="container">
       <h1 class="title">Index</h1>
       Modules: <a href="index.html">vancode</a>, <a href="vancode/interpreter/ast.html">vancode/interpreter/ast</a>, <a href="vancode/interpreter/chunk.html">vancode/interpreter/chunk</a>, <a href="vancode/interpreter/codegen.html">vancode/interpreter/codegen</a>, <a href="vancode/interpreter/errors.html">vancode/interpreter/errors</a>, <a href="vancode/interpreter/resolver.html">vancode/interpreter/resolver</a>, <a href="vancode/interpreter/stdlib/syslib.html">vancode/interpreter/stdlib/syslib</a>, <a href="vancode/interpreter/stdlib/utils.html">vancode/interpreter/stdlib/utils</a>, <a href="vancode/interpreter/sym.html">vancode/interpreter/sym</a>, <a href="vancode/interpreter/value.html">vancode/interpreter/value</a>, <a href="vancode/interpreter/vm.html">vancode/interpreter/vm</a>, <a href="vancode/manager/configurator.html">vancode/manager/configurator</a>, <a href="vancode/manager/packager.html">vancode/manager/packager</a>, <a href="vancode/manager/remote.html">vancode/manager/remote</a>.<br/><p /><h2>API symbols</h2>
@@ -836,6 +839,10 @@
 <li><a class="reference external"
           data-doc-search-tag="chunk: proc newChunk(file: string): Chunk" href="vancode/interpreter/chunk.html#newChunk%2Cstring">chunk: proc newChunk(file: string): Chunk</a></li>
           </ul></dd>
+<dt><a name="newDiskFS" href="#newDiskFS"><span>newDiskFS:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="resolver: proc newDiskFS(): VirtualFileSystem" href="vancode/interpreter/resolver.html#newDiskFS">resolver: proc newDiskFS(): VirtualFileSystem</a></li>
+          </ul></dd>
 <dt><a name="newEmpty" href="#newEmpty"><span>newEmpty:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="ast: proc newEmpty(): Node" href="vancode/interpreter/ast.html#newEmpty">ast: proc newEmpty(): Node</a></li>
@@ -850,7 +857,7 @@
           </ul></dd>
 <dt><a name="newIdent" href="#newIdent"><span>newIdent:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="ast: proc newIdent(ident: string): Node" href="vancode/interpreter/ast.html#newIdent%2Cstring">ast: proc newIdent(ident: string): Node</a></li>
+          data-doc-search-tag="ast: proc newIdent(ident: string; ln, col: int = 0): Node" href="vancode/interpreter/ast.html#newIdent%2Cstring%2Cint%2Cint">ast: proc newIdent(ident: string; ln, col: int = 0): Node</a></li>
           </ul></dd>
 <dt><a name="newIdentDefs" href="#newIdentDefs"><span>newIdentDefs:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -859,6 +866,10 @@
 <dt><a name="newInfix" href="#newInfix"><span>newInfix:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="ast: proc newInfix(op, left, right: Node): Node" href="vancode/interpreter/ast.html#newInfix%2CNode%2CNode%2CNode">ast: proc newInfix(op, left, right: Node): Node</a></li>
+          </ul></dd>
+<dt><a name="newInMemoryFS" href="#newInMemoryFS"><span>newInMemoryFS:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="resolver: proc newInMemoryFS(map: TableRef[string, string]): VirtualFileSystem" href="vancode/interpreter/resolver.html#newInMemoryFS%2CTableRef%5Bstring%2Cstring%5D">resolver: proc newInMemoryFS(map: TableRef[string, string]): VirtualFileSystem</a></li>
           </ul></dd>
 <dt><a name="newIntLit" href="#newIntLit"><span>newIntLit:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1090,6 +1101,10 @@
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc pushConst(gen: CodeGen; node: Node): Sym" href="vancode/interpreter/codegen.html#pushConst%2CCodeGen%2CNode">codegen: proc pushConst(gen: CodeGen; node: Node): Sym</a></li>
           </ul></dd>
+<dt><a name="readFile" href="#readFile"><span>readFile:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="resolver: proc readFile(resolver: FileResolver; filePath: string): string" href="vancode/interpreter/resolver.html#readFile%2CFileResolver%2Cstring">resolver: proc readFile(resolver: FileResolver; filePath: string): string</a></li>
+          </ul></dd>
 <dt><a name="rebuildStringIds" href="#rebuildStringIds"><span>rebuildStringIds:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="chunk: proc rebuildStringIds(chunk: var Chunk)" href="vancode/interpreter/chunk.html#rebuildStringIds%2CChunk">chunk: proc rebuildStringIds(chunk: var Chunk)</a></li>
@@ -1304,6 +1319,10 @@
 <li><a class="reference external"
           data-doc-search-tag="sym: TypeKind.ttyVoid" href="vancode/interpreter/sym.html#ttyVoid">sym: TypeKind.ttyVoid</a></li>
           </ul></dd>
+<dt><a name="tyAny" href="#tyAny"><span>tyAny:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="value: const tyAny" href="vancode/interpreter/value.html#tyAny">value: const tyAny</a></li>
+          </ul></dd>
 <dt><a name="tyArrayObject" href="#tyArrayObject"><span>tyArrayObject:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="value: const tyArrayObject" href="vancode/interpreter/value.html#tyArrayObject">value: const tyArrayObject</a></li>
@@ -1388,6 +1407,14 @@
 <li><a class="reference external"
           data-doc-search-tag="value: const ValueSize" href="vancode/interpreter/value.html#ValueSize">value: const ValueSize</a></li>
           </ul></dd>
+<dt><a name="vanCodeStmtNodeKinds" href="#vanCodeStmtNodeKinds"><span>vanCodeStmtNodeKinds:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="codegen: var vanCodeStmtNodeKinds" href="vancode/interpreter/codegen.html#vanCodeStmtNodeKinds">codegen: var vanCodeStmtNodeKinds</a></li>
+          </ul></dd>
+<dt><a name="VirtualFileSystem" href="#VirtualFileSystem"><span>VirtualFileSystem:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="resolver: type VirtualFileSystem" href="vancode/interpreter/resolver.html#VirtualFileSystem">resolver: type VirtualFileSystem</a></li>
+          </ul></dd>
 <dt><a name="Vm" href="#Vm"><span>Vm:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="vm: type Vm" href="vancode/interpreter/vm.html#Vm">vm: type Vm</a></li>
@@ -1412,11 +1439,15 @@
 <li><a class="reference external"
           data-doc-search-tag="errors: const WarnModuleAlreadyImported" href="vancode/interpreter/errors.html#WarnModuleAlreadyImported">errors: const WarnModuleAlreadyImported</a></li>
           </ul></dd>
+<dt><a name="withBlock" href="#withBlock"><span>withBlock:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="codegen: template withBlock(node: Node; isStmt: bool = false; body: untyped)" href="vancode/interpreter/codegen.html#withBlock.t%2CNode%2Cbool%2Cuntyped">codegen: template withBlock(node: Node; isStmt: bool = false; body: untyped)</a></li>
+          </ul></dd>
 </dl>
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-04-24 06:29:03 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-05-20 18:53:19 UTC</small>
       </div>
     </div>
   </div>

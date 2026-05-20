@@ -16,13 +16,16 @@
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA3XAAAN1wFCKJt4AAAAB3RJTUUH4QQQEwksSS9ZWwAAAk1JREFUWMPtll2ITVEUx39nn/O7Y5qR8f05wtCUUr6ZIS++8pEnkZInPImneaCQ5METNdOkeFBKUhMPRIkHKfEuUZSUlGlKPN2TrgfncpvmnntnmlEyq1Z7t89/rf9a6+y99oZxGZf/XeIq61EdtgKXgdXA0xrYAvBjOIF1AI9zvjcC74BSpndrJPkBWDScTF8Aa4E3wDlgHbASaANmVqlcCnwHvgDvgVfAJ+AikAAvgfVZwLnSVZHZaOuKoQi3ZOMi4NkYkpe1p4J7A8BpYAD49hfIy/oqG0+hLomiKP2L5L+1ubn5115S+3OAn4EnwBlgMzCjyt6ZAnQCJ4A7wOs88iRJHvw50HoujuPBoCKwHWiosy8MdfZnAdcHk8dxXFJ3VQbQlCTJvRBCGdRbD4M6uc5glpY3eAihpN5S5w12diSEcCCEcKUO4ljdr15T76ur1FDDLIQQ3qv71EdDOe3Kxj3leRXyk+pxdWnFWod6Wt2bY3de3aSuUHcPBVimHs7mK9WrmeOF6lR1o9qnzskh2ar2qm1qizpfXaPeVGdlmGN5pb09qMxz1Xb1kLqgzn1RyH7JUXW52lr5e/Kqi9qpto7V1atuUzfnARrV7jEib1T76gG2qxdGmXyiekkt1GswPTtek0aBfJp6YySGBfWg2tPQ0FAYgf1stUfdmdcjarbYJEniKIq6gY/Aw+zWHAC+p2labGpqiorFYgGYCEzN7oQdQClN07O1/EfDyGgC0ALMBdYAi4FyK+4H3gLPsxfR1zRNi+NP7nH5J+QntnXe5B5mpfQAAAAASUVORK5CYII=">
 
 <!-- CSS -->
-<link rel="stylesheet" type="text/css" href="../../nimdoc.out.css?v=2.2.8">
+<link rel="stylesheet" type="text/css" href="../../nimdoc.out.css?v=2.2.10">
 
 <!-- JS -->
-<script type="text/javascript" src="../../dochack.js?v=2.2.8"></script>
+<script type="text/javascript" src="../../dochack.js?v=2.2.10"></script>
 </head>
 <body>
   <div class="document" id="documentId">
+    <input type="checkbox" id="nav-toggle" hidden>
+    <label for="nav-toggle" id="nav-burger">&#9776;</label>
+    <label for="nav-toggle" id="nav-overlay"></label>
     <div class="container">
       <h1 class="title">vancode/interpreter/ast</h1>
       <div class="row">
@@ -87,9 +90,10 @@
   nkEmpty, nkBool, nkInt, nkFloat, nkString, nkIdent, nkVarTy, nkNil, nkScript,
   nkIdentDefs, nkFormalParams, nkGenericParams, nkRecFields, nkPrefix,
   nkPostfix, nkInfix, nkDot, nkBracket, nkColon, nkIndex, nkCall, nkIf,
-  nkProcTy, nkTypeDef, nkVar = &quot;var&quot;, nkLet = &quot;let&quot;, nkConst = &quot;const&quot;, nkWhile,
-  nkFor, nkBreak, nkContinue, nkReturn, nkYield, nkImport, nkInclude, nkStatic,
-  nkObject, nkArray, nkProc, nkIterator, nkBlock, nkDocComment, nkObjectStorage">NodeKind</a></li>
+  nkAssign, nkProcTy, nkTypeDef, nkVar = &quot;var&quot;, nkLet = &quot;let&quot;,
+  nkConst = &quot;const&quot;, nkWhile, nkFor, nkBreak, nkContinue, nkReturn, nkYield,
+  nkImport, nkInclude, nkStatic, nkObject, nkArray, nkProc, nkIterator, nkBlock,
+  nkDocComment, nkObjectStorage">NodeKind</a></li>
 
     </ul>
   </details>
@@ -98,7 +102,7 @@
   <details open>
     <summary><a class="reference reference-toplevel" href="#9" id="59">Lets</a></summary>
     <ul class="simple simple-toc-section">
-      <li><a class="reference" href="#defaultNil" title="defaultNil = newIdent(&quot;nil&quot;)">defaultNil</a></li>
+      <li><a class="reference" href="#defaultNil" title="defaultNil = newIdent(&quot;nil&quot;, 0, 0)">defaultNil</a></li>
 
     </ul>
   </details>
@@ -159,7 +163,7 @@
 
 </ul>
 <ul class="simple nested-toc-section">newIdent
-  <li><a class="reference" href="#newIdent%2Cstring" title="newIdent(ident: string): Node">newIdent(ident: string): Node</a></li>
+  <li><a class="reference" href="#newIdent%2Cstring%2Cint%2Cint" title="newIdent(ident: string; ln, col: int = 0): Node">newIdent(ident: string; ln, col: int = 0): Node</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">newIdentDefs
@@ -238,10 +242,10 @@
   <h1><a class="toc-backref" href="#7">Types</a></h1>
   <dl class="item">
     <div id="Ast">
-  <dt><pre><a href="ast.html#Ast"><span class="Identifier">Ast</span></a> {.<span class="Identifier">acyclic</span>.} <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span>
+  <dt><pre><a href="#Ast"><span class="Identifier">Ast</span></a> {.<span class="Identifier">acyclic</span>.} <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span>
   <span class="Identifier">sourcePath</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>        <span class="Comment">## The source path of the AST (e.g., the file path of the template)</span>
   <span class="Identifier">otherPaths</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span>   <span class="Comment">## Other paths that this AST is associated with (imported/included templates)</span>
-  <span class="Identifier">nodes</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">]</span>          <span class="Comment">## The top-level nodes of the AST</span></pre></dt>
+  <span class="Identifier">nodes</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#Node"><span class="Identifier">Node</span></a><span class="Other">]</span>          <span class="Comment">## The top-level nodes of the AST</span></pre></dt>
   <dd>
     
     
@@ -249,7 +253,7 @@
   </dd>
 </div>
 <div id="HtmlAttributeType">
-  <dt><pre><a href="ast.html#HtmlAttributeType"><span class="Identifier">HtmlAttributeType</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
+  <dt><pre><a href="#HtmlAttributeType"><span class="Identifier">HtmlAttributeType</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">htmlAttrClass</span><span class="Other">,</span> <span class="Identifier">htmlAttrId</span><span class="Other">,</span> <span class="Identifier">htmlAttrIdent</span><span class="Other">,</span> <span class="Identifier">htmlAttr</span></pre></dt>
   <dd>
     
@@ -258,9 +262,9 @@
   </dd>
 </div>
 <div id="Node">
-  <dt><pre><a href="ast.html#Node"><span class="Identifier">Node</span></a> {.<span class="Identifier">acyclic</span>.} <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span>
+  <dt><pre><a href="#Node"><span class="Identifier">Node</span></a> {.<span class="Identifier">acyclic</span>.} <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span>
   <span class="Identifier">ln</span><span class="Operator">*</span><span class="Other">,</span> <span class="Identifier">col</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>             <span class="Comment">## Line information used for compile errors</span>
-  <span class="Keyword">case</span> <span class="Identifier">kind</span><span class="Operator">*</span> {.<span class="Identifier">extensibleCase</span>.}<span class="Other">:</span> <a href="ast.html#NodeKind"><span class="Identifier">NodeKind</span></a>
+  <span class="Keyword">case</span> <span class="Identifier">kind</span><span class="Operator">*</span> {.<span class="Identifier">extensibleCase</span>.}<span class="Other">:</span> <a href="#NodeKind"><span class="Identifier">NodeKind</span></a>
   <span class="Keyword">of</span> <span class="Identifier">nkEmpty</span><span class="Other">,</span> <span class="Identifier">nkNil</span><span class="Other">:</span>
     <span class="Keyword">nil</span>
   <span class="Keyword">of</span> <span class="Identifier">nkBool</span><span class="Other">:</span>
@@ -274,11 +278,11 @@
   <span class="Keyword">of</span> <span class="Identifier">nkIdent</span><span class="Other">:</span>
     <span class="Identifier">ident</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>           <span class="Comment">## The identifier name</span>
   <span class="Keyword">of</span> <span class="Identifier">nkVarTy</span><span class="Other">:</span>
-    <span class="Identifier">varType</span><span class="Operator">*</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a>           <span class="Comment">## The variable type node</span>
+    <span class="Identifier">varType</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a>           <span class="Comment">## The variable type node</span>
   <span class="Keyword">of</span> <span class="Identifier">nkDocComment</span><span class="Other">:</span>
     <span class="Identifier">comment</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>         <span class="Comment">## The doc comment content</span>
   <span class="Keyword">else</span><span class="Other">:</span>
-    <span class="Identifier">children</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">]</span>     <span class="Comment">## Child nodes used to build the AST tree</span>
+    <span class="Identifier">children</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#Node"><span class="Identifier">Node</span></a><span class="Other">]</span>     <span class="Comment">## Child nodes used to build the AST tree</span>
                              <span class="Comment">## Used for all other node kinds not listed above</span></pre></dt>
   <dd>
     
@@ -287,13 +291,14 @@
   </dd>
 </div>
 <div id="NodeKind">
-  <dt><pre><a href="ast.html#NodeKind"><span class="Identifier">NodeKind</span></a> {..} <span class="Other">=</span> <span class="Keyword">enum</span>
+  <dt><pre><a href="#NodeKind"><span class="Identifier">NodeKind</span></a> {..} <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">nkEmpty</span><span class="Other">,</span> <span class="Identifier">nkBool</span><span class="Other">,</span> <span class="Identifier">nkInt</span><span class="Other">,</span> <span class="Identifier">nkFloat</span><span class="Other">,</span> <span class="Identifier">nkString</span><span class="Other">,</span> <span class="Identifier">nkIdent</span><span class="Other">,</span> <span class="Identifier">nkVarTy</span><span class="Other">,</span> <span class="Identifier">nkNil</span><span class="Other">,</span> <span class="Identifier">nkScript</span><span class="Other">,</span>
   <span class="Identifier">nkIdentDefs</span><span class="Other">,</span> <span class="Identifier">nkFormalParams</span><span class="Other">,</span> <span class="Identifier">nkGenericParams</span><span class="Other">,</span> <span class="Identifier">nkRecFields</span><span class="Other">,</span> <span class="Identifier">nkPrefix</span><span class="Other">,</span>
   <span class="Identifier">nkPostfix</span><span class="Other">,</span> <span class="Identifier">nkInfix</span><span class="Other">,</span> <span class="Identifier">nkDot</span><span class="Other">,</span> <span class="Identifier">nkBracket</span><span class="Other">,</span> <span class="Identifier">nkColon</span><span class="Other">,</span> <span class="Identifier">nkIndex</span><span class="Other">,</span> <span class="Identifier">nkCall</span><span class="Other">,</span> <span class="Identifier">nkIf</span><span class="Other">,</span>
-  <span class="Identifier">nkProcTy</span><span class="Other">,</span> <span class="Identifier">nkTypeDef</span><span class="Other">,</span> <span class="Identifier">nkVar</span> <span class="Other">=</span> <span class="StringLit">&quot;var&quot;</span><span class="Other">,</span> <span class="Identifier">nkLet</span> <span class="Other">=</span> <span class="StringLit">&quot;let&quot;</span><span class="Other">,</span> <span class="Identifier">nkConst</span> <span class="Other">=</span> <span class="StringLit">&quot;const&quot;</span><span class="Other">,</span> <span class="Identifier">nkWhile</span><span class="Other">,</span>
-  <span class="Identifier">nkFor</span><span class="Other">,</span> <span class="Identifier">nkBreak</span><span class="Other">,</span> <span class="Identifier">nkContinue</span><span class="Other">,</span> <span class="Identifier">nkReturn</span><span class="Other">,</span> <span class="Identifier">nkYield</span><span class="Other">,</span> <span class="Identifier">nkImport</span><span class="Other">,</span> <span class="Identifier">nkInclude</span><span class="Other">,</span> <span class="Identifier">nkStatic</span><span class="Other">,</span>
-  <span class="Identifier">nkObject</span><span class="Other">,</span> <span class="Identifier">nkArray</span><span class="Other">,</span> <span class="Identifier">nkProc</span><span class="Other">,</span> <span class="Identifier">nkIterator</span><span class="Other">,</span> <span class="Identifier">nkBlock</span><span class="Other">,</span> <span class="Identifier">nkDocComment</span><span class="Other">,</span> <span class="Identifier">nkObjectStorage</span></pre></dt>
+  <span class="Identifier">nkAssign</span><span class="Other">,</span> <span class="Identifier">nkProcTy</span><span class="Other">,</span> <span class="Identifier">nkTypeDef</span><span class="Other">,</span> <span class="Identifier">nkVar</span> <span class="Other">=</span> <span class="StringLit">&quot;var&quot;</span><span class="Other">,</span> <span class="Identifier">nkLet</span> <span class="Other">=</span> <span class="StringLit">&quot;let&quot;</span><span class="Other">,</span>
+  <span class="Identifier">nkConst</span> <span class="Other">=</span> <span class="StringLit">&quot;const&quot;</span><span class="Other">,</span> <span class="Identifier">nkWhile</span><span class="Other">,</span> <span class="Identifier">nkFor</span><span class="Other">,</span> <span class="Identifier">nkBreak</span><span class="Other">,</span> <span class="Identifier">nkContinue</span><span class="Other">,</span> <span class="Identifier">nkReturn</span><span class="Other">,</span> <span class="Identifier">nkYield</span><span class="Other">,</span>
+  <span class="Identifier">nkImport</span><span class="Other">,</span> <span class="Identifier">nkInclude</span><span class="Other">,</span> <span class="Identifier">nkStatic</span><span class="Other">,</span> <span class="Identifier">nkObject</span><span class="Other">,</span> <span class="Identifier">nkArray</span><span class="Other">,</span> <span class="Identifier">nkProc</span><span class="Other">,</span> <span class="Identifier">nkIterator</span><span class="Other">,</span> <span class="Identifier">nkBlock</span><span class="Other">,</span>
+  <span class="Identifier">nkDocComment</span><span class="Other">,</span> <span class="Identifier">nkObjectStorage</span></pre></dt>
   <dd>
     
     
@@ -307,7 +312,7 @@
   <h1><a class="toc-backref" href="#9">Lets</a></h1>
   <dl class="item">
     <div id="defaultNil">
-  <dt><pre><a href="ast.html#defaultNil"><span class="Identifier">defaultNil</span></a> <span class="Other">=</span> <span class="Identifier">newIdent</span><span class="Other">(</span><span class="StringLit">&quot;nil&quot;</span><span class="Other">)</span></pre></dt>
+  <dt><pre><a href="#defaultNil"><span class="Identifier">defaultNil</span></a> <span class="Other">=</span> <span class="Identifier">newIdent</span><span class="Other">(</span><span class="StringLit">&quot;nil&quot;</span><span class="Other">,</span> <span class="DecNumber">0</span><span class="Other">,</span> <span class="DecNumber">0</span><span class="Other">)</span></pre></dt>
   <dd>
     
     
@@ -322,7 +327,7 @@
   <dl class="item">
     <div id="$-procs-all">
   <div id="$,Node">
-  <dt><pre><span class="Keyword">proc</span> <a href="#%24%2CNode"><span class="Identifier">`$`</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#%24%2CNode"><span class="Identifier">`$`</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Stringify a node. This only supports leaf nodes, for trees, use <tt class="docutils literal"><span class="pre">treeRepr</span></tt>.
@@ -333,7 +338,7 @@
 </div>
 <div id="[]-procs-all">
   <div id="[],Node,">
-  <dt><pre><span class="Keyword">proc</span> <a href="#%5B%5D%2CNode%2C"><span class="Identifier">`[]`</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">index</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Operator">|</span> <span class="Identifier">BackwardsIndex</span><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a></pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#%5B%5D%2CNode%2C"><span class="Identifier">`[]`</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">index</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Operator">|</span> <span class="Identifier">BackwardsIndex</span><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a></pre></dt>
   <dd>
     
     
@@ -341,7 +346,7 @@
   </dd>
 </div>
 <div id="[],Node,HSlice">
-  <dt><pre><span class="Keyword">proc</span> <a href="#%5B%5D%2CNode%2CHSlice"><span class="Identifier">`[]`</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">slice</span><span class="Other">:</span> <span class="Identifier">HSlice</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">]</span></pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#%5B%5D%2CNode%2CHSlice"><span class="Identifier">`[]`</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">slice</span><span class="Other">:</span> <span class="Identifier">HSlice</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#Node"><span class="Identifier">Node</span></a><span class="Other">]</span></pre></dt>
   <dd>
     
     
@@ -352,7 +357,7 @@
 </div>
 <div id="[]=-procs-all">
   <div id="[]=,Node,,Node">
-  <dt><pre><span class="Keyword">proc</span> <a href="#%5B%5D%3D%2CNode%2C%2CNode"><span class="Identifier">`[]=`</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">index</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Operator">|</span> <span class="Identifier">BackwardsIndex</span><span class="Other">;</span> <span class="Identifier">child</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span></pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#%5B%5D%3D%2CNode%2C%2CNode"><span class="Identifier">`[]=`</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">index</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Operator">|</span> <span class="Identifier">BackwardsIndex</span><span class="Other">;</span> <span class="Identifier">child</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">)</span></pre></dt>
   <dd>
     
     
@@ -363,7 +368,7 @@
 </div>
 <div id="add-procs-all">
   <div id="add,Node,Node">
-  <dt><pre><span class="Keyword">proc</span> <a href="#add%2CNode%2CNode"><span class="Identifier">add</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">,</span> <span class="Identifier">child</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> {.<span class="Identifier">discardable</span><span class="Other">,</span> <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#add%2CNode%2CNode"><span class="Identifier">add</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">,</span> <span class="Identifier">child</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.<span class="Identifier">discardable</span><span class="Other">,</span> <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
                                     <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -372,7 +377,7 @@
   </dd>
 </div>
 <div id="add,Node,openArray[Node]">
-  <dt><pre><span class="Keyword">proc</span> <a href="#add%2CNode%2CopenArray%5BNode%5D"><span class="Identifier">add</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">children</span><span class="Other">:</span> <span class="Identifier">openArray</span><span class="Other">[</span><a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> {.<span class="Identifier">discardable</span><span class="Other">,</span> <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#add%2CNode%2CopenArray%5BNode%5D"><span class="Identifier">add</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">children</span><span class="Other">:</span> <span class="Identifier">openArray</span><span class="Other">[</span><a href="#Node"><span class="Identifier">Node</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.<span class="Identifier">discardable</span><span class="Other">,</span> <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -384,7 +389,7 @@
 </div>
 <div id="debugEcho-procs-all">
   <div id="debugEcho,Node">
-  <dt><pre><span class="Keyword">proc</span> <a href="#debugEcho%2CNode"><span class="Identifier">debugEcho</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">gcsafe</span><span class="Other">,</span> <span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">OpenParserJsonError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#debugEcho%2CNode"><span class="Identifier">debugEcho</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">gcsafe</span><span class="Other">,</span> <span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">OpenParserJsonError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span>
     <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -393,7 +398,7 @@
   </dd>
 </div>
 <div id="debugEcho,seq[Node]">
-  <dt><pre><span class="Keyword">proc</span> <a href="#debugEcho%2Cseq%5BNode%5D"><span class="Identifier">debugEcho</span></a><span class="Other">(</span><span class="Identifier">nodes</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">gcsafe</span><span class="Other">,</span> <span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">OpenParserJsonError</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#debugEcho%2Cseq%5BNode%5D"><span class="Identifier">debugEcho</span></a><span class="Other">(</span><span class="Identifier">nodes</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#Node"><span class="Identifier">Node</span></a><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">gcsafe</span><span class="Other">,</span> <span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">OpenParserJsonError</span><span class="Other">,</span>
     <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -405,7 +410,7 @@
 </div>
 <div id="hash-procs-all">
   <div id="hash,Node">
-  <dt><pre><span class="Keyword">proc</span> <a href="#hash%2CNode"><span class="Identifier">hash</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Hash</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#hash%2CNode"><span class="Identifier">hash</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Hash</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
                               <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -417,7 +422,7 @@
 </div>
 <div id="len-procs-all">
   <div id="len,Node">
-  <dt><pre><span class="Keyword">proc</span> <a href="#len%2CNode"><span class="Identifier">len</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#len%2CNode"><span class="Identifier">len</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     
@@ -428,7 +433,7 @@
 </div>
 <div id="newBoolLit-procs-all">
   <div id="newBoolLit,bool">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newBoolLit%2Cbool"><span class="Identifier">newBoolLit</span></a><span class="Other">(</span><span class="Identifier">val</span><span class="Other">:</span> <span class="Identifier">bool</span><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#newBoolLit%2Cbool"><span class="Identifier">newBoolLit</span></a><span class="Other">(</span><span class="Identifier">val</span><span class="Other">:</span> <span class="Identifier">bool</span><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Construct a new bool literal.
@@ -439,7 +444,7 @@
 </div>
 <div id="newCall-procs-all">
   <div id="newCall,Node,varargs[Node]">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newCall%2CNode%2Cvarargs%5BNode%5D"><span class="Identifier">newCall</span></a><span class="Other">(</span><span class="Identifier">ident</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">args</span><span class="Other">:</span> <span class="Identifier">varargs</span><span class="Other">[</span><a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#newCall%2CNode%2Cvarargs%5BNode%5D"><span class="Identifier">newCall</span></a><span class="Other">(</span><span class="Identifier">ident</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">args</span><span class="Other">:</span> <span class="Identifier">varargs</span><span class="Other">[</span><a href="#Node"><span class="Identifier">Node</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -451,7 +456,7 @@
 </div>
 <div id="newEmpty-procs-all">
   <div id="newEmpty">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newEmpty"><span class="Identifier">newEmpty</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#newEmpty"><span class="Identifier">newEmpty</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Construct a new empty node.
@@ -462,7 +467,7 @@
 </div>
 <div id="newFloatLit-procs-all">
   <div id="newFloatLit,float64">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newFloatLit%2Cfloat64"><span class="Identifier">newFloatLit</span></a><span class="Other">(</span><span class="Identifier">val</span><span class="Other">:</span> <span class="Identifier">float64</span><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#newFloatLit%2Cfloat64"><span class="Identifier">newFloatLit</span></a><span class="Other">(</span><span class="Identifier">val</span><span class="Other">:</span> <span class="Identifier">float64</span><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Construct a new float literal.
@@ -473,8 +478,8 @@
 </div>
 <div id="newFunction-procs-all">
   <div id="newFunction,Node,Node,Node,Node">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newFunction%2CNode%2CNode%2CNode%2CNode"><span class="Identifier">newFunction</span></a><span class="Other">(</span><span class="Identifier">ident</span><span class="Other">,</span> <span class="Identifier">body</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span>
-                 <span class="Identifier">genericParams</span><span class="Other">,</span> <span class="Identifier">formalParams</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> <span class="Other">=</span> <span class="Identifier">newEmpty</span><span class="Other">(</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> {.
+  <dt><pre><span class="Keyword">proc</span> <a href="#newFunction%2CNode%2CNode%2CNode%2CNode"><span class="Identifier">newFunction</span></a><span class="Other">(</span><span class="Identifier">ident</span><span class="Other">,</span> <span class="Identifier">body</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">;</span>
+                 <span class="Identifier">genericParams</span><span class="Other">,</span> <span class="Identifier">formalParams</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> <span class="Other">=</span> <span class="Identifier">newEmpty</span><span class="Other">(</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -485,8 +490,9 @@
 
 </div>
 <div id="newIdent-procs-all">
-  <div id="newIdent,string">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newIdent%2Cstring"><span class="Identifier">newIdent</span></a><span class="Other">(</span><span class="Identifier">ident</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <div id="newIdent,string,int,int">
+  <dt><pre><span class="Keyword">proc</span> <a href="#newIdent%2Cstring%2Cint%2Cint"><span class="Identifier">newIdent</span></a><span class="Other">(</span><span class="Identifier">ident</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span> <span class="Identifier">ln</span><span class="Other">,</span> <span class="Identifier">col</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">0</span><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Construct a new ident node.
@@ -497,7 +503,7 @@
 </div>
 <div id="newIdentDefs-procs-all">
   <div id="newIdentDefs,openArray[Node],Node">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newIdentDefs%2CopenArray%5BNode%5D%2CNode"><span class="Identifier">newIdentDefs</span></a><span class="Other">(</span><span class="Identifier">names</span><span class="Other">:</span> <span class="Identifier">openArray</span><span class="Other">[</span><a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">]</span><span class="Other">;</span> <span class="Identifier">ty</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">value</span> <span class="Other">=</span> <span class="Identifier">newEmpty</span><span class="Other">(</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> {.
+  <dt><pre><span class="Keyword">proc</span> <a href="#newIdentDefs%2CopenArray%5BNode%5D%2CNode"><span class="Identifier">newIdentDefs</span></a><span class="Other">(</span><span class="Identifier">names</span><span class="Other">:</span> <span class="Identifier">openArray</span><span class="Other">[</span><a href="#Node"><span class="Identifier">Node</span></a><span class="Other">]</span><span class="Other">;</span> <span class="Identifier">ty</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">value</span> <span class="Other">=</span> <span class="Identifier">newEmpty</span><span class="Other">(</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -509,7 +515,7 @@
 </div>
 <div id="newInfix-procs-all">
   <div id="newInfix,Node,Node,Node">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newInfix%2CNode%2CNode%2CNode"><span class="Identifier">newInfix</span></a><span class="Other">(</span><span class="Identifier">op</span><span class="Other">,</span> <span class="Identifier">left</span><span class="Other">,</span> <span class="Identifier">right</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#newInfix%2CNode%2CNode%2CNode"><span class="Identifier">newInfix</span></a><span class="Other">(</span><span class="Identifier">op</span><span class="Other">,</span> <span class="Identifier">left</span><span class="Other">,</span> <span class="Identifier">right</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Construct a new infix node.
@@ -520,7 +526,7 @@
 </div>
 <div id="newIntLit-procs-all">
   <div id="newIntLit,int64">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newIntLit%2Cint64"><span class="Identifier">newIntLit</span></a><span class="Other">(</span><span class="Identifier">val</span><span class="Other">:</span> <span class="Identifier">int64</span><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#newIntLit%2Cint64"><span class="Identifier">newIntLit</span></a><span class="Other">(</span><span class="Identifier">val</span><span class="Other">:</span> <span class="Identifier">int64</span><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Construct a new integer literal.
@@ -531,7 +537,7 @@
 </div>
 <div id="newNil-procs-all">
   <div id="newNil">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newNil"><span class="Identifier">newNil</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#newNil"><span class="Identifier">newNil</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Construct a new nil node.
@@ -542,7 +548,7 @@
 </div>
 <div id="newNode-procs-all">
   <div id="newNode,NodeKind">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newNode%2CNodeKind"><span class="Identifier">newNode</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="ast.html#NodeKind"><span class="Identifier">NodeKind</span></a><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#newNode%2CNodeKind"><span class="Identifier">newNode</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="#NodeKind"><span class="Identifier">NodeKind</span></a><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Construct a new node.
@@ -553,7 +559,7 @@
 </div>
 <div id="newStringLit-procs-all">
   <div id="newStringLit,string">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newStringLit%2Cstring"><span class="Identifier">newStringLit</span></a><span class="Other">(</span><span class="Identifier">val</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#newStringLit%2Cstring"><span class="Identifier">newStringLit</span></a><span class="Other">(</span><span class="Identifier">val</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Construct a new string literal.
@@ -564,7 +570,7 @@
 </div>
 <div id="newTree-procs-all">
   <div id="newTree,NodeKind,varargs[Node]">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newTree%2CNodeKind%2Cvarargs%5BNode%5D"><span class="Identifier">newTree</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="ast.html#NodeKind"><span class="Identifier">NodeKind</span></a><span class="Other">;</span> <span class="Identifier">children</span><span class="Other">:</span> <span class="Identifier">varargs</span><span class="Other">[</span><a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#newTree%2CNodeKind%2Cvarargs%5BNode%5D"><span class="Identifier">newTree</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="#NodeKind"><span class="Identifier">NodeKind</span></a><span class="Other">;</span> <span class="Identifier">children</span><span class="Other">:</span> <span class="Identifier">varargs</span><span class="Other">[</span><a href="#Node"><span class="Identifier">Node</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -576,7 +582,7 @@
 </div>
 <div id="nkBlock-procs-all">
   <div id="nkBlock,varargs[Node]">
-  <dt><pre><span class="Keyword">proc</span> <a href="#nkBlock%2Cvarargs%5BNode%5D"><span class="Identifier">nkBlock</span></a><span class="Other">(</span><span class="Identifier">children</span><span class="Other">:</span> <span class="Identifier">varargs</span><span class="Other">[</span><a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#nkBlock%2Cvarargs%5BNode%5D"><span class="Identifier">nkBlock</span></a><span class="Other">(</span><span class="Identifier">children</span><span class="Other">:</span> <span class="Identifier">varargs</span><span class="Other">[</span><a href="#Node"><span class="Identifier">Node</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Construct a new block.
@@ -587,7 +593,7 @@
 </div>
 <div id="render-procs-all">
   <div id="render,Node">
-  <dt><pre><span class="Keyword">proc</span> <a href="#render%2CNode"><span class="Identifier">render</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#render%2CNode"><span class="Identifier">render</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
                                   <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -599,7 +605,7 @@
 </div>
 <div id="treeRepr-procs-all">
   <div id="treeRepr,Node">
-  <dt><pre><span class="Keyword">proc</span> <a href="#treeRepr%2CNode"><span class="Identifier">treeRepr</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#treeRepr%2CNode"><span class="Identifier">treeRepr</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Stringify a node into a tree representation.
@@ -616,7 +622,7 @@
   <dl class="item">
     <div id="items-iterators-all">
   <div id="items.i,Node">
-  <dt><pre><span class="Keyword">iterator</span> <a href="#items.i%2CNode"><span class="Identifier">items</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">iterator</span> <a href="#items.i%2CNode"><span class="Identifier">items</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     
@@ -627,7 +633,7 @@
 </div>
 <div id="pairs-iterators-all">
   <div id="pairs.i,Node">
-  <dt><pre><span class="Keyword">iterator</span> <a href="#pairs.i%2CNode"><span class="Identifier">pairs</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Keyword">tuple</span><span class="Other">[</span><span class="Identifier">i</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">,</span> <span class="Identifier">n</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">]</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">iterator</span> <a href="#pairs.i%2CNode"><span class="Identifier">pairs</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Keyword">tuple</span><span class="Other">[</span><span class="Identifier">i</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">,</span> <span class="Identifier">n</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a><span class="Other">]</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -647,7 +653,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-04-24 06:29:02 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-05-20 18:53:18 UTC</small>
       </div>
     </div>
   </div>

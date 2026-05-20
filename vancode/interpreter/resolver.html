@@ -16,13 +16,16 @@
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA3XAAAN1wFCKJt4AAAAB3RJTUUH4QQQEwksSS9ZWwAAAk1JREFUWMPtll2ITVEUx39nn/O7Y5qR8f05wtCUUr6ZIS++8pEnkZInPImneaCQ5METNdOkeFBKUhMPRIkHKfEuUZSUlGlKPN2TrgfncpvmnntnmlEyq1Z7t89/rf9a6+y99oZxGZf/XeIq61EdtgKXgdXA0xrYAvBjOIF1AI9zvjcC74BSpndrJPkBWDScTF8Aa4E3wDlgHbASaANmVqlcCnwHvgDvgVfAJ+AikAAvgfVZwLnSVZHZaOuKoQi3ZOMi4NkYkpe1p4J7A8BpYAD49hfIy/oqG0+hLomiKP2L5L+1ubn5115S+3OAn4EnwBlgMzCjyt6ZAnQCJ4A7wOs88iRJHvw50HoujuPBoCKwHWiosy8MdfZnAdcHk8dxXFJ3VQbQlCTJvRBCGdRbD4M6uc5glpY3eAihpN5S5w12diSEcCCEcKUO4ljdr15T76ur1FDDLIQQ3qv71EdDOe3Kxj3leRXyk+pxdWnFWod6Wt2bY3de3aSuUHcPBVimHs7mK9WrmeOF6lR1o9qnzskh2ar2qm1qizpfXaPeVGdlmGN5pb09qMxz1Xb1kLqgzn1RyH7JUXW52lr5e/Kqi9qpto7V1atuUzfnARrV7jEib1T76gG2qxdGmXyiekkt1GswPTtek0aBfJp6YySGBfWg2tPQ0FAYgf1stUfdmdcjarbYJEniKIq6gY/Aw+zWHAC+p2labGpqiorFYgGYCEzN7oQdQClN07O1/EfDyGgC0ALMBdYAi4FyK+4H3gLPsxfR1zRNi+NP7nH5J+QntnXe5B5mpfQAAAAASUVORK5CYII=">
 
 <!-- CSS -->
-<link rel="stylesheet" type="text/css" href="../../nimdoc.out.css?v=2.2.8">
+<link rel="stylesheet" type="text/css" href="../../nimdoc.out.css?v=2.2.10">
 
 <!-- JS -->
-<script type="text/javascript" src="../../dochack.js?v=2.2.8"></script>
+<script type="text/javascript" src="../../dochack.js?v=2.2.10"></script>
 </head>
 <body>
   <div class="document" id="documentId">
+    <input type="checkbox" id="nav-toggle" hidden>
+    <label for="nav-toggle" id="nav-burger">&#9776;</label>
+    <label for="nav-toggle" id="nav-overlay"></label>
     <div class="container">
       <h1 class="title">vancode/interpreter/resolver</h1>
       <div class="row">
@@ -56,8 +59,14 @@
     <summary><a class="reference reference-toplevel" href="#7" id="57">Types</a></summary>
     <ul class="simple simple-toc-section">
       <li><a class="reference" href="#FileResolver" title="FileResolver = object
-  resolvedFiles*: ResolvedFiles">FileResolver</a></li>
+  resolvedFiles*: ResolvedFiles
+  fs*: VirtualFileSystem ## The virtual file system used to check for file existence and
+                         ## read file contents. This allows us to swap out the actual disk FS for
+                         ## an in-memory or embedded FS">FileResolver</a></li>
 <li><a class="reference" href="#ResolverError" title="ResolverError = object of CatchableError">ResolverError</a></li>
+<li><a class="reference" href="#VirtualFileSystem" title="VirtualFileSystem = ref object
+  existsProc*: proc (path: string): bool
+  readProc*: proc (path: string): string">VirtualFileSystem</a></li>
 
     </ul>
   </details>
@@ -90,6 +99,18 @@
   <li><a class="reference" href="#isResolved%2CFileResolver%2Cstring" title="isResolved(resolver: FileResolver; filePath: string): bool">isResolved(resolver: FileResolver; filePath: string): bool</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">newDiskFS
+  <li><a class="reference" href="#newDiskFS" title="newDiskFS(): VirtualFileSystem">newDiskFS(): VirtualFileSystem</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">newInMemoryFS
+  <li><a class="reference" href="#newInMemoryFS%2CTableRef%5Bstring%2Cstring%5D" title="newInMemoryFS(map: TableRef[string, string]): VirtualFileSystem">newInMemoryFS(map: TableRef[string, string]): VirtualFileSystem</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">readFile
+  <li><a class="reference" href="#readFile%2CFileResolver%2Cstring" title="readFile(resolver: FileResolver; filePath: string): string">readFile(resolver: FileResolver; filePath: string): string</a></li>
+
+</ul>
 <ul class="simple nested-toc-section">resolveFile
   <li><a class="reference" href="#resolveFile%2CFileResolver%2Cstring%2Cstring" title="resolveFile(resolver: var FileResolver; aFile, bFile: string)">resolveFile(resolver: var FileResolver; aFile, bFile: string)</a></li>
 
@@ -119,8 +140,11 @@
   <h1><a class="toc-backref" href="#7">Types</a></h1>
   <dl class="item">
     <div id="FileResolver">
-  <dt><pre><a href="resolver.html#FileResolver"><span class="Identifier">FileResolver</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
-  <span class="Identifier">resolvedFiles</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">ResolvedFiles</span></pre></dt>
+  <dt><pre><a href="#FileResolver"><span class="Identifier">FileResolver</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">resolvedFiles</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">ResolvedFiles</span>
+  <span class="Identifier">fs</span><span class="Operator">*</span><span class="Other">:</span> <a href="#VirtualFileSystem"><span class="Identifier">VirtualFileSystem</span></a> <span class="Comment">## The virtual file system used to check for file existence and</span>
+                         <span class="Comment">## read file contents. This allows us to swap out the actual disk FS for</span>
+                         <span class="Comment">## an in-memory or embedded FS</span></pre></dt>
   <dd>
     
     Manages file resolution for imports/includes
@@ -128,7 +152,17 @@
   </dd>
 </div>
 <div id="ResolverError">
-  <dt><pre><a href="resolver.html#ResolverError"><span class="Identifier">ResolverError</span></a> <span class="Other">=</span> <span class="Keyword">object</span> <span class="Keyword">of</span> <span class="Identifier">CatchableError</span></pre></dt>
+  <dt><pre><a href="#ResolverError"><span class="Identifier">ResolverError</span></a> <span class="Other">=</span> <span class="Keyword">object</span> <span class="Keyword">of</span> <span class="Identifier">CatchableError</span></pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+<div id="VirtualFileSystem">
+  <dt><pre><a href="#VirtualFileSystem"><span class="Identifier">VirtualFileSystem</span></a> <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span>
+  <span class="Identifier">existsProc</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">path</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span>
+  <span class="Identifier">readProc</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">path</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span></pre></dt>
   <dd>
     
     
@@ -143,7 +177,7 @@
   <dl class="item">
     <div id="clearFile-procs-all">
   <div id="clearFile,FileResolver,string">
-  <dt><pre><span class="Keyword">proc</span> <a href="#clearFile%2CFileResolver%2Cstring"><span class="Identifier">clearFile</span></a><span class="Other">(</span><span class="Identifier">resolver</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="resolver.html#FileResolver"><span class="Identifier">FileResolver</span></a><span class="Other">;</span> <span class="Identifier">filePath</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span> {.
+  <dt><pre><span class="Keyword">proc</span> <a href="#clearFile%2CFileResolver%2Cstring"><span class="Identifier">clearFile</span></a><span class="Other">(</span><span class="Identifier">resolver</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="#FileResolver"><span class="Identifier">FileResolver</span></a><span class="Other">;</span> <span class="Identifier">filePath</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -155,7 +189,7 @@
 </div>
 <div id="dependants-procs-all">
   <div id="dependants,FileResolver,string">
-  <dt><pre><span class="Keyword">proc</span> <a href="#dependants%2CFileResolver%2Cstring"><span class="Identifier">dependants</span></a><span class="Other">(</span><span class="Identifier">resolver</span><span class="Other">:</span> <a href="resolver.html#FileResolver"><span class="Identifier">FileResolver</span></a><span class="Other">;</span> <span class="Identifier">target</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span> <span class="Identifier">recursive</span> <span class="Other">=</span> <span class="Identifier">true</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#dependants%2CFileResolver%2Cstring"><span class="Identifier">dependants</span></a><span class="Other">(</span><span class="Identifier">resolver</span><span class="Other">:</span> <a href="#FileResolver"><span class="Identifier">FileResolver</span></a><span class="Other">;</span> <span class="Identifier">target</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span> <span class="Identifier">recursive</span> <span class="Other">=</span> <span class="Identifier">true</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span>
     <span class="Identifier">string</span><span class="Other">]</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -167,7 +201,7 @@
 </div>
 <div id="dependencies-procs-all">
   <div id="dependencies,FileResolver,string">
-  <dt><pre><span class="Keyword">proc</span> <a href="#dependencies%2CFileResolver%2Cstring"><span class="Identifier">dependencies</span></a><span class="Other">(</span><span class="Identifier">resolver</span><span class="Other">:</span> <a href="resolver.html#FileResolver"><span class="Identifier">FileResolver</span></a><span class="Other">;</span> <span class="Identifier">filePath</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span> {.
+  <dt><pre><span class="Keyword">proc</span> <a href="#dependencies%2CFileResolver%2Cstring"><span class="Identifier">dependencies</span></a><span class="Other">(</span><span class="Identifier">resolver</span><span class="Other">:</span> <a href="#FileResolver"><span class="Identifier">FileResolver</span></a><span class="Other">;</span> <span class="Identifier">filePath</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -179,8 +213,8 @@
 </div>
 <div id="fileExists-procs-all">
   <div id="fileExists,FileResolver,string">
-  <dt><pre><span class="Keyword">proc</span> <a href="#fileExists%2CFileResolver%2Cstring"><span class="Identifier">fileExists</span></a><span class="Other">(</span><span class="Identifier">resolver</span><span class="Other">:</span> <a href="resolver.html#FileResolver"><span class="Identifier">FileResolver</span></a><span class="Other">;</span> <span class="Identifier">filePath</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
-    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ReadDirEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#fileExists%2CFileResolver%2Cstring"><span class="Identifier">fileExists</span></a><span class="Other">(</span><span class="Identifier">resolver</span><span class="Other">:</span> <a href="#FileResolver"><span class="Identifier">FileResolver</span></a><span class="Other">;</span> <span class="Identifier">filePath</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     
@@ -191,7 +225,7 @@
 </div>
 <div id="initResolver-procs-all">
   <div id="initResolver">
-  <dt><pre><span class="Keyword">proc</span> <a href="#initResolver"><span class="Identifier">initResolver</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <a href="resolver.html#FileResolver"><span class="Identifier">FileResolver</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#initResolver"><span class="Identifier">initResolver</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <a href="#FileResolver"><span class="Identifier">FileResolver</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Initialize a new FileResolver
@@ -202,8 +236,47 @@
 </div>
 <div id="isResolved-procs-all">
   <div id="isResolved,FileResolver,string">
-  <dt><pre><span class="Keyword">proc</span> <a href="#isResolved%2CFileResolver%2Cstring"><span class="Identifier">isResolved</span></a><span class="Other">(</span><span class="Identifier">resolver</span><span class="Other">:</span> <a href="resolver.html#FileResolver"><span class="Identifier">FileResolver</span></a><span class="Other">;</span> <span class="Identifier">filePath</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#isResolved%2CFileResolver%2Cstring"><span class="Identifier">isResolved</span></a><span class="Other">(</span><span class="Identifier">resolver</span><span class="Other">:</span> <a href="#FileResolver"><span class="Identifier">FileResolver</span></a><span class="Other">;</span> <span class="Identifier">filePath</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
+<div id="newDiskFS-procs-all">
+  <div id="newDiskFS">
+  <dt><pre><span class="Keyword">proc</span> <a href="#newDiskFS"><span class="Identifier">newDiskFS</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <a href="#VirtualFileSystem"><span class="Identifier">VirtualFileSystem</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    <p>Create a virtual file system that interacts with the actual disk.</p>
+<p>This is the default file system used by the resolver, but it can be replaced with an in-memory or embedded file system for testing or special use cases.</p>
+
+    
+  </dd>
+</div>
+
+</div>
+<div id="newInMemoryFS-procs-all">
+  <div id="newInMemoryFS,TableRef[string,string]">
+  <dt><pre><span class="Keyword">proc</span> <a href="#newInMemoryFS%2CTableRef%5Bstring%2Cstring%5D"><span class="Identifier">newInMemoryFS</span></a><span class="Other">(</span><span class="Identifier">map</span><span class="Other">:</span> <span class="Identifier">TableRef</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <span class="Identifier">string</span><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <a href="#VirtualFileSystem"><span class="Identifier">VirtualFileSystem</span></a> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    <p>Create a virtual file system from an in-memory map of file paths to contents.</p>
+<p>This is useful for testing or when you want to embed files directly into your application</p>
+
+    
+  </dd>
+</div>
+
+</div>
+<div id="readFile-procs-all">
+  <div id="readFile,FileResolver,string">
+  <dt><pre><span class="Keyword">proc</span> <a href="#readFile%2CFileResolver%2Cstring"><span class="Identifier">readFile</span></a><span class="Other">(</span><span class="Identifier">resolver</span><span class="Other">:</span> <a href="#FileResolver"><span class="Identifier">FileResolver</span></a><span class="Other">;</span> <span class="Identifier">filePath</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">ResolverError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     
@@ -214,8 +287,9 @@
 </div>
 <div id="resolveFile-procs-all">
   <div id="resolveFile,FileResolver,string,string">
-  <dt><pre><span class="Keyword">proc</span> <a href="#resolveFile%2CFileResolver%2Cstring%2Cstring"><span class="Identifier">resolveFile</span></a><span class="Other">(</span><span class="Identifier">resolver</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="resolver.html#FileResolver"><span class="Identifier">FileResolver</span></a><span class="Other">;</span> <span class="Identifier">aFile</span><span class="Other">,</span> <span class="Identifier">bFile</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span> {.
-    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ResolverError</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ReadDirEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#resolveFile%2CFileResolver%2Cstring%2Cstring"><span class="Identifier">resolveFile</span></a><span class="Other">(</span><span class="Identifier">resolver</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="#FileResolver"><span class="Identifier">FileResolver</span></a><span class="Other">;</span> <span class="Identifier">aFile</span><span class="Other">,</span> <span class="Identifier">bFile</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">ResolverError</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     <p>Resolve a file import/include. This proc checks if the file exists, if it has already been resolved, and if there are any circular or self-imports.</p>
@@ -228,7 +302,7 @@
 </div>
 <div id="setDependencies-procs-all">
   <div id="setDependencies,FileResolver,string,openArray[string]">
-  <dt><pre><span class="Keyword">proc</span> <a href="#setDependencies%2CFileResolver%2Cstring%2CopenArray%5Bstring%5D"><span class="Identifier">setDependencies</span></a><span class="Other">(</span><span class="Identifier">resolver</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="resolver.html#FileResolver"><span class="Identifier">FileResolver</span></a><span class="Other">;</span> <span class="Identifier">aFile</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#setDependencies%2CFileResolver%2Cstring%2CopenArray%5Bstring%5D"><span class="Identifier">setDependencies</span></a><span class="Other">(</span><span class="Identifier">resolver</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="#FileResolver"><span class="Identifier">FileResolver</span></a><span class="Other">;</span> <span class="Identifier">aFile</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span>
                      <span class="Identifier">deps</span><span class="Other">:</span> <span class="Identifier">openArray</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
@@ -249,7 +323,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-04-24 06:29:02 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-05-20 18:53:19 UTC</small>
       </div>
     </div>
   </div>

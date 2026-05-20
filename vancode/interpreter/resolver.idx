@@ -1,11 +1,15 @@
 nimTitle	resolver	vancode/interpreter/resolver.html	module vancode/interpreter/resolver		0
-nim	FileResolver	vancode/interpreter/resolver.html#FileResolver	object FileResolver		24
-nim	ResolverError	vancode/interpreter/resolver.html#ResolverError	object ResolverError		29
-nim	initResolver	vancode/interpreter/resolver.html#initResolver	proc initResolver(): FileResolver		31
-nim	fileExists	vancode/interpreter/resolver.html#fileExists,FileResolver,string	proc fileExists(resolver: FileResolver; filePath: string): bool		35
-nim	isResolved	vancode/interpreter/resolver.html#isResolved,FileResolver,string	proc isResolved(resolver: FileResolver; filePath: string): bool		39
-nim	dependencies	vancode/interpreter/resolver.html#dependencies,FileResolver,string	proc dependencies(resolver: FileResolver; filePath: string): seq[string]		47
-nim	setDependencies	vancode/interpreter/resolver.html#setDependencies,FileResolver,string,openArray[string]	proc setDependencies(resolver: var FileResolver; aFile: string;\n                deps: openArray[string])		50
-nim	clearFile	vancode/interpreter/resolver.html#clearFile,FileResolver,string	proc clearFile(resolver: var FileResolver; filePath: string)		62
-nim	dependants	vancode/interpreter/resolver.html#dependants,FileResolver,string	proc dependants(resolver: FileResolver; target: string; recursive = true): seq[string]		69
-nim	resolveFile	vancode/interpreter/resolver.html#resolveFile,FileResolver,string,string	proc resolveFile(resolver: var FileResolver; aFile, bFile: string)		91
+nim	VirtualFileSystem	vancode/interpreter/resolver.html#VirtualFileSystem	type VirtualFileSystem		24
+nim	FileResolver	vancode/interpreter/resolver.html#FileResolver	object FileResolver		28
+nim	ResolverError	vancode/interpreter/resolver.html#ResolverError	object ResolverError		37
+nim	newDiskFS	vancode/interpreter/resolver.html#newDiskFS	proc newDiskFS(): VirtualFileSystem		39
+nim	newInMemoryFS	vancode/interpreter/resolver.html#newInMemoryFS,TableRef[string,string]	proc newInMemoryFS(map: TableRef[string, string]): VirtualFileSystem		48
+nim	initResolver	vancode/interpreter/resolver.html#initResolver	proc initResolver(): FileResolver		64
+nim	fileExists	vancode/interpreter/resolver.html#fileExists,FileResolver,string	proc fileExists(resolver: FileResolver; filePath: string): bool		69
+nim	readFile	vancode/interpreter/resolver.html#readFile,FileResolver,string	proc readFile(resolver: FileResolver; filePath: string): string		73
+nim	isResolved	vancode/interpreter/resolver.html#isResolved,FileResolver,string	proc isResolved(resolver: FileResolver; filePath: string): bool		79
+nim	dependencies	vancode/interpreter/resolver.html#dependencies,FileResolver,string	proc dependencies(resolver: FileResolver; filePath: string): seq[string]		87
+nim	setDependencies	vancode/interpreter/resolver.html#setDependencies,FileResolver,string,openArray[string]	proc setDependencies(resolver: var FileResolver; aFile: string;\n                deps: openArray[string])		90
+nim	clearFile	vancode/interpreter/resolver.html#clearFile,FileResolver,string	proc clearFile(resolver: var FileResolver; filePath: string)		102
+nim	dependants	vancode/interpreter/resolver.html#dependants,FileResolver,string	proc dependants(resolver: FileResolver; target: string; recursive = true): seq[string]		109
+nim	resolveFile	vancode/interpreter/resolver.html#resolveFile,FileResolver,string,string	proc resolveFile(resolver: var FileResolver; aFile, bFile: string)		131
