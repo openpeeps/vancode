@@ -791,6 +791,7 @@ template withBlock*(node: Node, isStmt: bool = false, body: untyped) =
   # pop the block's scope
   gen.popScope()
 
+const splittableCallKinds = {nkPrefix, nkInfix, nkCall, nkDot, nkBracket, nkString, nkIdent, nkArray}
 proc splitCall*(ast: Node): tuple[callee: Sym, args: seq[Node]] {.codegen.} =
   ## Splits any call node (prefix, infix, call, dot access, dot call) into a
   ## callee (the thing being called) and parameters. The callee is resolved to a
@@ -799,9 +800,10 @@ proc splitCall*(ast: Node): tuple[callee: Sym, args: seq[Node]] {.codegen.} =
     callee: Node
     args: seq[Node]
   
-  # the AST node must be one of the following kinds
-  assert ast.kind in {nkPrefix, nkInfix, nkCall, nkBracket, 
-                        nkDot, nkIdent, nkString, nkArray}
+  if ast.kind notin splittableCallKinds:
+    # the AST node must be one of the following kinds
+    ast.error("Cannot split call for node kind: " & $ast.kind)
+
   case ast.kind
   of nkPrefix:
     callee = ast[0]
@@ -1141,12 +1143,14 @@ proc objConstr*(node: Node, ty: Sym, constructFromIdent = false): Sym {.codegen.
   if not constructFromIdent and node.len > 1:
     for f in node[1..^1]:
       # Expected infix-like shape: [op, fieldIdent, valueExpr]
-      if f.len < 3 or f[1].kind != nkIdent:
+      if f.len < 2 or f[0].kind != nkIdent:
         f.error("Invalid object constructor field: " & f.render)
-      let fname = f[1].ident
+      elif f.kind != nkColon:
+        f.error("Expected ':' in object constructor field: " & f.render)
+      let fname = f[0].ident
       if not result.objectFields.hasKey(fname):
-        f[1].error(ErrNonExistentField % [fname, $result])
-      explicitFields[fname] = f[2]
+        f[0].error(ErrNonExistentField % [fname, $result])
+      explicitFields[fname] = f[1]
 
   # OrderedTable preserves declaration order, so this is deterministic.
   var emittedCount = 0
