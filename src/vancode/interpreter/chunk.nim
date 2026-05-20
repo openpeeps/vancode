@@ -169,6 +169,7 @@ proc addLineInfo*(chunk: var Chunk, n: int) =
   chunk.lineInfo.add((chunk.file, chunk.ln, chunk.col, n))
 
 const MaxIds = int(high(uint16)) + 1
+
 proc getString*(chunk: var Chunk, str: sink string): uint16 =
   ## O(1) string interning with a hash index; returns existing id or inserts.
   ## Guards against uint16 overflow and avoids extra string copy via move.
@@ -182,7 +183,7 @@ proc getString*(chunk: var Chunk, str: sink string): uint16 =
 
   let nextId = chunk.strings.len.uint16
   discard chunk.stringIds.hasKeyOrPut(str, nextId)  # puts nextId if missing
-  chunk.strings.add(move str)  # transfer ownership, avoid extra refcount/copy
+  chunk.strings.add(ensureMove(str))  # transfer ownership, avoid extra refcount/copy
   result = nextId
 
 proc emit*(chunk: var Chunk, opc: Opcode) =
@@ -200,21 +201,35 @@ proc emit*(chunk: var Chunk, u16: uint16) =
   ## Emit a `uint16`.
   chunk.addLineInfo(sizeof(uint16))
   chunk.code.add(cast[array[sizeof(uint16), uint8]](u16))
+  # append as little-endian bytes explicitly to avoid UB from cast-to-array
+  # chunk.code.add(uint8(u16 and 0x00ff))
+  # chunk.code.add(uint8((u16 shr 8) and 0x00ff))
 
 proc emit*(chunk: var Chunk, val: int64) =
   ## Emit an `int`.
   chunk.addLineInfo(ValueSize)
   chunk.code.add(cast[array[sizeof(int64), uint8]](val))
+  # append int64 as little-endian bytes
+  # let uval = cast[uint64](val)
+  # for b in 0..<sizeof(int64):
+  #   chunk.code.add(uint8((uval shr (8 * b)) and 0xff))
 
 proc emit*(chunk: var Chunk, val: float64) =
   ## Emit a `float`.
   chunk.addLineInfo(ValueSize)
   chunk.code.add(cast[array[sizeof(float64), uint8]](val))
+  # reinterpret float bits and append as little-endian bytes
+  # let uval = cast[uint64](val)
+  # for b in 0..<sizeof(float64):
+  #   chunk.code.add(uint8((uval shr (8 * b)) and 0xff))
 
 proc emit*(chunk: var Chunk, xptr: pointer) =
   ## Emit a `pointer`.
   chunk.addLineInfo(sizeof(pointer))
   chunk.code.add(cast[array[sizeof(pointer), uint8]](xptr))
+  # let pval = cast[uint64](cast[pointer](xptr))
+  # for b in 0..<sizeof(pointer):
+  #   chunk.code.add(uint8((pval shr (8 * b)) and 0xff))
 
 proc emitHole*(chunk: var Chunk, size: int): int =
   ## Emit a hole, to be filled later by ``fillHole``.
