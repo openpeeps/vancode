@@ -120,7 +120,7 @@ type
     # a table of standard library modules
 
 var codegenCache* = CodeGenCache()
-
+var vanCodeStmtNodeKinds*: seq[NodeKind] = @[nkFor, nkWhile, nkIf, nkBlock]
 proc count*(gen: CodeGen): uint =
   ## Get the current value of the codegen's counter, and increment it.
   result = gen.counter
@@ -1168,16 +1168,6 @@ proc objConstr*(node: Node, ty: Sym, constructFromIdent = false): Sym {.codegen.
   gen.chunk.emit(opcConstrObj)
   gen.chunk.emit(uint16(emittedCount))
 
-when not compiles(procCall):
-  proc procCall*(node: Node, procSym: Sym): Sym {.codegen.} =
-    ## Generate code for a procedure call
-    var argTypes: seq[Sym]
-    for arg in node[1..^1]:
-      let argSym: Sym = gen.genExpr(arg)
-      assert argSym != nil, "Expression must return a symbol"
-      argTypes.add(argSym)
-    return gen.callProc(procSym, argTypes, errorNode = node)
-
 proc call*(node: Node): Sym {.codegen.} =
   ## Generates code for an nkCall (proc call or object constructor).
   ## TODO: Indirect calls
@@ -1595,62 +1585,72 @@ proc genTypeDef*(node: Node): Sym {.codegen.} =
 # This injects the extended module, which contains built-in procedures and types
 injectExtendedModule()
 
+when not declared(procCallOverwrite):
+  proc procCall*(node: Node, procSym: Sym): Sym {.codegen.} =
+    ## Generate code for a procedure call
+    var argTypes: seq[Sym]
+    for arg in node[1..^1]:
+      let argSym: Sym = gen.genExpr(arg)
+      assert argSym != nil, "Expression must return a symbol"
+      argTypes.add(argSym)
+    return gen.callProc(procSym, argTypes, errorNode = node)
+
 proc genExpr*(node: Node, varUnwrap = true): Sym {.codegen.} =
   # Generates code for an expression.
-  case node.kind
-  of nkBool, nkInt, nkFloat, nkString, nkNil:  # constants
-    result = gen.pushConst(node)
-  of nkIdent:                     # variables
-    var symNode = gen.lookup(node)
-    case symNode.kind:
-      of skType:
-        case symNode.tyKind
-          of ttyObject:
-            # object construction from type identifier
-            return gen.objConstr(node, symNode, constructFromIdent = true)
-          else: discard
-      else: discard
-    # push the variable's value onto the stack
-    gen.pushVar(symNode)
-    return (
-      if varUnwrap: symNode.varTy
-      else: symNode
-    )
-  of nkPrefix:
-    result = gen.prefix(node)
-  of nkInfix:
-    result = gen.infix(node)
-  of nkDot:
-    # handle field access using dot notation `$a.b`
-    result = gen.genGetField(node)
-  of nkBracket:
-    # handle array access using square brackets `$a[0]`
-    result = gen.genArrayAccess(node)
-  of nkCall:                      # calls and object construction
-    result = gen.call(node)
-  of nkIf:                        # if expressions
-    result = gen.genIf(node, isStmt = false)
-  of nkArray:
-    result = gen.genArray(node)        # array declaration
-  of nkObjectStorage:
-    result = gen.genObjectStorage(node)
-  of nkObject:
-    result = gen.genObject(node)
-  of nkProc:
-    result = gen.genProc(node)
-  else:
-    # handle statement-like nodes used as lazy-injected macro bodies
-    if node.kind in {nkFor, nkWhile, nkIf, nkBlock, nkHtmlElement,
-                nkMacro, nkClientBlock, nkViewLoader}:
-      # emit the statement into the current chunk (this will produce the
-      # code the macro expects as the default 'body' param)
-      discard gen.genBlock(node, isStmt = true)
-      if gen.module.sym"stmt".isNil:
-        return gen.module.sym"any"
-      return gen.module.sym"stmt"
+  extendableCase "codeGenExpr":
+    case node.kind
+    of nkBool, nkInt, nkFloat, nkString, nkNil:  # constants
+      result = gen.pushConst(node)
+    of nkIdent:                     # variables
+      var symNode = gen.lookup(node)
+      case symNode.kind:
+        of skType:
+          case symNode.tyKind
+            of ttyObject:
+              # object construction from type identifier
+              return gen.objConstr(node, symNode, constructFromIdent = true)
+            else: discard
+        else: discard
+      # push the variable's value onto the stack
+      gen.pushVar(symNode)
+      return (
+        if varUnwrap: symNode.varTy
+        else: symNode
+      )
+    of nkPrefix:
+      result = gen.prefix(node)
+    of nkInfix:
+      result = gen.infix(node)
+    of nkDot:
+      # handle field access using dot notation `$a.b`
+      result = gen.genGetField(node)
+    of nkBracket:
+      # handle array access using square brackets `$a[0]`
+      result = gen.genArrayAccess(node)
+    of nkCall:                      # calls and object construction
+      result = gen.call(node)
+    of nkIf:                        # if expressions
+      result = gen.genIf(node, isStmt = false)
+    of nkArray:
+      result = gen.genArray(node)        # array declaration
+    of nkObjectStorage:
+      result = gen.genObjectStorage(node)
+    of nkObject:
+      result = gen.genObject(node)
+    of nkProc:
+      result = gen.genProc(node)
+    else:
+      # handle statement-like nodes used as lazy-injected macro bodies
+      if node.kind in vanCodeStmtNodeKinds:
+        # emit the statement into the current chunk (this will produce the
+        # code the macro expects as the default 'body' param)
+        discard gen.genBlock(node, isStmt = true)
+        if gen.module.sym"stmt".isNil:
+          return gen.module.sym"any"
+        return gen.module.sym"stmt"
 
-    debugEcho "Unsupported node kind in genExpr: " & $node.kind
-    node.error(ErrValueIsVoid)
+      debugEcho "Unsupported node kind in genExpr: " & $node.kind
+      node.error(ErrValueIsVoid)
 
 proc tryElideWhile*(node: Node): bool {.codegen.} =
   ## Tries to elide a simple monotonic while-loop into O(1) code.
@@ -2193,7 +2193,7 @@ proc genIterator*(node: Node, isInstantiation = false): Sym {.codegen.} =
 
 proc genVar*(node: Node) {.codegen.} =
   # handle variable declarations
-  for decl in node:
+  for decl in node.children[0]:
     let implNode = decl[^1]
     if implNode.kind == nkEmpty and node.kind != nkVar:
       decl[^1].error(ErrVarMustHaveValue)
