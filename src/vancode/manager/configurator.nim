@@ -3,7 +3,7 @@
 # (c) 2024 George Lemon | LGPL-v3 License
 #          Made by Humans from OpenPeeps
 #          https://github.com/openpeeps/tim
-import pkg/[nyml, semver]
+import pkg/[openparser/yaml, semver]
 from std/net import Port, `$`
 
 when not defined napibuild:
@@ -79,7 +79,7 @@ when not defined napibuild:
         ))
       else:
         json.toJson(c)
-    dump(json.fromJson(str))
+    # dump(json.fromJson(str))
 
   proc `$`*(c: PackageConfig): string = 
     ## Generate a string representation of the PackageConfig

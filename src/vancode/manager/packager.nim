@@ -5,7 +5,8 @@
 #          https://github.com/openpeeps/tim
 
 import std/[tables, strutils, os, osproc, options, sequtils]
-import pkg/[flatty, nyml, semver, checksums/md5, openparser/json]
+import pkg/openparser/[json, yaml]
+import pkg/[flatty, semver, checksums/md5]
 import ../interpreter/ast
 
 import ./remote, ./configurator
