@@ -4,8 +4,8 @@
 #          Made by Humans from OpenPeeps
 #          https://github.com/openpeeps/tim
 
-import std/[tables, httpcore, httpclient, strutils, base64]
-import pkg/[dotenv]
+import std/[tables, httpcore, httpclient, os, strutils, base64]
+import pkg/openparser/dotenv
 
 from std/os import existsEnv, getEnv
 export base64
@@ -86,7 +86,7 @@ proc download*(client: RemoteSource,
 proc initRemoteSource*(pkgrHomeDir: string, source: SourceType = Github): RemoteSource =
   result.source = source
   let key = "timengine_" & $source & "_apikey"
-  dotenv.load(pkgrHomeDir, ".tokens")
+  dotenv.loadDotenv(pkgrHomeDir / ".tokens")
   for x in SourceType:
     if existsEnv($x) and source == x:
       result.apikey = getEnv($x)

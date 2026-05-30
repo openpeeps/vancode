@@ -625,11 +625,9 @@ proc pushVar(gen: CodeGen, sym: Sym) =
   case sym.kind
   of skVars:
     if sym.varLocal:
-      # if the variable is a local, use pushL
       gen.chunk.emit(opcPushL)
       gen.chunk.emit(sym.varStackPos.uint8)
     else:
-      # if it's a global, use pushG
       gen.chunk.emit(opcPushG)
       gen.chunk.emit(gen.chunk.getString(sym.name.ident))
   of skProc:
