@@ -15,6 +15,8 @@
 ## handles symbol lookup, overloading, and type checking.
 
 import std/[tables, json, hashes, options, sequtils, strutils, os]
+import pkg/voodoo/extensibles
+
 import ./[ast, value]
 
 type
@@ -65,7 +67,7 @@ type
     skChoice = "(...)"  ## an overloaded symbol, stores many symbols with \
                         ## the same name
 
-  TypeKind* = enum
+  TypeKind* {.extensible.} = enum
     ## The kind of a type.
     # meta-types
     ttyVoid = "void"      # matches no types
@@ -118,66 +120,46 @@ type
       of ttyVoid..ttyString:
         isMutable*: bool
       of ttyJson:
-        jsonTy*: JsonNodeKind
-          ## the type of the JSON value, used for type checking
-        jsonNode*: JsonNode
-          ## a statically defined JSON node (when available)
+        jsonTy*: JsonNodeKind     ## the type of the JSON value, used for type checking
+        jsonNode*: JsonNode       ## a statically defined JSON node (when available)
       of ttyArray:
-        arrayTy*: Sym
-          ## the type of the array
-        arrayMutable*: bool
-          ## used to determine whether the array is mutable or not
-        arrayItems*: seq[Sym]
-          ## the items of the array
+        arrayTy*: Sym             ## the type of the array
+        arrayMutable*: bool       ## used to determine whether the array is mutable or not
+        arrayItems*: seq[Sym]     ## the items of the array
       of ttyObject:
-        objectId*: TypeId
+        objectId*: TypeId         ## a unique id for this object type, used for type checking and comparisons
         objectFields*: OrderedTable[string, ObjectField]
       of ttyAlias:
-        aliasId*: TypeId
-        aliasTy*: Sym
+        aliasId*: TypeId          ## the id of the alias, used for lookups and type checking
+        aliasTy*: Sym             ## the type this alias refers to
       of ttyCustom:
         discard # todo
       of ttyHtmlElement: discard
       of ttyPointer:
-        pointerTarget*: Sym
-          ## The type this pointer points to (type info only)
+        pointerTarget*: Sym       ## The type this pointer points to (type info only)
+      else: discard # other types don't have any special fields
     of skHtmlType:
-      tag*, innerText*: string
-      isVoidElement*: bool
+      tag*, innerText*: string    ## the tag of the HTML element (e.g., "div", "span", etc.)
+      isVoidElement*: bool        ## whether this HTML element is a void element or not (e.g., "img", "br", etc.)
     of skProc:
-      procId*: uint16
-        ## the unique number of the proc
-      procParams*: seq[ProcParam]
-         ## the proc's parameters
-      procReturnTy*: Sym
-        ## the return type of the proc
-      procType*: ProcType
-        ## whether the proc is a normal function or a macro
-      procExport*: bool
-        ## whether the proc is exported or not
-      procMemoize*: bool
-        ## whether the proc is memoized or not.
-        ## todo: implement memoization
+      procId*: uint16             ## the unique number of the proc
+      procParams*: seq[ProcParam] ## the proc's parameters
+      procReturnTy*: Sym          ## the return type of the proc
+      procType*: ProcType         ## whether the proc is a normal function or a macro
+      procExport*: bool           ## whether the proc is exported or not
+      procMemoize*: bool          ## whether the proc is memoized or not. todo: implement memoization
     of skIterator:
-      iterParams*: seq[ProcParam]
-        ## the iterator's parameters
-      iterYieldTy*: Sym
-        ## the yield type of the iterator
-      iterExport*: bool
-        ## whether the iterator is exported or not
+      iterParams*: seq[ProcParam]       ## the iterator's parameters
+      iterYieldTy*: Sym                 ## the yield type of the iterator
+      iterExport*: bool                 ## whether the iterator is exported or not
     of skGenericParam:
-      constraint*: Sym
-        ## the generic type constraint
+      constraint*: Sym                  ## the generic type constraint
     of skChoice:
-      choices*: seq[Sym]
-    genericParams*: Option[seq[Sym]]
-      # some if the sym is generic
+      choices*: seq[Sym]                ## the different choices for this overloaded symbol
+    genericParams*: Option[seq[Sym]]    ## some if the sym is generic
     genericInstCache*: Table[seq[Sym], Sym]
-    genericBase*: Option[Sym]
-      # contains the base generic type if the
-      # sym is an instantiation
-    genericInstArgs*: Option[seq[Sym]]
-      # some if the sym is an instantiation
+    genericBase*: Option[Sym]           ## contains the base generic type if the sym is an instantiation
+    genericInstArgs*: Option[seq[Sym]]  ## some if the sym is an instantiation
 
   ObjectField* = tuple
     id: int     # every object field has an id that's used for lookups on
@@ -186,10 +168,6 @@ type
     name: Node  # the name of the field
     ty: Sym     # the type of the field
     implVal: Sym
-
-  # ArrayItem* = tuple
-  #   id: int     # the id of the item
-  #   valSym: Sym
 
   ProcParam* = tuple
     ## A single param of a proc.
