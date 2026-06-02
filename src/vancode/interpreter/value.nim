@@ -38,21 +38,23 @@ const
   tyFirstObject* = 10
   tyJsonStorage* = 11
   tyArrayObject* = 12
-  tyHtmlObject* = 13
   tyPointer* = 15
   tyAny* = 16
 
 type
   TypeId* = range[0..32766]  # max amount of case object branches
 
+  ForeignData* {.acyclic.} = object
+    data*: pointer
+    libpath*: string
+    destructor*: proc (data: pointer) {.nimcall.}
+
   Object* {.acyclic.} = ref object
-    ## A hayago object.
+    ## Represents an object value, which can be either a native
+    ## object with fields or a foreign object with a data pointer and library path
     case isForeign*: bool
     of true:
-      data*: pointer
-        ## the foreign data pointer
-      libpath*: string
-        ## the path to the dynamic library this foreign object came from
+      foreign*: ForeignData
     of false:
       keys*: seq[string]
         ## the field names of this object
@@ -60,8 +62,6 @@ type
       fields*: seq[Value]
         ## the fields of this object, stored
         ## in the same order as `keys`
-  
-  HtmlObject* = object
 
   Value* {.acyclic.} = ref object
     case typeId*: TypeId  ## the type ID, used for dynamic dispatch
@@ -75,15 +75,13 @@ type
       stringVal*: ref string
     of tyJsonStorage:
       jsonVal*: JsonNode
-    of tyHtmlObject:
-      htmlObject*: HtmlObject
-    of tyAny:
-      anyVal*: Value
+    # of tyAny:
+      # anyVal*: Value
     else:
       objectVal*: Object
 
-  ValuePtr* = Value
-    ## A pointer to a value.
+  # ValuePtr* = Value
+  #  ## A pointer to a value.
 
   Stack* = seq[Value]
     ## A runtime stack of values, used in the VM.
@@ -94,6 +92,10 @@ type
   ForeignProc* = proc (args: StackView, argc: int): Value
     ## A foreign proc implementation, used for native code in
     ## the standard library and user-defined foreign procs in general
+
+proc `=destroy`*(fd: ForeignData) =
+  if fd.destructor != nil and fd.data != nil:
+    fd.destructor(fd.data)
 
 proc dumpHook*(s: var string, val: Value) =
   ## OpenParser JSON dumping hook for Values
@@ -116,10 +118,10 @@ proc dumpHook*(s: var string, val: Value) =
   of tyPointer:
     case val.objectVal.isForeign:
     of true:
-      if val.objectVal == nil or val.objectVal.data == nil:
+      if val.objectVal == nil or val.objectVal.foreign.data == nil:
         s.add("pointer<nil>")
       else:
-        s.add("pointer<0x" & $cast[uint](val.objectVal.data) & ">")
+        s.add("pointer<0x" & $cast[uint](val.objectVal.foreign.data) & " at " & val.objectVal.foreign.libpath & ">")
     else: s.add("")
   else: s.add("<object>")
 
@@ -137,10 +139,10 @@ proc `$`*(value: Value): string =
     of tyPointer:
       case value.objectVal.isForeign:
       of true:
-        if value.objectVal == nil or value.objectVal.data == nil:
+        if value.objectVal == nil or value.objectVal.foreign.data == nil:
           "pointer<nil>"
         else:
-          "pointer<0x" & $cast[uint](value.objectVal.data) & ">"
+          "pointer<0x" & $cast[uint](value.objectVal.foreign.data) & ">"
       else: ""
     else: "<object>"
 
@@ -181,35 +183,34 @@ proc initValue*(v: JsonNode): Value =
 proc initValue*(nptr: pointer, libpath: string): Value =
   ## Initializes a pointer value.
   result = Value(typeId: tyPointer)
-  result.objectVal = Object(isForeign: true, data: nptr, libpath: libpath)
+  result.objectVal = Object(isForeign: true,
+    foreign: ForeignData(data: nptr, libpath: libpath))
 
 proc initValue*[T: tuple | object | ref](id: TypeId, value: T): Value =
   ## Safely initializes a foreign object value.
   ## This copies the value onto the heap for ordinary objects and tuples,
-  ## and GC_refs the value for refs. The finalizer for objectVal deallocates or
-  ## GC_unrefs the foreign data to maintain memory safety.
+  ## and GC_refs the value for refs.
   result = Value(typeId: id)
   when T is tuple | object:
-    new(result.objectVal) do (obj: Object):
-      dealloc(obj.data)
-    result.objectVal.isForeign = true
     let data = cast[ptr T](alloc(sizeof(T)))
     data[] = value
-    result.objectVal.data = data
+    result.objectVal = Object(isForeign: true,
+      foreign: ForeignData(
+        data: data,
+        destructor: proc (data: pointer) {.nimcall.} = dealloc(data)
+      ))
   elif T is ref:
-    new(result.objectVal) do (obj: Object):
-      GC_unref(cast[ref T](obj.data))
-    result.objectVal.isForeign = true
     GC_ref(value)
-    result.objectVal.data = cast[pointer](value)
-
-proc foreign*(value: var Value, T: typedesc): T =
-  result = cast[var T](value.objectVal.data)
+    result.objectVal = Object(isForeign: true,
+      foreign: ForeignData(
+        data: cast[pointer](value),
+        destructor: proc (data: pointer) {.nimcall.} = GC_unref(cast[T](data))
+      ))
 
 proc foreign*(value: Value, T: typedesc): T =
   ## Get an object value. This is a *mostly* safe operation, but attempting to
   ## get a foreign type different from the value's is undefined behavior.
-  result = cast[ptr T](value.objectVal.data)[]
+  result = cast[ptr T](value.objectVal.foreign.data)[]
 
 const nilObject* = -1 ## The field count used for initializing a nil object.
 
