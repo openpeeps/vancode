@@ -572,15 +572,18 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
               obj.objectVal.fields[i] = vals[i]
             stack.setLen(stack.len - count)
         stack.push(obj)
+      
       of opcGetF:
         let fld = co.getArg1Int(pcIdx)
         let obj = stack.pop()
         stack.push(obj.objectVal.fields[fld])
+      
       of opcSetF:
         let fld = co.getArg1Int(pcIdx)
         let val = stack.pop()
         let obj = stack.pop()
         obj.objectVal.fields[fld] = val
+      
       #
       # JSON (placeholders)
       #
@@ -790,7 +793,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       else: discard # unhandled opcode (should not happen if parser is correct)
       inc(pcIdx)
   
-  if result == nil:
+  if result.typeId == tyNil:
     # if the `result` is not set in any voodoo snippets,
     # we return the top of the stack as the result of the chunk execution
     if stack.len > 0:
