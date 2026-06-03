@@ -793,7 +793,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       else: discard # unhandled opcode (should not happen if parser is correct)
       inc(pcIdx)
   
-  if result.typeId == tyNil:
+  if result == nil or result.typeId == tyNil:
     # if the `result` is not set in any voodoo snippets,
     # we return the top of the stack as the result of the chunk execution
     if stack.len > 0:
