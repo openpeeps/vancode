@@ -68,7 +68,7 @@ type
 
   CodeGen* {.acyclic.} = ref object
     ## a code generator for a module or proc.
-    includePath: Option[string]
+    includeBasePath: Option[string]
       ## the base path for including partials
     script: Script
       # the script all procs go into
@@ -1547,7 +1547,9 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
     # add the proc into the script
     gen.script.procs.add(theProc)
     if sym.procExport:
-      # export the proc if needed (exported procs need to be in procsExport for the runtime to find them, but they also need to be in procs for the compiler to compile them, so we add them to both)
+      # export the proc if needed (exported procs need to be in procsExport
+      # for the runtime to find them, but they also need to be in procs for
+      # the compiler to compile them, so we add them to both)
       gen.script.procsExport.add(theProc)
 
     # compile the proc's body
@@ -2328,13 +2330,13 @@ proc genImport*(node: Node) {.codegen.} =
       
       # generate the module's script based
       # on the parsed module AST program
-      moduleGen.genScript(astProgram, gen.includePath)
+      moduleGen.genScript(astProgram, gen.includeBasePath)
       
       # once the module is generated, we can load it
       # into the current module
       if not gen.module.load(moduleGen.module, fromOtherModule = true):
         node.warn(WarnModuleAlreadyImported % pathNode.stringVal)
-      
+
       # add the module to the current script's modules
       gen.script.scripts[importChunk.file] = moduleGen.script
 
@@ -2343,13 +2345,13 @@ proc genImport*(node: Node) {.codegen.} =
       gen.chunk.emit(gen.chunk.getString(importChunk.file))
 
     of nkInclude:
-      if gen.includePath.isSome:
-        # if the include path is set,
-        # we can use it to resolve the module
-        path = absolutePath(gen.includePath.get() / path)
+      if gen.includeBasePath.isSome:
+        # if the include path is set, we can use it to resolve the module
+        path = absolutePath(gen.includeBasePath.get() / path)
 
       # resolve the module's path
       let aFile = absolutePath(gen.module.src.get())
+      
       try:
         gen.resolver.resolveFile(aFile, path)
       except ResolverError as e:
@@ -2429,7 +2431,7 @@ proc genBlock*(node: Node, isStmt: bool): Sym {.codegen.} =
 proc genScript*(program: Ast, includePath: Option[string],
                   emitHalt: static bool = true) {.codegen.} =
   ## Generates the code for a full script.
-  gen.includePath = includePath
+  gen.includeBasePath = includePath
   for node in program.nodes:
     gen.genStmt(node)
   when emitHalt == true:

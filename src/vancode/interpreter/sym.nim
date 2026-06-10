@@ -137,7 +137,7 @@ type
       of ttyHtmlElement: discard
       of ttyPointer:
         pointerTarget*: Sym       ## The type this pointer points to (type info only)
-      else: discard # other types don't have any special fields
+      else: discard               # other types don't have any special fields
     of skHtmlType:
       tag*, innerText*: string    ## the tag of the HTML element (e.g., "div", "span", etc.)
       isVoidElement*: bool        ## whether this HTML element is a void element or not (e.g., "img", "br", etc.)

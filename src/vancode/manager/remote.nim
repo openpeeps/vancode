@@ -6,8 +6,6 @@
 
 import std/[tables, httpcore, httpclient, os, strutils, base64]
 import pkg/openparser/dotenv
-
-from std/os import existsEnv, getEnv
 export base64
 
 type

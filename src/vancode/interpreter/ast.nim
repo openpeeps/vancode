@@ -173,7 +173,7 @@ proc add*(node, child: Node): Node {.discardable.} =
   node.children.add(child)
   result = node
 
-proc add*(node: Node, children: openarray[Node]): Node {.discardable.} =
+proc add*(node: Node, children: openArray[Node]): Node {.discardable.} =
   node.children.add(children)
   result = node
 
@@ -190,13 +190,16 @@ proc hash*(node: Node): Hash =
     of nkIdent: h = h !& hash(node.ident)
     else:
       h = h !& hash(node.len)
-      h = h !& hash(node.children)
+      for child in node.children:  # guard nil children (e.g. nkInfix operator slot)
+        if child != nil:
+          h = h !& hash(child)
   result = h
 
 proc `$`*(node: Node): string =
   ## Stringify a node. This only supports leaf nodes, for trees,
-  ## use ``treeRepr``.
-  assert node.kind in LeafNodes, "only leaf nodes can be `$`'ed. Got " & $node.kind
+  ## use `treeRepr`.
+  assert node.kind in LeafNodes,
+    "only leaf nodes can be `$`'ed. Got " & $node.kind
   result =
     case node.kind
     of nkBool: $node.boolVal
