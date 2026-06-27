@@ -7,7 +7,7 @@ import pkg/[openparser/yaml, semver]
 from std/net import Port, `$`
 
 when not defined napibuild:
-  import pkg/openparser/json
+  import pkg/openparser/[json, yaml]
 
 export `$`
 
@@ -68,23 +68,22 @@ type
       compilation*: CompilationSettings
     else: discard
 
-when not defined napibuild:
-  proc generateYaml*(c: PackageConfig): string =
-    ## Generate a YAML representation of the PackageConfig
-    ## This is used to generate the `tim.yml` file
-    let str =
-      if c.`type` == ConfigType.typePackage:
-        json.toJson(c, JsonOptions(
-          skipFields: @["type", "compilation", "browser_sync"]
-        ))
-      else:
-        json.toJson(c)
-    # dump(json.fromJson(str))
+proc generateYaml*(c: PackageConfig): string =
+  ## Generate a YAML representation of the PackageConfig
+  ## This is used to generate the `tim.yml` file
+  let str =
+    if c.`type` == ConfigType.typePackage:
+      json.toJson(c, JsonOptions(
+        skipFields: @["type", "compilation", "browser_sync"]
+      ))
+    else:
+      json.toJson(c)
+  yaml.dump(json.fromJson(str))
 
-  proc `$`*(c: PackageConfig): string = 
-    ## Generate a string representation of the PackageConfig
-    ## using `pkg/voodoo`
-    json.toJson(c)
+proc `$`*(c: PackageConfig): string = 
+  ## Generate a string representation of the PackageConfig
+  ## using `pkg/voodoo`
+  json.toJson(c)
 
 # proc getBasePath*(config: PackageConfig): string =
 #   return config.compilation.basePath
