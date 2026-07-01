@@ -99,6 +99,11 @@ type
 
     opcHalt = "halt"              ## halt the VM
 
+    # coroutines
+    opcCreateCoro = "createCoro"  ## create a coroutine from a proc
+    opcCoroResume = "coroResume"  ## resume a coroutine
+    opcCoroYield = "coroYield"    ## yield from a coroutine
+
   Script* {.acyclic.} = ref object
     stdpos*: int
     libs*: Table[string, LibHandle]
@@ -159,6 +164,8 @@ type
       ## the number of parameters this procedure takes
     hasResult*: bool
       ## flag signifying whether the proc returns a value
+    jitForeign*: ForeignProc
+      ## JIT-compiled version of this proc (nil if not compiled or native)
 
 var nextChunkId {.global.}: int = 0
 
@@ -330,6 +337,8 @@ proc hash*(x: Chunk): Hash =
 
 proc `==`*(a, b: Chunk): bool =
   ## Compares two Chunks by unique ID
+  if a.isNil and b.isNil: return true
+  if a.isNil or b.isNil: return false
   a.id == b.id
 
 proc `$`*(c: Chunk): string =
@@ -337,6 +346,14 @@ proc `$`*(c: Chunk): string =
 
 proc hash*(x: Script): Hash =
   hash(cast[pointer](x))
+
+proc hash*(x: Proc): Hash =
+  hash(cast[pointer](x))
+
+proc `==`*(a, b: Proc): bool {.inline.} =
+  if a.isNil and b.isNil: return true
+  if a.isNil or b.isNil: return false
+  cast[pointer](a) == cast[pointer](b)
 
 proc `$`*(s: Script): string =
   result = "<script: $1>" % $hash(s)

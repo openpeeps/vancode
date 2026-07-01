@@ -25,56 +25,88 @@ import ./chunk, ./value
 when defined(hayaVmWriteStackOps):
   import pkg/kapsis/interactive/prompts
 
+macro conditionalPlaceholder(id: static string) =
+  if ExtendableProcBodies.contains(id):
+    result = nnkBlockStmt.newTree(
+      ident("VoodooInjectedSnippet_" & id),
+      ExtendableProcBodies[id]
+    )
+  else:
+    result = newStmtList()
+
 type
   VMPreferences* = object
     ## Preferences for configuring the VM's behavior. These can be set when creating a new VM instance
     enableHotCodeDetection*: bool
-      ## Whether to enable hot code detection. When enabled, the VM will keep
-      ## track of how many times each chunk and procedure is executed,
-      ## and if they exceed the specified thresholds, they will be marked as "hot".
-      ## 
-      ## This is just a marker for now, but it can be used in the future to trigger
-      ## optimizations such as JIT compilation.
-      ## 
-      ## For JIT compilation we'll use the [libgccjit](https://github.com/openpeeps/gccjit.nim)
-      ## package to generate machine code for hot chunks and procedures at runtime
     hotProcThreshold*: int = 10
-      ## Threshold for marking a procedure as hot. If a procedure is
-      ## called more than this number of times, it will be marked as hot.
     hotChunkThreshold*: int = 100
-      ## Threshold for marking a chunk as hot. If a chunk is executed more than this
-      ## number of times, it will be marked as hot.
-
-  ArgKind = enum
-    # the kind of an opcode argument. this is used to determine how to interpret
-    akNone, akInt, akFloat, akString
-
-  CachedOps = ref object
-    opcodes: seq[Opcode]      # list of opcodes
-    arg1: seq[int64]          # raw storage; interpretation depends on flags
-    arg2: seq[int64]
-    flags: seq[int16]         # bit-packed arg kinds
-    byteOffsets: seq[int]
-    jumpTargets: seq[int]     # -1 if not a jump
-
-  Vm* {.acyclic.} = ref object
-    ## The main VM object that holds the execution state and caches
-    lvl: int
-    opCache: Table[Hash, CachedOps]
-    hotCounts: Table[Chunk, int]
-    hotProcCounts: Table[Proc, int]
-    preferences: VMPreferences
-    importedModules*: Table[string, Script]
-      ## Maps module paths to their loaded Script objects
 
   CallFrame* = tuple
-    ## Represents a call frame for function/procedure calls. This is used to
-    ## store the execution context when calling into a new chunk
+    ## Represents a call frame for function/procedure calls.
     currentChunk: Chunk
     cachedOps: CachedOps
     pcIdx: int
     stackBottom: int
     script: Script
+
+  CoroutineState* = enum
+    csCreated
+    csSuspended
+    csRunning
+    csCompleted
+    csErrored
+
+  Coroutine* {.acyclic.} = ref object
+    state*: CoroutineState
+    callee*: Proc
+    script*: Script
+    savedStack*: seq[Value]
+    savedCallStack*: seq[CallFrame]
+    savedPcIdx*: int
+    savedChunk*: Chunk
+    savedCachedOps*: CachedOps
+    savedStackBottom*: int
+    result*: Value
+
+  CoroutineResultKind* = enum
+    crYielded
+    crCompleted
+    crErrored
+
+  CoroutineResult* = object
+    case kind*: CoroutineResultKind
+    of crYielded: yieldedValue*: Value
+    of crCompleted: resultValue*: Value
+    of crErrored: errorMsg*: string
+
+  ArgKind = enum
+    akNone, akInt, akFloat, akString
+
+  CachedOps* = ref object
+    opcodes*: seq[Opcode]
+    arg1*: seq[int64]
+    arg2*: seq[int64]
+    flags*: seq[int16]
+    byteOffsets*: seq[int]
+    jumpTargets*: seq[int]
+
+  Vm* {.acyclic.} = ref object
+    ## The main VM object that holds the execution state and caches
+    lvl: int
+    opCache: Table[Hash, CachedOps]
+    hotCounts*: Table[string, int]
+    hotProcCounts*: Table[string, int]
+    preferences: VMPreferences
+    importedModules*: Table[string, Script]
+    activeCoroutine*: Coroutine
+    savedStack: seq[Value]
+    savedCallStack: seq[CallFrame]
+    savedPcIdx: int
+    savedChunk: Chunk
+    savedCo: CachedOps
+    savedStackBottom: int
+    savedScript: Script
+    jit*: JitHooks
 
 const
   VMInitialPreallocatedStackSize* {.intdefine.} = 64
@@ -86,6 +118,12 @@ const
 
 proc newVm*(): Vm =
   Vm()
+
+proc getHotProcCount*(vm: Vm, procName: string): int =
+  vm.hotProcCounts.getOrDefault(procName)
+
+proc getHotChunkCount*(vm: Vm, chunk: Chunk): int =
+  vm.hotCounts.getOrDefault($chunk)
 
 proc newVirtualMachine*(prefs: VMPreferences): Vm =
   ## Create a new VM instance with optional preferences. If preferences are not
@@ -148,9 +186,21 @@ proc parseChunk(currentChunk: Chunk): CachedOps
 #   of tyPointer: addr type_pointer
 #   else: addr type_void
 
-# Hot code markers (stubs)
-proc markHot(vm: Vm, currentChunk: Chunk) = discard
-proc markHotProc(vm: Vm, theProc: Proc) = discard
+# Hot code detection
+proc markHot(vm: Vm, currentChunk: Chunk) =
+  if vm.preferences.enableHotCodeDetection and currentChunk != nil:
+    vm.hotCounts.mgetOrPut($currentChunk, 0).inc
+
+proc markHotProc(vm: Vm, theProc: Proc) =
+  if vm.preferences.enableHotCodeDetection and theProc != nil:
+    let key = theProc.name
+    let prevCount = vm.hotProcCounts.mgetOrPut(key, 0)
+    vm.hotProcCounts[key] = prevCount + 1
+    if vm.hotProcCounts[key] == vm.preferences.hotProcThreshold and
+       vm.jit.getForeign != nil:
+      let jitFn = vm.jit.getForeign(cast[pointer](theProc))
+      if jitFn != nil:
+        theProc.jitForeign = jitFn
 
 proc parseChunk(currentChunk: Chunk): CachedOps =
   # Parsing raw bytecode into operations
@@ -235,6 +285,9 @@ proc parseChunk(currentChunk: Chunk): CachedOps =
       of opcImportModule:
         let sid = readArg[uint16](pc)
         addOp(oc, sid.int64, 0, akString)
+      of opcCreateCoro:
+        let pid = readArg[uint16](pc)
+        addOp(oc, pid.int64, 0, akInt)
       else:
         addOp(oc)
 
@@ -281,7 +334,7 @@ proc parseChunk(currentChunk: Chunk): CachedOps =
 #
 # Cache layer uses new parse
 #
-proc getCachedOps(vm: Vm, currentChunk: Chunk): CachedOps =
+proc getCachedOps*(vm: Vm, currentChunk: Chunk): CachedOps =
   # let key = cast[pointer](currentChunk)
   let hashed = hash(currentChunk)
   if vm.opCache.contains(hashed):
@@ -294,10 +347,10 @@ proc getCachedOps(vm: Vm, currentChunk: Chunk): CachedOps =
 #
 # Decoders
 #
-template getArg1Int(co: CachedOps, i: int): int =
+template getArg1Int*(co: CachedOps, i: int): int =
   co.arg1[i].int
 
-template getArg1Float(co: CachedOps, i: int): float64 =
+template getArg1Float*(co: CachedOps, i: int): float64 =
   cast[float64](co.arg1[i])
 
 template getArg1Str(co: CachedOps, i: int, currentChunk: Chunk): string =
@@ -351,8 +404,11 @@ proc prewarmScriptOps*(vm: Vm, s: Script) =
 proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         staticString: Option[string] = none(string),
         globaldata = newJObject(),
-        localData = newJObject()): Value {.discardable.} =
-  ## Interpret the given chunk in the context of the provided script
+        localData = newJObject(),
+        stepping: Coroutine = nil): Value {.discardable.} =
+  ## Interpret the given chunk in the context of the provided script.
+  ## If `stepping` is provided, the VM runs the coroutine from its saved state
+  ## until it yields or completes, then returns the yielded/completed value.
   var
     stack: Stack = newSeqOfCap[Value](VMInitialPreallocatedStackSize)
     callStack: seq[CallFrame] = newSeqOfCap[CallFrame](256)
@@ -360,12 +416,44 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
     currentChunk  = startChunk
     cached = vm.getCachedOps(currentChunk)
     co = cached
-      # current cached ops; this is updated whenever currentChunk changes,
-      # so we don't have to keep looking it up in the VM cache
-    opcodes = co.opcodes  # current opcodes for convenience
-    pcIdx  = 0            # program counter (index into ops)
-    stackBottom = 0       # index of first local variable in stack
-    frameChanged = false  # true if we switched frames
+    opcodes = co.opcodes
+    pcIdx  = 0
+    stackBottom = 0
+    frameChanged = false
+
+  # If stepping a coroutine, override state from the coroutine
+  if stepping != nil:
+    case stepping.state
+    of csSuspended:
+      stack = stepping.savedStack
+      callStack = stepping.savedCallStack
+      pcIdx = stepping.savedPcIdx
+      currentChunk = stepping.savedChunk
+      co = stepping.savedCachedOps
+      cached = co
+      opcodes = co.opcodes
+      stackBottom = stepping.savedStackBottom
+      script = stepping.script
+    of csCreated:
+      let p = stepping.callee
+      if stepping.savedStack.len > 0:
+        stack = stepping.savedStack
+        callStack = stepping.savedCallStack
+        stackBottom = stepping.savedStackBottom
+      else:
+        stack = newSeqOfCap[Value](VMInitialPreallocatedStackSize)
+        callStack = newSeqOfCap[CallFrame](256)
+        stackBottom = 0
+      currentChunk = p.chunk
+      co = vm.getCachedOps(currentChunk)
+      cached = co
+      opcodes = co.opcodes
+      pcIdx = 0
+      script = stepping.script
+    else:
+      raise newException(ValueError,
+        "interpret: cannot step a coroutine in state " & $stepping.state)
+    stepping.state = csRunning
 
   # initialize globals with provided data
   # this is a Tim-specific hack and must be rethought for a more
@@ -472,13 +560,14 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         span("idx=" & $idx & " stackLen=" & $stack.len))
 
   # Voodoo placeholder for injecting custom code at the start of the main loop
-  placeholderSnippet"VanCodeVMBeforeMainLoop"
+  conditionalPlaceholder"VanCodeVMBeforeMainLoop"
 
   # Main execution loop
   while true:
     frameChanged = false
     if pcIdx < 0 or pcIdx >= co.opcodes.len: break
     let oc = co.opcodes[pcIdx]
+    discard  # chunk hot counting disabled
     
     # single debug output for opcode/stack at top of loop
     when defined(hayaVmWriteStackOps):
@@ -737,19 +826,29 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                   "opcCallD: target module not found: " & chunkPath)
 
         let p = targetScript.procs[procId]
-        # store the current frame
+        vm.markHotProc(p)
         storeFrame()
         if stack.len < p.paramCount:
-          # not enough arguments on stack
           raise newException(ValueError,
             "Not enough arguments on stack for call to " & p.name & ": need " & $p.paramCount & ", have " & $stack.len)
         stackBottom = stack.len - p.paramCount
 
+        # JIT fast path — use pre-compiled version if available
+        if p.jitForeign != nil:
+          let callResult =
+            if p.paramCount > 0:
+              p.jitForeign(stack{^p.paramCount}, p.paramCount)
+            else:
+              p.jitForeign(nil, 0)
+          restoreFrame()
+          if p.hasResult:
+            stack.push(callResult)
+          inc(pcIdx)
+          continue
+
         when defined(hayaVmWriteStackOps):
-          # debug output for calls
           display(span("opc:", fgGreen), span("<" & $opcCallD & ">"),
             span("filePath=" & chunkPath & " procId=" & $procId & " name=" & p.name & " paramCount=" & $p.paramCount)) 
-        # switch to the called procedure's chunk          
         case p.kind
         of pkNative:
           currentChunk = p.chunk
@@ -773,13 +872,180 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
               echo "Foreign call result: nil"
       of opcReturnVal:
         let rv = stack.pop()
-        restoreFrame()
-        stack.push(rv)
+        if stepping != nil:
+          stepping.state = csCompleted
+          stepping.result = rv
+          return rv
+        if callStack.len == 0 and vm.activeCoroutine != nil:
+          let coro = vm.activeCoroutine
+          coro.state = csCompleted
+          coro.result = rv
+          stack = vm.savedStack
+          callStack = vm.savedCallStack
+          pcIdx = vm.savedPcIdx
+          currentChunk = vm.savedChunk
+          co = vm.savedCo
+          cached = co
+          opcodes = co.opcodes
+          stackBottom = vm.savedStackBottom
+          script = vm.savedScript
+          vm.activeCoroutine = nil
+          stack.push(rv)
+        else:
+          restoreFrame()
+          stack.push(rv)
       of opcReturnVoid:
-        restoreFrame()
+        if stepping != nil:
+          stepping.state = csCompleted
+          stepping.result = Value(typeId: tyNil)
+          return Value(typeId: tyNil)
+        if callStack.len == 0 and vm.activeCoroutine != nil:
+          let coro = vm.activeCoroutine
+          coro.state = csCompleted
+          stack = vm.savedStack
+          callStack = vm.savedCallStack
+          pcIdx = vm.savedPcIdx
+          currentChunk = vm.savedChunk
+          co = vm.savedCo
+          cached = co
+          opcodes = co.opcodes
+          stackBottom = vm.savedStackBottom
+          script = vm.savedScript
+          vm.activeCoroutine = nil
+        else:
+          restoreFrame()
         when defined(hayaVmWriteStackOps):
           display(span("return:", fgGreen), span("void", fgCyan))
+      #
+      # Coroutines
+      #
+      of opcCreateCoro:
+        let pid = co.getArg1Int(pcIdx)
+        if pid < 0 or pid >= script.procs.len:
+          raise newException(ValueError,
+            "opcCreateCoro: invalid proc id " & $pid)
+        let p = script.procs[pid]
+        if p.kind != pkNative:
+          raise newException(ValueError,
+            "opcCreateCoro: only native procs can be used as coroutines")
+        let coro = Coroutine(state: csCreated, callee: p, script: script)
+        stack.push(initValue[Coroutine](tyCoroutine, coro))
+      of opcCoroResume:
+        if stack.len == 0:
+          raise newException(ValueError,
+            "opcCoroResume: stack is empty")
+        let coroVal = stack.pop()
+        if coroVal.typeId != tyCoroutine:
+          raise newException(ValueError,
+            "opcCoroResume: expected a coroutine value, got typeId " & $coroVal.typeId)
+        if coroVal.objectVal == nil or coroVal.objectVal.foreign.data == nil:
+          raise newException(ValueError,
+            "opcCoroResume: invalid coroutine value")
+        let coro = cast[Coroutine](coroVal.objectVal.foreign.data)
+        case coro.state
+        of csCreated:
+          let paramCount = coro.callee.paramCount
+          if stack.len < paramCount:
+            raise newException(ValueError,
+              "opcCoroResume: not enough arguments on stack for coroutine" &
+              " (need " & $paramCount & ", have " & $stack.len & ")")
+          let argsStart = stack.len - paramCount
+          vm.savedStack = stack[0..<argsStart]
+          vm.savedCallStack = callStack
+          vm.savedPcIdx = pcIdx
+          vm.savedChunk = currentChunk
+          vm.savedCo = co
+          vm.savedStackBottom = stackBottom
+          vm.savedScript = script
+          vm.activeCoroutine = coro
+          var coroStack = newSeqOfCap[Value](VMInitialPreallocatedStackSize)
+          for i in 0..<paramCount:
+            coroStack.add(stack[argsStart + i])
+          stack = coroStack
+          stackBottom = 0
+          callStack = newSeqOfCap[CallFrame](256)
+          let p = coro.callee
+          script = coro.script
+          currentChunk = p.chunk
+          cached = vm.getCachedOps(currentChunk)
+          co = cached
+          opcodes = co.opcodes
+          pcIdx = 0
+          coro.state = csRunning
+          continue
+        of csSuspended:
+          vm.savedStack = stack
+          vm.savedCallStack = callStack
+          vm.savedPcIdx = pcIdx
+          vm.savedChunk = currentChunk
+          vm.savedCo = co
+          vm.savedStackBottom = stackBottom
+          vm.savedScript = script
+          stack = coro.savedStack
+          callStack = coro.savedCallStack
+          pcIdx = coro.savedPcIdx
+          currentChunk = coro.savedChunk
+          co = coro.savedCachedOps
+          cached = co
+          opcodes = co.opcodes
+          stackBottom = coro.savedStackBottom
+          script = coro.script
+          vm.activeCoroutine = coro
+          coro.state = csRunning
+          continue
+        of csRunning:
+          raise newException(ValueError,
+            "opcCoroResume: coroutine is already running")
+        of csCompleted, csErrored:
+          raise newException(ValueError,
+            "opcCoroResume: coroutine is already completed")
+      of opcCoroYield:
+        if stepping != nil:
+          let val = stack.pop()
+          stepping.savedStack = stack
+          stepping.savedCallStack = callStack
+          stepping.savedPcIdx = pcIdx + 1
+          stepping.savedChunk = currentChunk
+          stepping.savedCachedOps = co
+          stepping.savedStackBottom = stackBottom
+          stepping.state = csSuspended
+          stepping.result = val
+          return val
+        if vm.activeCoroutine == nil:
+          raise newException(ValueError,
+            "opcCoroYield: yield outside of a coroutine")
+        if stack.len == 0:
+          raise newException(ValueError,
+            "opcCoroYield: stack is empty")
+        let val = stack.pop()
+        let coro = vm.activeCoroutine
+        coro.savedStack = stack
+        coro.savedCallStack = callStack
+        coro.savedPcIdx = pcIdx + 1
+        coro.savedChunk = currentChunk
+        coro.savedCachedOps = co
+        coro.savedStackBottom = stackBottom
+        coro.state = csSuspended
+        stack = vm.savedStack
+        callStack = vm.savedCallStack
+        pcIdx = vm.savedPcIdx
+        currentChunk = vm.savedChunk
+        co = vm.savedCo
+        cached = co
+        opcodes = co.opcodes
+        stackBottom = vm.savedStackBottom
+        script = vm.savedScript
+        vm.activeCoroutine = nil
+        stack.push(val)
       of opcHalt:
+        if stepping != nil:
+          stepping.state = csCompleted
+          if stack.len > 0:
+            stepping.result = stack[^1]
+            return stepping.result
+          else:
+            stepping.result = Value(typeId: tyNil)
+            return stepping.result
         when defined(hayaVmWriteStackOps):
           if stack.len > 0:
             echo "Warning: stack not empty at halt, contains ", stack.len, " items."
@@ -793,10 +1059,34 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       else: discard # unhandled opcode (should not happen if parser is correct)
       inc(pcIdx)
   
+  if stepping != nil and stepping.state == csRunning:
+    stepping.state = csCompleted
+    stepping.result = if stack.len > 0: stack[^1] else: Value(typeId: tyNil)
+    return stepping.result
+
   if result == nil or result.typeId == tyNil:
-    # if the `result` is not set in any voodoo snippets,
-    # we return the top of the stack as the result of the chunk execution
     if stack.len > 0:
       return stack[^1]
     else:
       return Value(typeId: tyNil)
+
+proc stepCoroutine*(vm: Vm, coro: Coroutine): CoroutineResult =
+  if coro.state notin {csCreated, csSuspended}:
+    return CoroutineResult(kind: crErrored,
+      errorMsg: "stepCoroutine: coroutine is in invalid state " & $coro.state)
+  let startChunk =
+    if coro.state == csSuspended: coro.savedChunk
+    else: coro.callee.chunk
+  var r: Value
+  {.cast(gcsafe).}:
+    r = vm.interpret(coro.script, startChunk, stepping = coro)
+  case coro.state
+  of csSuspended:
+    CoroutineResult(kind: crYielded, yieldedValue: r)
+  of csCompleted:
+    CoroutineResult(kind: crCompleted, resultValue: r)
+  of csErrored:
+    CoroutineResult(kind: crErrored)
+  else:
+    CoroutineResult(kind: crErrored,
+      errorMsg: "stepCoroutine: unexpected final state " & $coro.state)

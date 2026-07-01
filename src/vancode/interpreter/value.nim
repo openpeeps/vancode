@@ -40,6 +40,7 @@ const
   tyArrayObject* = 12
   tyPointer* = 15
   tyAny* = 16
+  tyCoroutine* = 17
 
 type
   TypeId* = range[0..32766]  # max amount of case object branches
@@ -228,3 +229,10 @@ proc initArray*(length: int): Value =
   result = initObject(tyArrayObject, 0)
   result.objectVal =
     Object(isForeign: false, fields: newSeq[Value](length))
+
+type
+  JitHooks* = object
+    ## JIT hooks installed into the VM.
+    ## Uses raw pointer to avoid circular deps between vm and jit modules.
+    getForeign*: proc (procPtr: pointer): ForeignProc
+      ## Given a Proc pointer, returns its JIT-compiled ForeignProc if available.
