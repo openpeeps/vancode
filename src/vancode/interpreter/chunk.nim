@@ -10,7 +10,7 @@
 #          Made by Humans from OpenPeeps
 #          https://github.com/openpeeps/vancode
 
-import std/[tables, hashes, dynlib, strutils]
+import std/[tables, hashes, dynlib, strutils, atomics]
 import pkg/voodoo/extensibles
 import ./value
 
@@ -126,6 +126,7 @@ type
 
   Chunk* {.acyclic.} = ref object
     ## A chunk of bytecode
+    id*: int
     file*: string
       # the filename of the module this chunk belongs to
     code*: seq[uint8]
@@ -158,6 +159,8 @@ type
       ## the number of parameters this procedure takes
     hasResult*: bool
       ## flag signifying whether the proc returns a value
+
+var nextChunkId {.global.}: int = 0
 
 proc addLineInfo*(chunk: var Chunk, n: int) =
   ## Add ``n`` line info entries to the chunk.
@@ -314,29 +317,26 @@ proc rebuildStringIds*(chunk: var Chunk) =
 
 proc newChunk*(file: string): Chunk =
   ## Create a new chunk.
-  # result = Chunk(file: $hash(file), col: 0)
   result = Chunk(file: file, col: 0)
+  result.id = atomicInc(nextChunkId)
 
 proc newScript*(main: Chunk): Script =
   ## Create a new script, with the given main chunk.
   result = Script(mainChunk: main)
 
 proc hash*(x: Chunk): Hash =
-  ## Hashes a Chunk by its address
-  hash(cast[pointer](x))
+  ## Hashes a Chunk by its unique ID
+  hash(x.id)
 
 proc `==`*(a, b: Chunk): bool =
-  ## Compares two Chunks by address
-  hash(a) == hash(b)
-
-proc hash*(x: Script): Hash =
-  ## Hashes a Script by its address
-  hash(cast[pointer](x))
+  ## Compares two Chunks by unique ID
+  a.id == b.id
 
 proc `$`*(c: Chunk): string =
-  ## Convert a Chunk to a string (for debugging).
-  result = "<chunk: $1>" % $(hash(c))
+  result = "<chunk: $1>" % $(c.id)
+
+proc hash*(x: Script): Hash =
+  hash(cast[pointer](x))
 
 proc `$`*(s: Script): string =
-  ## Convert a Script to a string (for debugging).
-  result = "<script: $1>" % $(hash(s))
+  result = "<script: $1>" % $hash(s)
