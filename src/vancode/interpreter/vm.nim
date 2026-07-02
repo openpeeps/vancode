@@ -787,18 +787,28 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         if tgt >= 0: pcIdx = tgt - 1
       of opcJumpFwdT:
         # jump if true
-        let cond = stack.peek().boolVal
+        let val = stack.peek()
+        let cond = 
+          case val.typeId
+          of tyBool: val.boolVal
+          of tyJsonStorage:
+            val.jsonVal != nil and val.jsonVal.kind == JBool and val.jsonVal.bVal
+          else: false
         if cond:
-          # we `peek` here; conditional jump does not pop
           let tgt = co.jumpTargets[pcIdx]
           if tgt >= 0: pcIdx = tgt - 1
           when defined(hayaVmWriteStackOps):
             echo "JumpFwdT: tgt=", tgt, " cond=", cond
       of opcJumpFwdF:
         # jump if false
-        let cond = stack.peek().boolVal
+        let val = stack.peek()
+        let cond = 
+          case val.typeId
+          of tyBool: val.boolVal
+          of tyJsonStorage:
+            val.jsonVal != nil and val.jsonVal.kind == JBool and val.jsonVal.bVal
+          else: false
         if not cond:
-          # we `peek` instead of `pop` to allow reusing the condition
           let tgt = co.jumpTargets[pcIdx]
           if tgt >= 0: pcIdx = tgt - 1
           when defined(hayaVmWriteStackOps):
