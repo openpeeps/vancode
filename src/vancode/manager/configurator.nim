@@ -6,8 +6,7 @@
 import pkg/[openparser/yaml, semver]
 from std/net import Port, `$`
 
-when not defined napibuild:
-  import pkg/openparser/[json, yaml]
+import pkg/openparser/[json, yaml]
 
 export `$`
 
