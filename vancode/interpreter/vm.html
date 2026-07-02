@@ -61,24 +61,48 @@
   <details open>
     <summary><a class="reference reference-toplevel" href="#7" id="57">Types</a></summary>
     <ul class="simple simple-toc-section">
-      <li><a class="reference" href="#CallFrame" title="CallFrame = tuple[currentChunk: Chunk, cachedOps: CachedOps, pcIdx: int,
+      <li><a class="reference" href="#CachedOps" title="CachedOps = ref object
+  opcodes*: seq[Opcode]
+  arg1*: seq[int64]
+  arg2*: seq[int64]
+  flags*: seq[int16]
+  byteOffsets*: seq[int]
+  jumpTargets*: seq[int]">CachedOps</a></li>
+<li><a class="reference" href="#CallFrame" title="CallFrame = tuple[currentChunk: Chunk, cachedOps: CachedOps, pcIdx: int,
                   stackBottom: int, script: Script]">CallFrame</a></li>
+<li><a class="reference" href="#Coroutine" title="Coroutine {.acyclic.} = ref object
+  state*: CoroutineState
+  callee*: Proc
+  script*: Script
+  savedStack*: seq[Value]
+  savedCallStack*: seq[CallFrame]
+  savedPcIdx*: int
+  savedChunk*: Chunk
+  savedCachedOps*: CachedOps
+  savedStackBottom*: int
+  result*: Value">Coroutine</a></li>
+<li><a class="reference" href="#CoroutineResult" title="CoroutineResult = object
+  case kind*: CoroutineResultKind
+  of crYielded:
+    yieldedValue*: Value
+  of crCompleted:
+    resultValue*: Value
+  of crErrored:
+    errorMsg*: string">CoroutineResult</a></li>
+<li><a class="reference" href="#CoroutineResultKind" title="CoroutineResultKind = enum
+  crYielded, crCompleted, crErrored">CoroutineResultKind</a></li>
+<li><a class="reference" href="#CoroutineState" title="CoroutineState = enum
+  csCreated, csSuspended, csRunning, csCompleted, csErrored">CoroutineState</a></li>
 <li><a class="reference" href="#Vm" title="Vm {.acyclic.} = ref object
-  importedModules*: Table[string, Script] ## Maps module paths to their loaded Script objects">Vm</a></li>
+  hotCounts*: Table[string, int]
+  hotProcCounts*: Table[string, int]
+  importedModules*: Table[string, Script]
+  activeCoroutine*: Coroutine
+  jit*: JitHooks">Vm</a></li>
 <li><a class="reference" href="#VMPreferences" title="VMPreferences = object
-  enableHotCodeDetection*: bool ## Whether to enable hot code detection. When enabled, the VM will keep
-                                ## track of how many times each chunk and procedure is executed,
-                                ## and if they exceed the specified thresholds, they will be marked as &quot;hot&quot;.
-                                ## 
-                                ## This is just a marker for now, but it can be used in the future to trigger
-                                ## optimizations such as JIT compilation.
-                                ## 
-                                ## For JIT compilation we'll use the [libgccjit](https://github.com/openpeeps/gccjit.nim)
-                                ## package to generate machine code for hot chunks and procedures at runtime
-  hotProcThreshold*: int = 10 ## Threshold for marking a procedure as hot. If a procedure is
-                              ## called more than this number of times, it will be marked as hot.
-  hotChunkThreshold*: int = 100 ## Threshold for marking a chunk as hot. If a chunk is executed more than this
-                                ## number of times, it will be marked as hot.">VMPreferences</a></li>
+  enableHotCodeDetection*: bool
+  hotProcThreshold*: int = 10
+  hotChunkThreshold*: int = 100">VMPreferences</a></li>
 
     </ul>
   </details>
@@ -97,12 +121,26 @@
   <details open>
     <summary><a class="reference reference-toplevel" href="#12" id="62">Procs</a></summary>
     <ul class="simple simple-toc-section">
-      <ul class="simple nested-toc-section">interpret
-  <li><a class="reference" href="#interpret%2CVm%2CScript%2CChunk%2COption%5Bstring%5D" title="interpret(vm: Vm; script: Script; startChunk: Chunk;
+      <ul class="simple nested-toc-section">getCachedOps
+  <li><a class="reference" href="#getCachedOps%2CVm%2CChunk" title="getCachedOps(vm: Vm; currentChunk: Chunk): CachedOps">getCachedOps(vm: Vm; currentChunk: Chunk): CachedOps</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">getHotChunkCount
+  <li><a class="reference" href="#getHotChunkCount%2CVm%2CChunk" title="getHotChunkCount(vm: Vm; chunk: Chunk): int">getHotChunkCount(vm: Vm; chunk: Chunk): int</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">getHotProcCount
+  <li><a class="reference" href="#getHotProcCount%2CVm%2Cstring" title="getHotProcCount(vm: Vm; procName: string): int">getHotProcCount(vm: Vm; procName: string): int</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">interpret
+  <li><a class="reference" href="#interpret%2CVm%2CScript%2CChunk%2COption%5Bstring%5D%2CCoroutine" title="interpret(vm: Vm; script: Script; startChunk: Chunk;
           staticString: Option[string] = none(string);
-          globaldata = newJObject(); localData = newJObject()): Value">interpret(vm: Vm; script: Script; startChunk: Chunk;
+          globaldata = newJObject(); localData = newJObject();
+          stepping: Coroutine = nil): Value">interpret(vm: Vm; script: Script; startChunk: Chunk;
           staticString: Option[string] = none(string);
-          globaldata = newJObject(); localData = newJObject()): Value</a></li>
+          globaldata = newJObject(); localData = newJObject();
+          stepping: Coroutine = nil): Value</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">newVirtualMachine
@@ -115,6 +153,26 @@
 </ul>
 <ul class="simple nested-toc-section">prewarmScriptOps
   <li><a class="reference" href="#prewarmScriptOps%2CVm%2CScript" title="prewarmScriptOps(vm: Vm; s: Script)">prewarmScriptOps(vm: Vm; s: Script)</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">stepCoroutine
+  <li><a class="reference" href="#stepCoroutine%2CVm%2CCoroutine" title="stepCoroutine(vm: Vm; coro: Coroutine): CoroutineResult">stepCoroutine(vm: Vm; coro: Coroutine): CoroutineResult</a></li>
+
+</ul>
+
+    </ul>
+  </details>
+</li>
+<li>
+  <details open>
+    <summary><a class="reference reference-toplevel" href="#18" id="68">Templates</a></summary>
+    <ul class="simple simple-toc-section">
+      <ul class="simple nested-toc-section">getArg1Float
+  <li><a class="reference" href="#getArg1Float.t%2CCachedOps%2Cint" title="getArg1Float(co: CachedOps; i: int): float64">getArg1Float(co: CachedOps; i: int): float64</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">getArg1Int
+  <li><a class="reference" href="#getArg1Int.t%2CCachedOps%2Cint" title="getArg1Int(co: CachedOps; i: int): int">getArg1Int(co: CachedOps; i: int): int</a></li>
 
 </ul>
 
@@ -139,18 +197,87 @@
 <div class="section" id="7">
   <h1><a class="toc-backref" href="#7">Types</a></h1>
   <dl class="item">
-    <div id="CallFrame">
-  <dt><pre><a href="#CallFrame"><span class="Identifier">CallFrame</span></a> <span class="Other">=</span> <span class="Keyword">tuple</span><span class="Other">[</span><span class="Identifier">currentChunk</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a><span class="Other">,</span> <span class="Identifier">cachedOps</span><span class="Other">:</span> <span class="Identifier">CachedOps</span><span class="Other">,</span> <span class="Identifier">pcIdx</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">,</span>
+    <div id="CachedOps">
+  <dt><pre><a href="#CachedOps"><span class="Identifier">CachedOps</span></a> <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span>
+  <span class="Identifier">opcodes</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="chunk.html#Opcode"><span class="Identifier">Opcode</span></a><span class="Other">]</span>
+  <span class="Identifier">arg1</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">int64</span><span class="Other">]</span>
+  <span class="Identifier">arg2</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">int64</span><span class="Other">]</span>
+  <span class="Identifier">flags</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">int16</span><span class="Other">]</span>
+  <span class="Identifier">byteOffsets</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">int</span><span class="Other">]</span>
+  <span class="Identifier">jumpTargets</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">int</span><span class="Other">]</span></pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+<div id="CallFrame">
+  <dt><pre><a href="#CallFrame"><span class="Identifier">CallFrame</span></a> <span class="Other">=</span> <span class="Keyword">tuple</span><span class="Other">[</span><span class="Identifier">currentChunk</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a><span class="Other">,</span> <span class="Identifier">cachedOps</span><span class="Other">:</span> <a href="#CachedOps"><span class="Identifier">CachedOps</span></a><span class="Other">,</span> <span class="Identifier">pcIdx</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">,</span>
                   <span class="Identifier">stackBottom</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">,</span> <span class="Identifier">script</span><span class="Other">:</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">]</span></pre></dt>
   <dd>
     
-    Represents a call frame for function/procedure calls. This is used to store the execution context when calling into a new chunk
+    Represents a call frame for function/procedure calls.
+    
+  </dd>
+</div>
+<div id="Coroutine">
+  <dt><pre><a href="#Coroutine"><span class="Identifier">Coroutine</span></a> {.<span class="Identifier">acyclic</span>.} <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span>
+  <span class="Identifier">state</span><span class="Operator">*</span><span class="Other">:</span> <a href="#CoroutineState"><span class="Identifier">CoroutineState</span></a>
+  <span class="Identifier">callee</span><span class="Operator">*</span><span class="Other">:</span> <a href="chunk.html#Proc"><span class="Identifier">Proc</span></a>
+  <span class="Identifier">script</span><span class="Operator">*</span><span class="Other">:</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a>
+  <span class="Identifier">savedStack</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="value.html#Value"><span class="Identifier">Value</span></a><span class="Other">]</span>
+  <span class="Identifier">savedCallStack</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#CallFrame"><span class="Identifier">CallFrame</span></a><span class="Other">]</span>
+  <span class="Identifier">savedPcIdx</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">savedChunk</span><span class="Operator">*</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a>
+  <span class="Identifier">savedCachedOps</span><span class="Operator">*</span><span class="Other">:</span> <a href="#CachedOps"><span class="Identifier">CachedOps</span></a>
+  <span class="Identifier">savedStackBottom</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">result</span><span class="Operator">*</span><span class="Other">:</span> <a href="value.html#Value"><span class="Identifier">Value</span></a></pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+<div id="CoroutineResult">
+  <dt><pre><a href="#CoroutineResult"><span class="Identifier">CoroutineResult</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Keyword">case</span> <span class="Identifier">kind</span><span class="Operator">*</span><span class="Other">:</span> <a href="#CoroutineResultKind"><span class="Identifier">CoroutineResultKind</span></a>
+  <span class="Keyword">of</span> <span class="Identifier">crYielded</span><span class="Other">:</span>
+    <span class="Identifier">yieldedValue</span><span class="Operator">*</span><span class="Other">:</span> <a href="value.html#Value"><span class="Identifier">Value</span></a>
+  <span class="Keyword">of</span> <span class="Identifier">crCompleted</span><span class="Other">:</span>
+    <span class="Identifier">resultValue</span><span class="Operator">*</span><span class="Other">:</span> <a href="value.html#Value"><span class="Identifier">Value</span></a>
+  <span class="Keyword">of</span> <span class="Identifier">crErrored</span><span class="Other">:</span>
+    <span class="Identifier">errorMsg</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span></pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+<div id="CoroutineResultKind">
+  <dt><pre><a href="#CoroutineResultKind"><span class="Identifier">CoroutineResultKind</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
+  <span class="Identifier">crYielded</span><span class="Other">,</span> <span class="Identifier">crCompleted</span><span class="Other">,</span> <span class="Identifier">crErrored</span></pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+<div id="CoroutineState">
+  <dt><pre><a href="#CoroutineState"><span class="Identifier">CoroutineState</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
+  <span class="Identifier">csCreated</span><span class="Other">,</span> <span class="Identifier">csSuspended</span><span class="Other">,</span> <span class="Identifier">csRunning</span><span class="Other">,</span> <span class="Identifier">csCompleted</span><span class="Other">,</span> <span class="Identifier">csErrored</span></pre></dt>
+  <dd>
+    
+    
     
   </dd>
 </div>
 <div id="Vm">
   <dt><pre><a href="#Vm"><span class="Identifier">Vm</span></a> {.<span class="Identifier">acyclic</span>.} <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span>
-  <span class="Identifier">importedModules</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">]</span> <span class="Comment">## Maps module paths to their loaded Script objects</span></pre></dt>
+  <span class="Identifier">hotCounts</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <span class="Identifier">int</span><span class="Other">]</span>
+  <span class="Identifier">hotProcCounts</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <span class="Identifier">int</span><span class="Other">]</span>
+  <span class="Identifier">importedModules</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">]</span>
+  <span class="Identifier">activeCoroutine</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Coroutine"><span class="Identifier">Coroutine</span></a>
+  <span class="Identifier">jit</span><span class="Operator">*</span><span class="Other">:</span> <a href="value.html#JitHooks"><span class="Identifier">JitHooks</span></a></pre></dt>
   <dd>
     
     The main VM object that holds the execution state and caches
@@ -159,19 +286,9 @@
 </div>
 <div id="VMPreferences">
   <dt><pre><a href="#VMPreferences"><span class="Identifier">VMPreferences</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
-  <span class="Identifier">enableHotCodeDetection</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span> <span class="Comment">## Whether to enable hot code detection. When enabled, the VM will keep</span>
-                                <span class="Comment">## track of how many times each chunk and procedure is executed,</span>
-                                <span class="Comment">## and if they exceed the specified thresholds, they will be marked as &quot;hot&quot;.</span>
-                                <span class="Comment">## </span>
-                                <span class="Comment">## This is just a marker for now, but it can be used in the future to trigger</span>
-                                <span class="Comment">## optimizations such as JIT compilation.</span>
-                                <span class="Comment">## </span>
-                                <span class="Comment">## For JIT compilation we'll use the [libgccjit](https://github.com/openpeeps/gccjit.nim)</span>
-                                <span class="Comment">## package to generate machine code for hot chunks and procedures at runtime</span>
-  <span class="Identifier">hotProcThreshold</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">10</span> <span class="Comment">## Threshold for marking a procedure as hot. If a procedure is</span>
-                              <span class="Comment">## called more than this number of times, it will be marked as hot.</span>
-  <span class="Identifier">hotChunkThreshold</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">100</span> <span class="Comment">## Threshold for marking a chunk as hot. If a chunk is executed more than this</span>
-                                <span class="Comment">## number of times, it will be marked as hot.</span></pre></dt>
+  <span class="Identifier">enableHotCodeDetection</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>
+  <span class="Identifier">hotProcThreshold</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">10</span>
+  <span class="Identifier">hotChunkThreshold</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">100</span></pre></dt>
   <dd>
     
     Preferences for configuring the VM's behavior. These can be set when creating a new VM instance
@@ -206,16 +323,52 @@
 <div class="section" id="12">
   <h1><a class="toc-backref" href="#12">Procs</a></h1>
   <dl class="item">
-    <div id="interpret-procs-all">
-  <div id="interpret,Vm,Script,Chunk,Option[string]">
-  <dt><pre><span class="Keyword">proc</span> <a href="#interpret%2CVm%2CScript%2CChunk%2COption%5Bstring%5D"><span class="Identifier">interpret</span></a><span class="Other">(</span><span class="Identifier">vm</span><span class="Other">:</span> <a href="#Vm"><span class="Identifier">Vm</span></a><span class="Other">;</span> <span class="Identifier">script</span><span class="Other">:</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">;</span> <span class="Identifier">startChunk</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a><span class="Other">;</span>
-               <span class="Identifier">staticString</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span> <span class="Other">=</span> <span class="Identifier">none</span><span class="Other">(</span><span class="Identifier">string</span><span class="Other">)</span><span class="Other">;</span>
-               <span class="Identifier">globaldata</span> <span class="Other">=</span> <span class="Identifier">newJObject</span><span class="Other">(</span><span class="Other">)</span><span class="Other">;</span> <span class="Identifier">localData</span> <span class="Other">=</span> <span class="Identifier">newJObject</span><span class="Other">(</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="value.html#Value"><span class="Identifier">Value</span></a> {.
-    <span class="Identifier">discardable</span><span class="Other">,</span> <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+    <div id="getCachedOps-procs-all">
+  <div id="getCachedOps,Vm,Chunk">
+  <dt><pre><span class="Keyword">proc</span> <a href="#getCachedOps%2CVm%2CChunk"><span class="Identifier">getCachedOps</span></a><span class="Other">(</span><span class="Identifier">vm</span><span class="Other">:</span> <a href="#Vm"><span class="Identifier">Vm</span></a><span class="Other">;</span> <span class="Identifier">currentChunk</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a><span class="Other">)</span><span class="Other">:</span> <a href="#CachedOps"><span class="Identifier">CachedOps</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
+<div id="getHotChunkCount-procs-all">
+  <div id="getHotChunkCount,Vm,Chunk">
+  <dt><pre><span class="Keyword">proc</span> <a href="#getHotChunkCount%2CVm%2CChunk"><span class="Identifier">getHotChunkCount</span></a><span class="Other">(</span><span class="Identifier">vm</span><span class="Other">:</span> <a href="#Vm"><span class="Identifier">Vm</span></a><span class="Other">;</span> <span class="Identifier">chunk</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
+<div id="getHotProcCount-procs-all">
+  <div id="getHotProcCount,Vm,string">
+  <dt><pre><span class="Keyword">proc</span> <a href="#getHotProcCount%2CVm%2Cstring"><span class="Identifier">getHotProcCount</span></a><span class="Other">(</span><span class="Identifier">vm</span><span class="Other">:</span> <a href="#Vm"><span class="Identifier">Vm</span></a><span class="Other">;</span> <span class="Identifier">procName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    Interpret the given chunk in the context of the provided script
+    
+    
+  </dd>
+</div>
+
+</div>
+<div id="interpret-procs-all">
+  <div id="interpret,Vm,Script,Chunk,Option[string],Coroutine">
+  <dt><pre><span class="Keyword">proc</span> <a href="#interpret%2CVm%2CScript%2CChunk%2COption%5Bstring%5D%2CCoroutine"><span class="Identifier">interpret</span></a><span class="Other">(</span><span class="Identifier">vm</span><span class="Other">:</span> <a href="#Vm"><span class="Identifier">Vm</span></a><span class="Other">;</span> <span class="Identifier">script</span><span class="Other">:</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">;</span> <span class="Identifier">startChunk</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a><span class="Other">;</span>
+               <span class="Identifier">staticString</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span> <span class="Other">=</span> <span class="Identifier">none</span><span class="Other">(</span><span class="Identifier">string</span><span class="Other">)</span><span class="Other">;</span>
+               <span class="Identifier">globaldata</span> <span class="Other">=</span> <span class="Identifier">newJObject</span><span class="Other">(</span><span class="Other">)</span><span class="Other">;</span> <span class="Identifier">localData</span> <span class="Other">=</span> <span class="Identifier">newJObject</span><span class="Other">(</span><span class="Other">)</span><span class="Other">;</span>
+               <span class="Identifier">stepping</span><span class="Other">:</span> <a href="#Coroutine"><span class="Identifier">Coroutine</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">)</span><span class="Other">:</span> <a href="value.html#Value"><span class="Identifier">Value</span></a> {.<span class="Identifier">discardable</span><span class="Other">,</span>
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    Interpret the given chunk in the context of the provided script. If <tt class="docutils literal"><span class="pre"><span class="Identifier">stepping</span></span></tt> is provided, the VM runs the coroutine from its saved state until it yields or completes, then returns the yielded/completed value.
     
   </dd>
 </div>
@@ -256,6 +409,46 @@
 </div>
 
 </div>
+<div id="stepCoroutine-procs-all">
+  <div id="stepCoroutine,Vm,Coroutine">
+  <dt><pre><span class="Keyword">proc</span> <a href="#stepCoroutine%2CVm%2CCoroutine"><span class="Identifier">stepCoroutine</span></a><span class="Other">(</span><span class="Identifier">vm</span><span class="Other">:</span> <a href="#Vm"><span class="Identifier">Vm</span></a><span class="Other">;</span> <span class="Identifier">coro</span><span class="Other">:</span> <a href="#Coroutine"><span class="Identifier">Coroutine</span></a><span class="Other">)</span><span class="Other">:</span> <a href="#CoroutineResult"><span class="Identifier">CoroutineResult</span></a> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
+
+  </dl>
+</div>
+<div class="section" id="18">
+  <h1><a class="toc-backref" href="#18">Templates</a></h1>
+  <dl class="item">
+    <div id="getArg1Float-templates-all">
+  <div id="getArg1Float.t,CachedOps,int">
+  <dt><pre><span class="Keyword">template</span> <a href="#getArg1Float.t%2CCachedOps%2Cint"><span class="Identifier">getArg1Float</span></a><span class="Other">(</span><span class="Identifier">co</span><span class="Other">:</span> <a href="#CachedOps"><span class="Identifier">CachedOps</span></a><span class="Other">;</span> <span class="Identifier">i</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">float64</span></pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
+<div id="getArg1Int-templates-all">
+  <div id="getArg1Int.t,CachedOps,int">
+  <dt><pre><span class="Keyword">template</span> <a href="#getArg1Int.t%2CCachedOps%2Cint"><span class="Identifier">getArg1Int</span></a><span class="Other">(</span><span class="Identifier">co</span><span class="Other">:</span> <a href="#CachedOps"><span class="Identifier">CachedOps</span></a><span class="Other">;</span> <span class="Identifier">i</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
 
   </dl>
 </div>
@@ -266,7 +459,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-05-29 22:37:43 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-02 08:34:55 UTC</small>
       </div>
     </div>
   </div>

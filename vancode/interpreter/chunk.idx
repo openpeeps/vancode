@@ -1,41 +1,44 @@
 nimTitle	chunk	vancode/interpreter/chunk.html	module vancode/interpreter/chunk		0
 nim	Opcode	vancode/interpreter/chunk.html#Opcode	enum Opcode		24
-nim	Script	vancode/interpreter/chunk.html#Script	type Script		102
-nim	LineInfo	vancode/interpreter/chunk.html#LineInfo	tuple LineInfo		120
-nim	Chunk	vancode/interpreter/chunk.html#Chunk	type Chunk		127
-nim	pkNative	vancode/interpreter/chunk.html#pkNative	ProcKind.pkNative		144
-nim	pkForeign	vancode/interpreter/chunk.html#pkForeign	ProcKind.pkForeign		144
-nim	ProcKind	vancode/interpreter/chunk.html#ProcKind	enum ProcKind		144
-nim	Proc	vancode/interpreter/chunk.html#Proc	type Proc		149
-nim	addLineInfo	vancode/interpreter/chunk.html#addLineInfo,Chunk,int	proc addLineInfo(chunk: var Chunk; n: int)		162
-nim	getString	vancode/interpreter/chunk.html#getString,Chunk,sinkstring	proc getString(chunk: var Chunk; str: sink string): uint16		173
-nim	emit	vancode/interpreter/chunk.html#emit,Chunk,Opcode	proc emit(chunk: var Chunk; opc: Opcode)		189
-nim	emit	vancode/interpreter/chunk.html#emit,Chunk,uint8	proc emit(chunk: var Chunk; u8: uint8)		195
-nim	emit	vancode/interpreter/chunk.html#emit,Chunk,uint16	proc emit(chunk: var Chunk; u16: uint16)		200
-nim	emit	vancode/interpreter/chunk.html#emit,Chunk,int64	proc emit(chunk: var Chunk; val: int64)		208
-nim	emit	vancode/interpreter/chunk.html#emit,Chunk,float64	proc emit(chunk: var Chunk; val: float64)		217
-nim	emit	vancode/interpreter/chunk.html#emit,Chunk,pointer	proc emit(chunk: var Chunk; xptr: pointer)		226
-nim	emitHole	vancode/interpreter/chunk.html#emitHole,Chunk,int	proc emitHole(chunk: var Chunk; size: int): int		234
-nim	fillHole	vancode/interpreter/chunk.html#fillHole,Chunk,int,uint8	proc fillHole(chunk: var Chunk; hole: int; val: uint8)		241
-nim	fillHole	vancode/interpreter/chunk.html#fillHole,Chunk,int,uint16	proc fillHole(chunk: var Chunk; hole: int; val: uint16)		245
-nim	patchHole	vancode/interpreter/chunk.html#patchHole,Chunk,int	proc patchHole(chunk: var Chunk; hole: int)		250
-nim	getOpcode	vancode/interpreter/chunk.html#getOpcode,Chunk,int	proc getOpcode(chunk: Chunk; i: int): Opcode		255
-nim	getU8	vancode/interpreter/chunk.html#getU8,Chunk,int	proc getU8(chunk: Chunk; i: int): uint8		259
-nim	getU16	vancode/interpreter/chunk.html#getU16,Chunk,int	proc getU16(chunk: Chunk; i: int): uint16		263
-nim	getInt	vancode/interpreter/chunk.html#getInt,Chunk,int	proc getInt(chunk: Chunk; i: int): int64		267
-nim	getFloat	vancode/interpreter/chunk.html#getFloat,Chunk,int	proc getFloat(chunk: Chunk; i: int): float64		276
-nim	getLineInfo	vancode/interpreter/chunk.html#getLineInfo,Chunk,int	proc getLineInfo(chunk: Chunk; i: int): LineInfo		285
-nim	getLineInfoTable	vancode/interpreter/chunk.html#getLineInfoTable,Chunk	proc getLineInfoTable(chunk: Chunk): seq[LineInfo]		295
-nim	setLineInfoTable	vancode/interpreter/chunk.html#setLineInfoTable,Chunk,seq[LineInfo]	proc setLineInfoTable(chunk: var Chunk; info: seq[LineInfo])		300
-nim	rebuildStringIds	vancode/interpreter/chunk.html#rebuildStringIds,Chunk	proc rebuildStringIds(chunk: var Chunk)		305
-nim	newChunk	vancode/interpreter/chunk.html#newChunk,string	proc newChunk(file: string): Chunk		315
-nim	newScript	vancode/interpreter/chunk.html#newScript,Chunk	proc newScript(main: Chunk): Script		320
-nim	hash	vancode/interpreter/chunk.html#hash,Chunk	proc hash(x: Chunk): Hash		324
-nim	`==`	vancode/interpreter/chunk.html#==,Chunk,Chunk	proc `==`(a, b: Chunk): bool		328
-nim	hash	vancode/interpreter/chunk.html#hash,Script	proc hash(x: Script): Hash		332
-nim	`$`	vancode/interpreter/chunk.html#$,Chunk	proc `$`(c: Chunk): string		336
-nim	`$`	vancode/interpreter/chunk.html#$,Script	proc `$`(s: Script): string		340
-nimgrp	$	vancode/interpreter/chunk.html#$-procs-all	proc		336
-nimgrp	emit	vancode/interpreter/chunk.html#emit-procs-all	proc		189
-nimgrp	fillhole	vancode/interpreter/chunk.html#fillHole-procs-all	proc		241
-nimgrp	hash	vancode/interpreter/chunk.html#hash-procs-all	proc		324
+nim	Script	vancode/interpreter/chunk.html#Script	type Script		107
+nim	LineInfo	vancode/interpreter/chunk.html#LineInfo	tuple LineInfo		125
+nim	Chunk	vancode/interpreter/chunk.html#Chunk	type Chunk		132
+nim	pkNative	vancode/interpreter/chunk.html#pkNative	ProcKind.pkNative		150
+nim	pkForeign	vancode/interpreter/chunk.html#pkForeign	ProcKind.pkForeign		150
+nim	ProcKind	vancode/interpreter/chunk.html#ProcKind	enum ProcKind		150
+nim	Proc	vancode/interpreter/chunk.html#Proc	type Proc		155
+nim	addLineInfo	vancode/interpreter/chunk.html#addLineInfo,Chunk,int	proc addLineInfo(chunk: var Chunk; n: int)		172
+nim	getString	vancode/interpreter/chunk.html#getString,Chunk,sinkstring	proc getString(chunk: var Chunk; str: sink string): uint16		183
+nim	emit	vancode/interpreter/chunk.html#emit,Chunk,Opcode	proc emit(chunk: var Chunk; opc: Opcode)		199
+nim	emit	vancode/interpreter/chunk.html#emit,Chunk,uint8	proc emit(chunk: var Chunk; u8: uint8)		205
+nim	emit	vancode/interpreter/chunk.html#emit,Chunk,uint16	proc emit(chunk: var Chunk; u16: uint16)		210
+nim	emit	vancode/interpreter/chunk.html#emit,Chunk,int64	proc emit(chunk: var Chunk; val: int64)		218
+nim	emit	vancode/interpreter/chunk.html#emit,Chunk,float64	proc emit(chunk: var Chunk; val: float64)		227
+nim	emit	vancode/interpreter/chunk.html#emit,Chunk,pointer	proc emit(chunk: var Chunk; xptr: pointer)		236
+nim	emitHole	vancode/interpreter/chunk.html#emitHole,Chunk,int	proc emitHole(chunk: var Chunk; size: int): int		244
+nim	fillHole	vancode/interpreter/chunk.html#fillHole,Chunk,int,uint8	proc fillHole(chunk: var Chunk; hole: int; val: uint8)		251
+nim	fillHole	vancode/interpreter/chunk.html#fillHole,Chunk,int,uint16	proc fillHole(chunk: var Chunk; hole: int; val: uint16)		255
+nim	patchHole	vancode/interpreter/chunk.html#patchHole,Chunk,int	proc patchHole(chunk: var Chunk; hole: int)		260
+nim	getOpcode	vancode/interpreter/chunk.html#getOpcode,Chunk,int	proc getOpcode(chunk: Chunk; i: int): Opcode		265
+nim	getU8	vancode/interpreter/chunk.html#getU8,Chunk,int	proc getU8(chunk: Chunk; i: int): uint8		269
+nim	getU16	vancode/interpreter/chunk.html#getU16,Chunk,int	proc getU16(chunk: Chunk; i: int): uint16		273
+nim	getInt	vancode/interpreter/chunk.html#getInt,Chunk,int	proc getInt(chunk: Chunk; i: int): int64		277
+nim	getFloat	vancode/interpreter/chunk.html#getFloat,Chunk,int	proc getFloat(chunk: Chunk; i: int): float64		286
+nim	getLineInfo	vancode/interpreter/chunk.html#getLineInfo,Chunk,int	proc getLineInfo(chunk: Chunk; i: int): LineInfo		295
+nim	getLineInfoTable	vancode/interpreter/chunk.html#getLineInfoTable,Chunk	proc getLineInfoTable(chunk: Chunk): seq[LineInfo]		305
+nim	setLineInfoTable	vancode/interpreter/chunk.html#setLineInfoTable,Chunk,seq[LineInfo]	proc setLineInfoTable(chunk: var Chunk; info: seq[LineInfo])		310
+nim	rebuildStringIds	vancode/interpreter/chunk.html#rebuildStringIds,Chunk	proc rebuildStringIds(chunk: var Chunk)		315
+nim	newChunk	vancode/interpreter/chunk.html#newChunk,string	proc newChunk(file: string): Chunk		325
+nim	newScript	vancode/interpreter/chunk.html#newScript,Chunk	proc newScript(main: Chunk): Script		330
+nim	hash	vancode/interpreter/chunk.html#hash,Chunk	proc hash(x: Chunk): Hash		334
+nim	`==`	vancode/interpreter/chunk.html#==,Chunk,Chunk	proc `==`(a, b: Chunk): bool		338
+nim	`$`	vancode/interpreter/chunk.html#$,Chunk	proc `$`(c: Chunk): string		344
+nim	hash	vancode/interpreter/chunk.html#hash,Script	proc hash(x: Script): Hash		347
+nim	hash	vancode/interpreter/chunk.html#hash,Proc	proc hash(x: Proc): Hash		350
+nim	`==`	vancode/interpreter/chunk.html#==,Proc,Proc	proc `==`(a, b: Proc): bool		353
+nim	`$`	vancode/interpreter/chunk.html#$,Script	proc `$`(s: Script): string		358
+nimgrp	==	vancode/interpreter/chunk.html#==-procs-all	proc		338
+nimgrp	$	vancode/interpreter/chunk.html#$-procs-all	proc		344
+nimgrp	emit	vancode/interpreter/chunk.html#emit-procs-all	proc		199
+nimgrp	fillhole	vancode/interpreter/chunk.html#fillHole-procs-all	proc		251
+nimgrp	hash	vancode/interpreter/chunk.html#hash-procs-all	proc		334

@@ -15,5 +15,5 @@ nim	PolicyName	vancode/manager/configurator.html#PolicyName	enum PolicyName		23
 nim	CompilationPolicy	vancode/manager/configurator.html#CompilationPolicy	object CompilationPolicy		41
 nim	CompilationSettings	vancode/manager/configurator.html#CompilationSettings	object CompilationSettings		44
 nim	PackageConfig	vancode/manager/configurator.html#PackageConfig	type PackageConfig		51
-nim	generateYaml	vancode/manager/configurator.html#generateYaml,PackageConfig	proc generateYaml(c: PackageConfig): string		72
-nim	`$`	vancode/manager/configurator.html#$,PackageConfig	proc `$`(c: PackageConfig): string		84
+nim	generateYaml	vancode/manager/configurator.html#generateYaml,PackageConfig	proc generateYaml(c: PackageConfig): string		71
+nim	`$`	vancode/manager/configurator.html#$,PackageConfig	proc `$`(c: PackageConfig): string		83

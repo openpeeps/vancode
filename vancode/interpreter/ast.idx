@@ -18,24 +18,24 @@ nim	pairs	vancode/interpreter/ast.html#pairs.i,Node	iterator pairs(node: Node): 
 nim	add	vancode/interpreter/ast.html#add,Node,Node	proc add(node, child: Node): Node		172
 nim	add	vancode/interpreter/ast.html#add,Node,openArray[Node]	proc add(node: Node; children: openArray[Node]): Node		176
 nim	hash	vancode/interpreter/ast.html#hash,Node	proc hash(node: Node): Hash		180
-nim	`$`	vancode/interpreter/ast.html#$,Node	proc `$`(node: Node): string		196
-nim	treeRepr	vancode/interpreter/ast.html#treeRepr,Node	proc treeRepr(node: Node): string		210
-nim	render	vancode/interpreter/ast.html#render,Node	proc render(node: Node): string		226
-nim	newNode	vancode/interpreter/ast.html#newNode,NodeKind	proc newNode(kind: NodeKind): Node		338
-nim	newEmpty	vancode/interpreter/ast.html#newEmpty	proc newEmpty(): Node		342
-nim	newNil	vancode/interpreter/ast.html#newNil	proc newNil(): Node		346
-nim	nkBlock	vancode/interpreter/ast.html#nkBlock,varargs[Node]	proc nkBlock(children: varargs[Node]): Node		350
-nim	newTree	vancode/interpreter/ast.html#newTree,NodeKind,varargs[Node]	proc newTree(kind: NodeKind; children: varargs[Node]): Node		354
-nim	newBoolLit	vancode/interpreter/ast.html#newBoolLit,bool	proc newBoolLit(val: bool): Node		360
-nim	newIntLit	vancode/interpreter/ast.html#newIntLit,int64	proc newIntLit(val: int64): Node		365
-nim	newFloatLit	vancode/interpreter/ast.html#newFloatLit,float64	proc newFloatLit(val: float64): Node		370
-nim	newStringLit	vancode/interpreter/ast.html#newStringLit,string	proc newStringLit(val: string): Node		375
-nim	newIdent	vancode/interpreter/ast.html#newIdent,string,int,int	proc newIdent(ident: string; ln, col: int = 0): Node		380
-nim	newIdentDefs	vancode/interpreter/ast.html#newIdentDefs,openArray[Node],Node	proc newIdentDefs(names: openArray[Node]; ty: Node; value = newEmpty()): Node		387
-nim	newInfix	vancode/interpreter/ast.html#newInfix,Node,Node,Node	proc newInfix(op, left, right: Node): Node		392
-nim	newCall	vancode/interpreter/ast.html#newCall,Node,varargs[Node]	proc newCall(ident: Node; args: varargs[Node]): Node		396
-nim	newFunction	vancode/interpreter/ast.html#newFunction,Node,Node,Node,Node	proc newFunction(ident, body: Node; genericParams, formalParams: Node = newEmpty()): Node		402
-nim	defaultNil	vancode/interpreter/ast.html#defaultNil	let defaultNil		414
+nim	`$`	vancode/interpreter/ast.html#$,Node	proc `$`(node: Node): string		198
+nim	treeRepr	vancode/interpreter/ast.html#treeRepr,Node	proc treeRepr(node: Node): string		213
+nim	render	vancode/interpreter/ast.html#render,Node	proc render(node: Node): string		229
+nim	newNode	vancode/interpreter/ast.html#newNode,NodeKind	proc newNode(kind: NodeKind): Node		341
+nim	newEmpty	vancode/interpreter/ast.html#newEmpty	proc newEmpty(): Node		345
+nim	newNil	vancode/interpreter/ast.html#newNil	proc newNil(): Node		349
+nim	nkBlock	vancode/interpreter/ast.html#nkBlock,varargs[Node]	proc nkBlock(children: varargs[Node]): Node		353
+nim	newTree	vancode/interpreter/ast.html#newTree,NodeKind,varargs[Node]	proc newTree(kind: NodeKind; children: varargs[Node]): Node		357
+nim	newBoolLit	vancode/interpreter/ast.html#newBoolLit,bool	proc newBoolLit(val: bool): Node		363
+nim	newIntLit	vancode/interpreter/ast.html#newIntLit,int64	proc newIntLit(val: int64): Node		368
+nim	newFloatLit	vancode/interpreter/ast.html#newFloatLit,float64	proc newFloatLit(val: float64): Node		373
+nim	newStringLit	vancode/interpreter/ast.html#newStringLit,string	proc newStringLit(val: string): Node		378
+nim	newIdent	vancode/interpreter/ast.html#newIdent,string,int,int	proc newIdent(ident: string; ln, col: int = 0): Node		383
+nim	newIdentDefs	vancode/interpreter/ast.html#newIdentDefs,openArray[Node],Node	proc newIdentDefs(names: openArray[Node]; ty: Node; value = newEmpty()): Node		390
+nim	newInfix	vancode/interpreter/ast.html#newInfix,Node,Node,Node	proc newInfix(op, left, right: Node): Node		395
+nim	newCall	vancode/interpreter/ast.html#newCall,Node,varargs[Node]	proc newCall(ident: Node; args: varargs[Node]): Node		399
+nim	newFunction	vancode/interpreter/ast.html#newFunction,Node,Node,Node,Node	proc newFunction(ident, body: Node; genericParams, formalParams: Node = newEmpty()): Node		405
+nim	defaultNil	vancode/interpreter/ast.html#defaultNil	let defaultNil		417
 nimgrp	debugecho	vancode/interpreter/ast.html#debugEcho-procs-all	proc		136
 nimgrp	[]	vancode/interpreter/ast.html#[]-procs-all	proc		147
 nimgrp	add	vancode/interpreter/ast.html#add-procs-all	proc		172

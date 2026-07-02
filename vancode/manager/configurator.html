@@ -219,7 +219,9 @@
 </div>
 <div id="generateYaml-procs-all">
   <div id="generateYaml,PackageConfig">
-  <dt><pre><span class="Keyword">proc</span> <a href="#generateYaml%2CPackageConfig"><span class="Identifier">generateYaml</span></a><span class="Other">(</span><span class="Identifier">c</span><span class="Other">:</span> <a href="#PackageConfig"><span class="Identifier">PackageConfig</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#generateYaml%2CPackageConfig"><span class="Identifier">generateYaml</span></a><span class="Other">(</span><span class="Identifier">c</span><span class="Other">:</span> <a href="#PackageConfig"><span class="Identifier">PackageConfig</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">OpenParserJsonError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Generate a YAML representation of the PackageConfig This is used to generate the <tt class="docutils literal"><span class="pre"><span class="Identifier">tim</span><span class="Operator">.</span><span class="Identifier">yml</span></span></tt> file
@@ -238,7 +240,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-05-29 22:37:43 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-02 08:34:55 UTC</small>
       </div>
     </div>
   </div>

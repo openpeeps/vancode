@@ -53,7 +53,13 @@
 <li><a class="reference external"
           data-doc-search-tag="chunk: proc `==`(a, b: Chunk): bool" href="vancode/interpreter/chunk.html#%3D%3D%2CChunk%2CChunk">chunk: proc `==`(a, b: Chunk): bool</a></li>
           <li><a class="reference external"
+          data-doc-search-tag="chunk: proc `==`(a, b: Proc): bool" href="vancode/interpreter/chunk.html#%3D%3D%2CProc%2CProc">chunk: proc `==`(a, b: Proc): bool</a></li>
+          <li><a class="reference external"
           data-doc-search-tag="sym: proc `==`(a, b: Context): bool" href="vancode/interpreter/sym.html#%3D%3D%2CContext%2CContext">sym: proc `==`(a, b: Context): bool</a></li>
+          </ul></dd>
+<dt><a name="%60%3Ddestroy%60" href="#%60%3Ddestroy%60"><span>`=destroy`:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="value: proc `=destroy`(fd: ForeignData)" href="vancode/interpreter/value.html#%3Ddestroy%2CForeignData">value: proc `=destroy`(fd: ForeignData)</a></li>
           </ul></dd>
 <dt><a name="%60%5B%5D%3D%60" href="#%60%5B%5D%3D%60"><span>`[]=`:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -120,6 +126,10 @@
 <dt><a name="Ast" href="#Ast"><span>Ast:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="ast: type Ast" href="vancode/interpreter/ast.html#Ast">ast: type Ast</a></li>
+          </ul></dd>
+<dt><a name="CachedOps" href="#CachedOps"><span>CachedOps:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: type CachedOps" href="vancode/interpreter/vm.html#CachedOps">vm: type CachedOps</a></li>
           </ul></dd>
 <dt><a name="cacheModule" href="#cacheModule"><span>cacheModule:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -195,13 +205,61 @@
 <li><a class="reference external"
           data-doc-search-tag="sym: type Context" href="vancode/interpreter/sym.html#Context">sym: type Context</a></li>
           </ul></dd>
+<dt><a name="Coroutine" href="#Coroutine"><span>Coroutine:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: type Coroutine" href="vancode/interpreter/vm.html#Coroutine">vm: type Coroutine</a></li>
+          </ul></dd>
+<dt><a name="CoroutineResult" href="#CoroutineResult"><span>CoroutineResult:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: object CoroutineResult" href="vancode/interpreter/vm.html#CoroutineResult">vm: object CoroutineResult</a></li>
+          </ul></dd>
+<dt><a name="CoroutineResultKind" href="#CoroutineResultKind"><span>CoroutineResultKind:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: enum CoroutineResultKind" href="vancode/interpreter/vm.html#CoroutineResultKind">vm: enum CoroutineResultKind</a></li>
+          </ul></dd>
+<dt><a name="CoroutineState" href="#CoroutineState"><span>CoroutineState:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: enum CoroutineState" href="vancode/interpreter/vm.html#CoroutineState">vm: enum CoroutineState</a></li>
+          </ul></dd>
 <dt><a name="count" href="#count"><span>count:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc count(gen: CodeGen): uint" href="vancode/interpreter/codegen.html#count%2CCodeGen">codegen: proc count(gen: CodeGen): uint</a></li>
           </ul></dd>
+<dt><a name="crCompleted" href="#crCompleted"><span>crCompleted:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: CoroutineResultKind.crCompleted" href="vancode/interpreter/vm.html#crCompleted">vm: CoroutineResultKind.crCompleted</a></li>
+          </ul></dd>
 <dt><a name="createPackage" href="#createPackage"><span>createPackage:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="packager: proc createPackage(pkgr: Packager; orgName, pkgName: string; pkgConfig: PackageConfig): bool" href="vancode/manager/packager.html#createPackage%2CPackager%2Cstring%2Cstring%2CPackageConfig">packager: proc createPackage(pkgr: Packager; orgName, pkgName: string; pkgConfig: PackageConfig): bool</a></li>
+          </ul></dd>
+<dt><a name="crErrored" href="#crErrored"><span>crErrored:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: CoroutineResultKind.crErrored" href="vancode/interpreter/vm.html#crErrored">vm: CoroutineResultKind.crErrored</a></li>
+          </ul></dd>
+<dt><a name="crYielded" href="#crYielded"><span>crYielded:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: CoroutineResultKind.crYielded" href="vancode/interpreter/vm.html#crYielded">vm: CoroutineResultKind.crYielded</a></li>
+          </ul></dd>
+<dt><a name="csCompleted" href="#csCompleted"><span>csCompleted:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: CoroutineState.csCompleted" href="vancode/interpreter/vm.html#csCompleted">vm: CoroutineState.csCompleted</a></li>
+          </ul></dd>
+<dt><a name="csCreated" href="#csCreated"><span>csCreated:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: CoroutineState.csCreated" href="vancode/interpreter/vm.html#csCreated">vm: CoroutineState.csCreated</a></li>
+          </ul></dd>
+<dt><a name="csErrored" href="#csErrored"><span>csErrored:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: CoroutineState.csErrored" href="vancode/interpreter/vm.html#csErrored">vm: CoroutineState.csErrored</a></li>
+          </ul></dd>
+<dt><a name="csRunning" href="#csRunning"><span>csRunning:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: CoroutineState.csRunning" href="vancode/interpreter/vm.html#csRunning">vm: CoroutineState.csRunning</a></li>
+          </ul></dd>
+<dt><a name="csSuspended" href="#csSuspended"><span>csSuspended:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: CoroutineState.csSuspended" href="vancode/interpreter/vm.html#csSuspended">vm: CoroutineState.csSuspended</a></li>
           </ul></dd>
 <dt><a name="debugEcho" href="#debugEcho"><span>debugEcho:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -481,9 +539,11 @@
           </ul></dd>
 <dt><a name="foreign" href="#foreign"><span>foreign:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="value: proc foreign(value: var Value; T: typedesc): T:type" href="vancode/interpreter/value.html#foreign%2CValue%2Ctypedesc">value: proc foreign(value: var Value; T: typedesc): T:type</a></li>
-          <li><a class="reference external"
-          data-doc-search-tag="value: proc foreign(value: Value; T: typedesc): T:type" href="vancode/interpreter/value.html#foreign%2CValue%2Ctypedesc_2">value: proc foreign(value: Value; T: typedesc): T:type</a></li>
+          data-doc-search-tag="value: proc foreign(value: Value; T: typedesc): T:type" href="vancode/interpreter/value.html#foreign%2CValue%2Ctypedesc">value: proc foreign(value: Value; T: typedesc): T:type</a></li>
+          </ul></dd>
+<dt><a name="ForeignData" href="#ForeignData"><span>ForeignData:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="value: object ForeignData" href="vancode/interpreter/value.html#ForeignData">value: object ForeignData</a></li>
           </ul></dd>
 <dt><a name="ForeignProc" href="#ForeignProc"><span>ForeignProc:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -593,9 +653,21 @@
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc genYield(gen: CodeGen; node: Node)" href="vancode/interpreter/codegen.html#genYield%2CCodeGen%2CNode">codegen: proc genYield(gen: CodeGen; node: Node)</a></li>
           </ul></dd>
+<dt><a name="getArg1Float" href="#getArg1Float"><span>getArg1Float:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: template getArg1Float(co: CachedOps; i: int): float64" href="vancode/interpreter/vm.html#getArg1Float.t%2CCachedOps%2Cint">vm: template getArg1Float(co: CachedOps; i: int): float64</a></li>
+          </ul></dd>
+<dt><a name="getArg1Int" href="#getArg1Int"><span>getArg1Int:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: template getArg1Int(co: CachedOps; i: int): int" href="vancode/interpreter/vm.html#getArg1Int.t%2CCachedOps%2Cint">vm: template getArg1Int(co: CachedOps; i: int): int</a></li>
+          </ul></dd>
 <dt><a name="getCachedModule" href="#getCachedModule"><span>getCachedModule:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="packager: proc getCachedModule(pkgr: Packager; pkgName: string): Ast" href="vancode/manager/packager.html#getCachedModule%2CPackager%2Cstring">packager: proc getCachedModule(pkgr: Packager; pkgName: string): Ast</a></li>
+          </ul></dd>
+<dt><a name="getCachedOps" href="#getCachedOps"><span>getCachedOps:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: proc getCachedOps(vm: Vm; currentChunk: Chunk): CachedOps" href="vancode/interpreter/vm.html#getCachedOps%2CVm%2CChunk">vm: proc getCachedOps(vm: Vm; currentChunk: Chunk): CachedOps</a></li>
           </ul></dd>
 <dt><a name="getDefaultSym" href="#getDefaultSym"><span>getDefaultSym:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -608,6 +680,14 @@
 <dt><a name="getFloat" href="#getFloat"><span>getFloat:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="chunk: proc getFloat(chunk: Chunk; i: int): float64" href="vancode/interpreter/chunk.html#getFloat%2CChunk%2Cint">chunk: proc getFloat(chunk: Chunk; i: int): float64</a></li>
+          </ul></dd>
+<dt><a name="getHotChunkCount" href="#getHotChunkCount"><span>getHotChunkCount:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: proc getHotChunkCount(vm: Vm; chunk: Chunk): int" href="vancode/interpreter/vm.html#getHotChunkCount%2CVm%2CChunk">vm: proc getHotChunkCount(vm: Vm; chunk: Chunk): int</a></li>
+          </ul></dd>
+<dt><a name="getHotProcCount" href="#getHotProcCount"><span>getHotProcCount:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: proc getHotProcCount(vm: Vm; procName: string): int" href="vancode/interpreter/vm.html#getHotProcCount%2CVm%2Cstring">vm: proc getHotProcCount(vm: Vm; procName: string): int</a></li>
           </ul></dd>
 <dt><a name="getInt" href="#getInt"><span>getInt:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -671,6 +751,8 @@
           <li><a class="reference external"
           data-doc-search-tag="chunk: proc hash(x: Chunk): Hash" href="vancode/interpreter/chunk.html#hash%2CChunk">chunk: proc hash(x: Chunk): Hash</a></li>
           <li><a class="reference external"
+          data-doc-search-tag="chunk: proc hash(x: Proc): Hash" href="vancode/interpreter/chunk.html#hash%2CProc">chunk: proc hash(x: Proc): Hash</a></li>
+          <li><a class="reference external"
           data-doc-search-tag="chunk: proc hash(x: Script): Hash" href="vancode/interpreter/chunk.html#hash%2CScript">chunk: proc hash(x: Script): Hash</a></li>
           <li><a class="reference external"
           data-doc-search-tag="sym: proc hash(sym: Sym): Hash" href="vancode/interpreter/sym.html#hash%2CSym">sym: proc hash(sym: Sym): Hash</a></li>
@@ -702,10 +784,6 @@
 <dt><a name="htmlAttrIdent" href="#htmlAttrIdent"><span>htmlAttrIdent:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="ast: HtmlAttributeType.htmlAttrIdent" href="vancode/interpreter/ast.html#htmlAttrIdent">ast: HtmlAttributeType.htmlAttrIdent</a></li>
-          </ul></dd>
-<dt><a name="HtmlObject" href="#HtmlObject"><span>HtmlObject:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="value: object HtmlObject" href="vancode/interpreter/value.html#HtmlObject">value: object HtmlObject</a></li>
           </ul></dd>
 <dt><a name="httpGet" href="#httpGet"><span>httpGet:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -783,9 +861,11 @@
 <li><a class="reference external"
           data-doc-search-tag="vm: proc interpret(vm: Vm; script: Script; startChunk: Chunk;
           staticString: Option[string] = none(string);
-          globaldata = newJObject(); localData = newJObject()): Value" href="vancode/interpreter/vm.html#interpret%2CVm%2CScript%2CChunk%2COption%5Bstring%5D">vm: proc interpret(vm: Vm; script: Script; startChunk: Chunk;
+          globaldata = newJObject(); localData = newJObject();
+          stepping: Coroutine = nil): Value" href="vancode/interpreter/vm.html#interpret%2CVm%2CScript%2CChunk%2COption%5Bstring%5D%2CCoroutine">vm: proc interpret(vm: Vm; script: Script; startChunk: Chunk;
           staticString: Option[string] = none(string);
-          globaldata = newJObject(); localData = newJObject()): Value</a></li>
+          globaldata = newJObject(); localData = newJObject();
+          stepping: Coroutine = nil): Value</a></li>
           </ul></dd>
 <dt><a name="isGeneric" href="#isGeneric"><span>isGeneric:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -802,6 +882,10 @@
 <dt><a name="items" href="#items"><span>items:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="ast: iterator items(node: Node): Node" href="vancode/interpreter/ast.html#items.i%2CNode">ast: iterator items(node: Node): Node</a></li>
+          </ul></dd>
+<dt><a name="JitHooks" href="#JitHooks"><span>JitHooks:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="value: object JitHooks" href="vancode/interpreter/value.html#JitHooks">value: object JitHooks</a></li>
           </ul></dd>
 <dt><a name="len" href="#len"><span>len:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1235,6 +1319,10 @@
 <li><a class="reference external"
           data-doc-search-tag="value: type StackView" href="vancode/interpreter/value.html#StackView">value: type StackView</a></li>
           </ul></dd>
+<dt><a name="stepCoroutine" href="#stepCoroutine"><span>stepCoroutine:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: proc stepCoroutine(vm: Vm; coro: Coroutine): CoroutineResult" href="vancode/interpreter/vm.html#stepCoroutine%2CVm%2CCoroutine">vm: proc stepCoroutine(vm: Vm; coro: Coroutine): CoroutineResult</a></li>
+          </ul></dd>
 <dt><a name="Sym" href="#Sym"><span>Sym:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="sym: type Sym" href="vancode/interpreter/sym.html#Sym">sym: type Sym</a></li>
@@ -1263,62 +1351,6 @@
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc tryElideWhile(gen: CodeGen; node: Node): bool" href="vancode/interpreter/codegen.html#tryElideWhile%2CCodeGen%2CNode">codegen: proc tryElideWhile(gen: CodeGen; node: Node): bool</a></li>
           </ul></dd>
-<dt><a name="ttyAlias" href="#ttyAlias"><span>ttyAlias:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="sym: TypeKind.ttyAlias" href="vancode/interpreter/sym.html#ttyAlias">sym: TypeKind.ttyAlias</a></li>
-          </ul></dd>
-<dt><a name="ttyAny" href="#ttyAny"><span>ttyAny:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="sym: TypeKind.ttyAny" href="vancode/interpreter/sym.html#ttyAny">sym: TypeKind.ttyAny</a></li>
-          </ul></dd>
-<dt><a name="ttyArray" href="#ttyArray"><span>ttyArray:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="sym: TypeKind.ttyArray" href="vancode/interpreter/sym.html#ttyArray">sym: TypeKind.ttyArray</a></li>
-          </ul></dd>
-<dt><a name="ttyBool" href="#ttyBool"><span>ttyBool:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="sym: TypeKind.ttyBool" href="vancode/interpreter/sym.html#ttyBool">sym: TypeKind.ttyBool</a></li>
-          </ul></dd>
-<dt><a name="ttyCustom" href="#ttyCustom"><span>ttyCustom:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="sym: TypeKind.ttyCustom" href="vancode/interpreter/sym.html#ttyCustom">sym: TypeKind.ttyCustom</a></li>
-          </ul></dd>
-<dt><a name="ttyFloat" href="#ttyFloat"><span>ttyFloat:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="sym: TypeKind.ttyFloat" href="vancode/interpreter/sym.html#ttyFloat">sym: TypeKind.ttyFloat</a></li>
-          </ul></dd>
-<dt><a name="ttyHtmlElement" href="#ttyHtmlElement"><span>ttyHtmlElement:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="sym: TypeKind.ttyHtmlElement" href="vancode/interpreter/sym.html#ttyHtmlElement">sym: TypeKind.ttyHtmlElement</a></li>
-          </ul></dd>
-<dt><a name="ttyInt" href="#ttyInt"><span>ttyInt:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="sym: TypeKind.ttyInt" href="vancode/interpreter/sym.html#ttyInt">sym: TypeKind.ttyInt</a></li>
-          </ul></dd>
-<dt><a name="ttyJson" href="#ttyJson"><span>ttyJson:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="sym: TypeKind.ttyJson" href="vancode/interpreter/sym.html#ttyJson">sym: TypeKind.ttyJson</a></li>
-          </ul></dd>
-<dt><a name="ttyNil" href="#ttyNil"><span>ttyNil:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="sym: TypeKind.ttyNil" href="vancode/interpreter/sym.html#ttyNil">sym: TypeKind.ttyNil</a></li>
-          </ul></dd>
-<dt><a name="ttyObject" href="#ttyObject"><span>ttyObject:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="sym: TypeKind.ttyObject" href="vancode/interpreter/sym.html#ttyObject">sym: TypeKind.ttyObject</a></li>
-          </ul></dd>
-<dt><a name="ttyPointer" href="#ttyPointer"><span>ttyPointer:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="sym: TypeKind.ttyPointer" href="vancode/interpreter/sym.html#ttyPointer">sym: TypeKind.ttyPointer</a></li>
-          </ul></dd>
-<dt><a name="ttyString" href="#ttyString"><span>ttyString:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="sym: TypeKind.ttyString" href="vancode/interpreter/sym.html#ttyString">sym: TypeKind.ttyString</a></li>
-          </ul></dd>
-<dt><a name="ttyVoid" href="#ttyVoid"><span>ttyVoid:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="sym: TypeKind.ttyVoid" href="vancode/interpreter/sym.html#ttyVoid">sym: TypeKind.ttyVoid</a></li>
-          </ul></dd>
 <dt><a name="tyAny" href="#tyAny"><span>tyAny:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="value: const tyAny" href="vancode/interpreter/value.html#tyAny">value: const tyAny</a></li>
@@ -1331,6 +1363,10 @@
 <li><a class="reference external"
           data-doc-search-tag="value: const tyBool" href="vancode/interpreter/value.html#tyBool">value: const tyBool</a></li>
           </ul></dd>
+<dt><a name="tyCoroutine" href="#tyCoroutine"><span>tyCoroutine:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="value: const tyCoroutine" href="vancode/interpreter/value.html#tyCoroutine">value: const tyCoroutine</a></li>
+          </ul></dd>
 <dt><a name="tyFirstObject" href="#tyFirstObject"><span>tyFirstObject:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="value: const tyFirstObject" href="vancode/interpreter/value.html#tyFirstObject">value: const tyFirstObject</a></li>
@@ -1338,10 +1374,6 @@
 <dt><a name="tyFloat" href="#tyFloat"><span>tyFloat:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="value: const tyFloat" href="vancode/interpreter/value.html#tyFloat">value: const tyFloat</a></li>
-          </ul></dd>
-<dt><a name="tyHtmlObject" href="#tyHtmlObject"><span>tyHtmlObject:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="value: const tyHtmlObject" href="vancode/interpreter/value.html#tyHtmlObject">value: const tyHtmlObject</a></li>
           </ul></dd>
 <dt><a name="tyInt" href="#tyInt"><span>tyInt:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1399,10 +1431,6 @@
 <li><a class="reference external"
           data-doc-search-tag="value: type Value" href="vancode/interpreter/value.html#Value">value: type Value</a></li>
           </ul></dd>
-<dt><a name="ValuePtr" href="#ValuePtr"><span>ValuePtr:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="value: type ValuePtr" href="vancode/interpreter/value.html#ValuePtr">value: type ValuePtr</a></li>
-          </ul></dd>
 <dt><a name="ValueSize" href="#ValueSize"><span>ValueSize:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="value: const ValueSize" href="vancode/interpreter/value.html#ValueSize">value: const ValueSize</a></li>
@@ -1447,7 +1475,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-05-29 22:37:43 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-02 08:34:55 UTC</small>
       </div>
     </div>
   </div>

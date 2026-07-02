@@ -115,28 +115,29 @@
       arrayMutable*: bool    ## used to determine whether the array is mutable or not
       arrayItems*: seq[Sym]  ## the items of the array
     of ttyObject:
-      objectId*: TypeId
+      objectId*: TypeId      ## a unique id for this object type, used for type checking and comparisons
       objectFields*: OrderedTable[string, ObjectField]
     of ttyAlias:
-      aliasId*: TypeId
-      aliasTy*: Sym
+      aliasId*: TypeId       ## the id of the alias, used for lookups and type checking
+      aliasTy*: Sym          ## the type this alias refers to
     of ttyCustom:
       nil
     of ttyHtmlElement:
       nil
     of ttyPointer:
       pointerTarget*: Sym    ## The type this pointer points to (type info only)
+    else:
+      nil
   of skHtmlType:
-    tag*, innerText*: string
-    isVoidElement*: bool
+    tag*, innerText*: string ## the tag of the HTML element (e.g., &quot;div&quot;, &quot;span&quot;, etc.)
+    isVoidElement*: bool     ## whether this HTML element is a void element or not (e.g., &quot;img&quot;, &quot;br&quot;, etc.)
   of skProc:
     procId*: uint16          ## the unique number of the proc
     procParams*: seq[ProcParam] ## the proc's parameters
     procReturnTy*: Sym       ## the return type of the proc
     procType*: ProcType      ## whether the proc is a normal function or a macro
     procExport*: bool        ## whether the proc is exported or not
-    procMemoize*: bool       ## whether the proc is memoized or not.
-                             ## todo: implement memoization
+    procMemoize*: bool       ## whether the proc is memoized or not. todo: implement memoization
   of skIterator:
     iterParams*: seq[ProcParam] ## the iterator's parameters
     iterYieldTy*: Sym        ## the yield type of the iterator
@@ -144,17 +145,17 @@
   of skGenericParam:
     constraint*: Sym         ## the generic type constraint
   of skChoice:
-    choices*: seq[Sym]
-  genericParams*: Option[seq[Sym]]
+    choices*: seq[Sym]       ## the different choices for this overloaded symbol
+  genericParams*: Option[seq[Sym]] ## some if the sym is generic
   genericInstCache*: Table[seq[Sym], Sym]
-  genericBase*: Option[Sym]
-  genericInstArgs*: Option[seq[Sym]]">Sym</a></li>
+  genericBase*: Option[Sym]  ## contains the base generic type if the sym is an instantiation
+  genericInstArgs*: Option[seq[Sym]] ## some if the sym is an instantiation">Sym</a></li>
 <li><a class="reference" href="#SymKind" title="SymKind = enum
   skVar = &quot;var&quot;, skConst = &quot;const&quot;, skLet = &quot;let&quot;, skType = &quot;type&quot;,
   skProc = &quot;fn&quot;, skIterator = &quot;iterator&quot;, skGenericParam = &quot;generic param&quot;,
   skHtmlType = &quot;html&quot;, skChoice = &quot;(...)&quot; ## an overloaded symbol, stores many symbols with \
                                           ## the same name">SymKind</a></li>
-<li><a class="reference" href="#TypeKind" title="TypeKind = enum
+<li><a class="reference" href="#TypeKind" title="TypeKind {..} = enum
   ttyVoid = &quot;void&quot;, ttyAny = &quot;any&quot;, ttyBool = &quot;bool&quot;, ttyInt = &quot;int&quot;,
   ttyFloat = &quot;float&quot;, ttyString = &quot;string&quot;, ttyPointer = &quot;pointer&quot;,
   ttyJson = &quot;json&quot;, ttyArray = &quot;array&quot;, ttyNil = &quot;nil&quot;, ttyObject = &quot;object&quot;,
@@ -424,28 +425,29 @@
       <span class="Identifier">arrayMutable</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>    <span class="Comment">## used to determine whether the array is mutable or not</span>
       <span class="Identifier">arrayItems</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span>  <span class="Comment">## the items of the array</span>
     <span class="Keyword">of</span> <span class="Identifier">ttyObject</span><span class="Other">:</span>
-      <span class="Identifier">objectId</span><span class="Operator">*</span><span class="Other">:</span> <a href="value.html#TypeId"><span class="Identifier">TypeId</span></a>
+      <span class="Identifier">objectId</span><span class="Operator">*</span><span class="Other">:</span> <a href="value.html#TypeId"><span class="Identifier">TypeId</span></a>      <span class="Comment">## a unique id for this object type, used for type checking and comparisons</span>
       <span class="Identifier">objectFields</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">OrderedTable</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="#ObjectField"><span class="Identifier">ObjectField</span></a><span class="Other">]</span>
     <span class="Keyword">of</span> <span class="Identifier">ttyAlias</span><span class="Other">:</span>
-      <span class="Identifier">aliasId</span><span class="Operator">*</span><span class="Other">:</span> <a href="value.html#TypeId"><span class="Identifier">TypeId</span></a>
-      <span class="Identifier">aliasTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>
+      <span class="Identifier">aliasId</span><span class="Operator">*</span><span class="Other">:</span> <a href="value.html#TypeId"><span class="Identifier">TypeId</span></a>       <span class="Comment">## the id of the alias, used for lookups and type checking</span>
+      <span class="Identifier">aliasTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>          <span class="Comment">## the type this alias refers to</span>
     <span class="Keyword">of</span> <span class="Identifier">ttyCustom</span><span class="Other">:</span>
       <span class="Keyword">nil</span>
     <span class="Keyword">of</span> <span class="Identifier">ttyHtmlElement</span><span class="Other">:</span>
       <span class="Keyword">nil</span>
     <span class="Keyword">of</span> <span class="Identifier">ttyPointer</span><span class="Other">:</span>
       <span class="Identifier">pointerTarget</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>    <span class="Comment">## The type this pointer points to (type info only)</span>
+    <span class="Keyword">else</span><span class="Other">:</span>
+      <span class="Keyword">nil</span>
   <span class="Keyword">of</span> <span class="Identifier">skHtmlType</span><span class="Other">:</span>
-    <span class="Identifier">tag</span><span class="Operator">*</span><span class="Other">,</span> <span class="Identifier">innerText</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>
-    <span class="Identifier">isVoidElement</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>
+    <span class="Identifier">tag</span><span class="Operator">*</span><span class="Other">,</span> <span class="Identifier">innerText</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span> <span class="Comment">## the tag of the HTML element (e.g., &quot;div&quot;, &quot;span&quot;, etc.)</span>
+    <span class="Identifier">isVoidElement</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>     <span class="Comment">## whether this HTML element is a void element or not (e.g., &quot;img&quot;, &quot;br&quot;, etc.)</span>
   <span class="Keyword">of</span> <span class="Identifier">skProc</span><span class="Other">:</span>
     <span class="Identifier">procId</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">uint16</span>          <span class="Comment">## the unique number of the proc</span>
     <span class="Identifier">procParams</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#ProcParam"><span class="Identifier">ProcParam</span></a><span class="Other">]</span> <span class="Comment">## the proc's parameters</span>
     <span class="Identifier">procReturnTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>       <span class="Comment">## the return type of the proc</span>
     <span class="Identifier">procType</span><span class="Operator">*</span><span class="Other">:</span> <a href="#ProcType"><span class="Identifier">ProcType</span></a>      <span class="Comment">## whether the proc is a normal function or a macro</span>
     <span class="Identifier">procExport</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>        <span class="Comment">## whether the proc is exported or not</span>
-    <span class="Identifier">procMemoize</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>       <span class="Comment">## whether the proc is memoized or not.</span>
-                             <span class="Comment">## todo: implement memoization</span>
+    <span class="Identifier">procMemoize</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>       <span class="Comment">## whether the proc is memoized or not. todo: implement memoization</span>
   <span class="Keyword">of</span> <span class="Identifier">skIterator</span><span class="Other">:</span>
     <span class="Identifier">iterParams</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#ProcParam"><span class="Identifier">ProcParam</span></a><span class="Other">]</span> <span class="Comment">## the iterator's parameters</span>
     <span class="Identifier">iterYieldTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>        <span class="Comment">## the yield type of the iterator</span>
@@ -453,11 +455,11 @@
   <span class="Keyword">of</span> <span class="Identifier">skGenericParam</span><span class="Other">:</span>
     <span class="Identifier">constraint</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>         <span class="Comment">## the generic type constraint</span>
   <span class="Keyword">of</span> <span class="Identifier">skChoice</span><span class="Other">:</span>
-    <span class="Identifier">choices</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span>
-  <span class="Identifier">genericParams</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">seq</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">]</span>
+    <span class="Identifier">choices</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span>       <span class="Comment">## the different choices for this overloaded symbol</span>
+  <span class="Identifier">genericParams</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">seq</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">]</span> <span class="Comment">## some if the sym is generic</span>
   <span class="Identifier">genericInstCache</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">seq</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">,</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span>
-  <span class="Identifier">genericBase</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span>
-  <span class="Identifier">genericInstArgs</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">seq</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">]</span></pre></dt>
+  <span class="Identifier">genericBase</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span>  <span class="Comment">## contains the base generic type if the sym is an instantiation</span>
+  <span class="Identifier">genericInstArgs</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">seq</span><span class="Other">[</span><a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">]</span> <span class="Comment">## some if the sym is an instantiation</span></pre></dt>
   <dd>
     
     A symbol. This represents an ident that can be looked up.
@@ -477,7 +479,7 @@
   </dd>
 </div>
 <div id="TypeKind">
-  <dt><pre><a href="#TypeKind"><span class="Identifier">TypeKind</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
+  <dt><pre><a href="#TypeKind"><span class="Identifier">TypeKind</span></a> {..} <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">ttyVoid</span> <span class="Other">=</span> <span class="StringLit">&quot;void&quot;</span><span class="Other">,</span> <span class="Identifier">ttyAny</span> <span class="Other">=</span> <span class="StringLit">&quot;any&quot;</span><span class="Other">,</span> <span class="Identifier">ttyBool</span> <span class="Other">=</span> <span class="StringLit">&quot;bool&quot;</span><span class="Other">,</span> <span class="Identifier">ttyInt</span> <span class="Other">=</span> <span class="StringLit">&quot;int&quot;</span><span class="Other">,</span>
   <span class="Identifier">ttyFloat</span> <span class="Other">=</span> <span class="StringLit">&quot;float&quot;</span><span class="Other">,</span> <span class="Identifier">ttyString</span> <span class="Other">=</span> <span class="StringLit">&quot;string&quot;</span><span class="Other">,</span> <span class="Identifier">ttyPointer</span> <span class="Other">=</span> <span class="StringLit">&quot;pointer&quot;</span><span class="Other">,</span>
   <span class="Identifier">ttyJson</span> <span class="Other">=</span> <span class="StringLit">&quot;json&quot;</span><span class="Other">,</span> <span class="Identifier">ttyArray</span> <span class="Other">=</span> <span class="StringLit">&quot;array&quot;</span><span class="Other">,</span> <span class="Identifier">ttyNil</span> <span class="Other">=</span> <span class="StringLit">&quot;nil&quot;</span><span class="Other">,</span> <span class="Identifier">ttyObject</span> <span class="Other">=</span> <span class="StringLit">&quot;object&quot;</span><span class="Other">,</span>
@@ -873,7 +875,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-05-29 22:37:43 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-02 08:34:54 UTC</small>
       </div>
     </div>
   </div>

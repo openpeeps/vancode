@@ -1,10 +1,29 @@
 nimTitle	vm	vancode/interpreter/vm.html	module vancode/interpreter/vm		0
-nim	VMPreferences	vancode/interpreter/vm.html#VMPreferences	object VMPreferences		29
-nim	Vm	vancode/interpreter/vm.html#Vm	type Vm		60
-nim	CallFrame	vancode/interpreter/vm.html#CallFrame	tuple CallFrame		70
-nim	VMInitialPreallocatedStackSize	vancode/interpreter/vm.html#VMInitialPreallocatedStackSize	const VMInitialPreallocatedStackSize		80
-nim	VMPreallocatedStackSize	vancode/interpreter/vm.html#VMPreallocatedStackSize	const VMPreallocatedStackSize		83
-nim	newVm	vancode/interpreter/vm.html#newVm	proc newVm(): Vm		87
-nim	newVirtualMachine	vancode/interpreter/vm.html#newVirtualMachine,VMPreferences	proc newVirtualMachine(prefs: VMPreferences): Vm		90
-nim	prewarmScriptOps	vancode/interpreter/vm.html#prewarmScriptOps,Vm,Script	proc prewarmScriptOps(vm: Vm; s: Script)		344
-nim	interpret	vancode/interpreter/vm.html#interpret,Vm,Script,Chunk,Option[string]	proc interpret(vm: Vm; script: Script; startChunk: Chunk;\n          staticString: Option[string] = none(string);\n          globaldata = newJObject(); localData = newJObject()): Value		351
+nim	VMPreferences	vancode/interpreter/vm.html#VMPreferences	object VMPreferences		38
+nim	CallFrame	vancode/interpreter/vm.html#CallFrame	tuple CallFrame		44
+nim	csCreated	vancode/interpreter/vm.html#csCreated	CoroutineState.csCreated		52
+nim	csSuspended	vancode/interpreter/vm.html#csSuspended	CoroutineState.csSuspended		52
+nim	csRunning	vancode/interpreter/vm.html#csRunning	CoroutineState.csRunning		52
+nim	csCompleted	vancode/interpreter/vm.html#csCompleted	CoroutineState.csCompleted		52
+nim	csErrored	vancode/interpreter/vm.html#csErrored	CoroutineState.csErrored		52
+nim	CoroutineState	vancode/interpreter/vm.html#CoroutineState	enum CoroutineState		52
+nim	Coroutine	vancode/interpreter/vm.html#Coroutine	type Coroutine		59
+nim	crYielded	vancode/interpreter/vm.html#crYielded	CoroutineResultKind.crYielded		71
+nim	crCompleted	vancode/interpreter/vm.html#crCompleted	CoroutineResultKind.crCompleted		71
+nim	crErrored	vancode/interpreter/vm.html#crErrored	CoroutineResultKind.crErrored		71
+nim	CoroutineResultKind	vancode/interpreter/vm.html#CoroutineResultKind	enum CoroutineResultKind		71
+nim	CoroutineResult	vancode/interpreter/vm.html#CoroutineResult	object CoroutineResult		76
+nim	CachedOps	vancode/interpreter/vm.html#CachedOps	type CachedOps		85
+nim	Vm	vancode/interpreter/vm.html#Vm	type Vm		93
+nim	VMInitialPreallocatedStackSize	vancode/interpreter/vm.html#VMInitialPreallocatedStackSize	const VMInitialPreallocatedStackSize		112
+nim	VMPreallocatedStackSize	vancode/interpreter/vm.html#VMPreallocatedStackSize	const VMPreallocatedStackSize		115
+nim	newVm	vancode/interpreter/vm.html#newVm	proc newVm(): Vm		119
+nim	getHotProcCount	vancode/interpreter/vm.html#getHotProcCount,Vm,string	proc getHotProcCount(vm: Vm; procName: string): int		122
+nim	getHotChunkCount	vancode/interpreter/vm.html#getHotChunkCount,Vm,Chunk	proc getHotChunkCount(vm: Vm; chunk: Chunk): int		125
+nim	newVirtualMachine	vancode/interpreter/vm.html#newVirtualMachine,VMPreferences	proc newVirtualMachine(prefs: VMPreferences): Vm		128
+nim	getCachedOps	vancode/interpreter/vm.html#getCachedOps,Vm,Chunk	proc getCachedOps(vm: Vm; currentChunk: Chunk): CachedOps		337
+nim	getArg1Int	vancode/interpreter/vm.html#getArg1Int.t,CachedOps,int	template getArg1Int(co: CachedOps; i: int): int		350
+nim	getArg1Float	vancode/interpreter/vm.html#getArg1Float.t,CachedOps,int	template getArg1Float(co: CachedOps; i: int): float64		353
+nim	prewarmScriptOps	vancode/interpreter/vm.html#prewarmScriptOps,Vm,Script	proc prewarmScriptOps(vm: Vm; s: Script)		397
+nim	interpret	vancode/interpreter/vm.html#interpret,Vm,Script,Chunk,Option[string],Coroutine	proc interpret(vm: Vm; script: Script; startChunk: Chunk;\n          staticString: Option[string] = none(string);\n          globaldata = newJObject(); localData = newJObject();\n          stepping: Coroutine = nil): Value		404
+nim	stepCoroutine	vancode/interpreter/vm.html#stepCoroutine,Vm,Coroutine	proc stepCoroutine(vm: Vm; coro: Coroutine): CoroutineResult		1083

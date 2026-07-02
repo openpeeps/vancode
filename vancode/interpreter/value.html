@@ -58,13 +58,17 @@
   <details open>
     <summary><a class="reference reference-toplevel" href="#7" id="57">Types</a></summary>
     <ul class="simple simple-toc-section">
-      <li><a class="reference" href="#ForeignProc" title="ForeignProc = proc (args: StackView; argc: int): Value">ForeignProc</a></li>
-<li><a class="reference" href="#HtmlObject" title="HtmlObject = object">HtmlObject</a></li>
+      <li><a class="reference" href="#ForeignData" title="ForeignData {.acyclic.} = object
+  data*: pointer
+  libpath*: string
+  destructor*: proc (data: pointer) {.nimcall.}">ForeignData</a></li>
+<li><a class="reference" href="#ForeignProc" title="ForeignProc = proc (args: StackView; argc: int): Value">ForeignProc</a></li>
+<li><a class="reference" href="#JitHooks" title="JitHooks = object
+  getForeign*: proc (procPtr: pointer): ForeignProc ## Given a Proc pointer, returns its JIT-compiled ForeignProc if available.">JitHooks</a></li>
 <li><a class="reference" href="#Object" title="Object {.acyclic.} = ref object
   case isForeign*: bool
   of true:
-    data*: pointer           ## the foreign data pointer
-    libpath*: string         ## the path to the dynamic library this foreign object came from
+    foreign*: ForeignData
   of false:
     keys*: seq[string]       ## the field names of this object
                              ## stored in the same order as `fields`
@@ -85,13 +89,8 @@
     stringVal*: ref string
   of tyJsonStorage:
     jsonVal*: JsonNode
-  of tyHtmlObject:
-    htmlObject*: HtmlObject
-  of tyAny:
-    anyVal*: Value
   else:
     objectVal*: Object">Value</a></li>
-<li><a class="reference" href="#ValuePtr" title="ValuePtr = Value">ValuePtr</a></li>
 
     </ul>
   </details>
@@ -104,9 +103,9 @@
 <li><a class="reference" href="#tyAny" title="tyAny = 16">tyAny</a></li>
 <li><a class="reference" href="#tyArrayObject" title="tyArrayObject = 12">tyArrayObject</a></li>
 <li><a class="reference" href="#tyBool" title="tyBool = 1">tyBool</a></li>
+<li><a class="reference" href="#tyCoroutine" title="tyCoroutine = 17">tyCoroutine</a></li>
 <li><a class="reference" href="#tyFirstObject" title="tyFirstObject = 10">tyFirstObject</a></li>
 <li><a class="reference" href="#tyFloat" title="tyFloat = 3">tyFloat</a></li>
-<li><a class="reference" href="#tyHtmlObject" title="tyHtmlObject = 13">tyHtmlObject</a></li>
 <li><a class="reference" href="#tyInt" title="tyInt = 2">tyInt</a></li>
 <li><a class="reference" href="#tyJsonStorage" title="tyJsonStorage = 11">tyJsonStorage</a></li>
 <li><a class="reference" href="#tyNil" title="tyNil = 0">tyNil</a></li>
@@ -125,13 +124,16 @@
   <li><a class="reference" href="#%24%2CValue" title="`$`(value: Value): string">`$`(value: Value): string</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">=destroy
+  <li><a class="reference" href="#%3Ddestroy%2CForeignData" title="`=destroy`(fd: ForeignData)">`=destroy`(fd: ForeignData)</a></li>
+
+</ul>
 <ul class="simple nested-toc-section">dumpHook
   <li><a class="reference" href="#dumpHook%2Cstring%2CValue" title="dumpHook(s: var string; val: Value)">dumpHook(s: var string; val: Value)</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">foreign
-  <li><a class="reference" href="#foreign%2CValue%2Ctypedesc_2" title="foreign(value: Value; T: typedesc): T:type">foreign(value: Value; T: typedesc): T:type</a></li>
-<li><a class="reference" href="#foreign%2CValue%2Ctypedesc" title="foreign(value: var Value; T: typedesc): T:type">foreign(value: var Value; T: typedesc): T:type</a></li>
+  <li><a class="reference" href="#foreign%2CValue%2Ctypedesc" title="foreign(value: Value; T: typedesc): T:type">foreign(value: Value; T: typedesc): T:type</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">initArray
@@ -174,7 +176,18 @@
     <div class="section" id="7">
   <h1><a class="toc-backref" href="#7">Types</a></h1>
   <dl class="item">
-    <div id="ForeignProc">
+    <div id="ForeignData">
+  <dt><pre><a href="#ForeignData"><span class="Identifier">ForeignData</span></a> {.<span class="Identifier">acyclic</span>.} <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">data</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">pointer</span>
+  <span class="Identifier">libpath</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>
+  <span class="Identifier">destructor</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">data</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span> {.<span class="Identifier">nimcall</span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+<div id="ForeignProc">
   <dt><pre><a href="#ForeignProc"><span class="Identifier">ForeignProc</span></a> <span class="Other">=</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">args</span><span class="Other">:</span> <a href="#StackView"><span class="Identifier">StackView</span></a><span class="Other">;</span> <span class="Identifier">argc</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <a href="#Value"><span class="Identifier">Value</span></a></pre></dt>
   <dd>
     
@@ -182,11 +195,12 @@
     
   </dd>
 </div>
-<div id="HtmlObject">
-  <dt><pre><a href="#HtmlObject"><span class="Identifier">HtmlObject</span></a> <span class="Other">=</span> <span class="Keyword">object</span></pre></dt>
+<div id="JitHooks">
+  <dt><pre><a href="#JitHooks"><span class="Identifier">JitHooks</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">getForeign</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">procPtr</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span><span class="Other">:</span> <a href="#ForeignProc"><span class="Identifier">ForeignProc</span></a> <span class="Comment">## Given a Proc pointer, returns its JIT-compiled ForeignProc if available.</span></pre></dt>
   <dd>
     
-    
+    JIT hooks installed into the VM. Uses raw pointer to avoid circular deps between vm and jit modules.
     
   </dd>
 </div>
@@ -194,8 +208,7 @@
   <dt><pre><a href="#Object"><span class="Identifier">Object</span></a> {.<span class="Identifier">acyclic</span>.} <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span>
   <span class="Keyword">case</span> <span class="Identifier">isForeign</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>
   <span class="Keyword">of</span> <span class="Identifier">true</span><span class="Other">:</span>
-    <span class="Identifier">data</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">pointer</span>           <span class="Comment">## the foreign data pointer</span>
-    <span class="Identifier">libpath</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>         <span class="Comment">## the path to the dynamic library this foreign object came from</span>
+    <span class="Identifier">foreign</span><span class="Operator">*</span><span class="Other">:</span> <a href="#ForeignData"><span class="Identifier">ForeignData</span></a>
   <span class="Keyword">of</span> <span class="Identifier">false</span><span class="Other">:</span>
     <span class="Identifier">keys</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span>       <span class="Comment">## the field names of this object</span>
                              <span class="Comment">## stored in the same order as `fields`</span>
@@ -203,7 +216,7 @@
                              <span class="Comment">## in the same order as `keys`</span></pre></dt>
   <dd>
     
-    A hayago object.
+    Represents an object value, which can be either a native object with fields or a foreign object with a data pointer and library path
     
   </dd>
 </div>
@@ -244,23 +257,11 @@
     <span class="Identifier">stringVal</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">ref</span> <span class="Identifier">string</span>
   <span class="Keyword">of</span> <span class="Identifier">tyJsonStorage</span><span class="Other">:</span>
     <span class="Identifier">jsonVal</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">JsonNode</span>
-  <span class="Keyword">of</span> <span class="Identifier">tyHtmlObject</span><span class="Other">:</span>
-    <span class="Identifier">htmlObject</span><span class="Operator">*</span><span class="Other">:</span> <a href="#HtmlObject"><span class="Identifier">HtmlObject</span></a>
-  <span class="Keyword">of</span> <span class="Identifier">tyAny</span><span class="Other">:</span>
-    <span class="Identifier">anyVal</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Value"><span class="Identifier">Value</span></a>
   <span class="Keyword">else</span><span class="Other">:</span>
     <span class="Identifier">objectVal</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Object"><span class="Identifier">Object</span></a></pre></dt>
   <dd>
     
     
-    
-  </dd>
-</div>
-<div id="ValuePtr">
-  <dt><pre><a href="#ValuePtr"><span class="Identifier">ValuePtr</span></a> <span class="Other">=</span> <a href="#Value"><span class="Identifier">Value</span></a></pre></dt>
-  <dd>
-    
-    A pointer to a value.
     
   </dd>
 </div>
@@ -302,6 +303,14 @@
     
   </dd>
 </div>
+<div id="tyCoroutine">
+  <dt><pre><a href="#tyCoroutine"><span class="Identifier">tyCoroutine</span></a> <span class="Other">=</span> <span class="DecNumber">17</span></pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
 <div id="tyFirstObject">
   <dt><pre><a href="#tyFirstObject"><span class="Identifier">tyFirstObject</span></a> <span class="Other">=</span> <span class="DecNumber">10</span></pre></dt>
   <dd>
@@ -312,14 +321,6 @@
 </div>
 <div id="tyFloat">
   <dt><pre><a href="#tyFloat"><span class="Identifier">tyFloat</span></a> <span class="Other">=</span> <span class="DecNumber">3</span></pre></dt>
-  <dd>
-    
-    
-    
-  </dd>
-</div>
-<div id="tyHtmlObject">
-  <dt><pre><a href="#tyHtmlObject"><span class="Identifier">tyHtmlObject</span></a> <span class="Other">=</span> <span class="DecNumber">13</span></pre></dt>
   <dd>
     
     
@@ -391,6 +392,17 @@
 </div>
 
 </div>
+<div id="=destroy-procs-all">
+  <div id="=destroy,ForeignData">
+  <dt><pre><span class="Keyword">proc</span> <a href="#%3Ddestroy%2CForeignData"><span class="Identifier">`=destroy`</span></a><span class="Other">(</span><span class="Identifier">fd</span><span class="Other">:</span> <a href="#ForeignData"><span class="Identifier">ForeignData</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
 <div id="dumpHook-procs-all">
   <div id="dumpHook,string,Value">
   <dt><pre><span class="Keyword">proc</span> <a href="#dumpHook%2Cstring%2CValue"><span class="Identifier">dumpHook</span></a><span class="Other">(</span><span class="Identifier">s</span><span class="Other">:</span> <span class="Keyword">var</span> <span class="Identifier">string</span><span class="Other">;</span> <span class="Identifier">val</span><span class="Other">:</span> <a href="#Value"><span class="Identifier">Value</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
@@ -404,19 +416,11 @@
 
 </div>
 <div id="foreign-procs-all">
-  <div id="foreign,Value,typedesc_2">
-  <dt><pre><span class="Keyword">proc</span> <a href="#foreign%2CValue%2Ctypedesc_2"><span class="Identifier">foreign</span></a><span class="Other">(</span><span class="Identifier">value</span><span class="Other">:</span> <a href="#Value"><span class="Identifier">Value</span></a><span class="Other">;</span> <span class="Identifier">T</span><span class="Other">:</span> <span class="Identifier">typedesc</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">T:type</span></pre></dt>
+  <div id="foreign,Value,typedesc">
+  <dt><pre><span class="Keyword">proc</span> <a href="#foreign%2CValue%2Ctypedesc"><span class="Identifier">foreign</span></a><span class="Other">(</span><span class="Identifier">value</span><span class="Other">:</span> <a href="#Value"><span class="Identifier">Value</span></a><span class="Other">;</span> <span class="Identifier">T</span><span class="Other">:</span> <span class="Identifier">typedesc</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">T:type</span></pre></dt>
   <dd>
     
     Get an object value. This is a <em>mostly</em> safe operation, but attempting to get a foreign type different from the value's is undefined behavior.
-    
-  </dd>
-</div>
-<div id="foreign,Value,typedesc">
-  <dt><pre><span class="Keyword">proc</span> <a href="#foreign%2CValue%2Ctypedesc"><span class="Identifier">foreign</span></a><span class="Other">(</span><span class="Identifier">value</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="#Value"><span class="Identifier">Value</span></a><span class="Other">;</span> <span class="Identifier">T</span><span class="Other">:</span> <span class="Identifier">typedesc</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">T:type</span></pre></dt>
-  <dd>
-    
-    
     
   </dd>
 </div>
@@ -499,7 +503,7 @@
   <dt><pre><span class="Keyword">proc</span> <a href="#initValue%2CTypeId%2CT"><span class="Identifier">initValue</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">:</span> <span class="Keyword">tuple</span> <span class="Operator">|</span> <span class="Keyword">object</span> <span class="Operator">|</span> <span class="Keyword">ref</span><span class="Other">]</span><span class="Other">(</span><span class="Identifier">id</span><span class="Other">:</span> <a href="#TypeId"><span class="Identifier">TypeId</span></a><span class="Other">;</span> <span class="Identifier">value</span><span class="Other">:</span> <span class="Identifier">T</span><span class="Other">)</span><span class="Other">:</span> <a href="#Value"><span class="Identifier">Value</span></a></pre></dt>
   <dd>
     
-    Safely initializes a foreign object value. This copies the value onto the heap for ordinary objects and tuples, and GC_refs the value for refs. The finalizer for objectVal deallocates or GC_unrefs the foreign data to maintain memory safety.
+    Safely initializes a foreign object value. This copies the value onto the heap for ordinary objects and tuples, and GC_refs the value for refs.
     
   </dd>
 </div>
@@ -527,7 +531,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-05-29 22:37:42 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-02 08:34:54 UTC</small>
       </div>
     </div>
   </div>
