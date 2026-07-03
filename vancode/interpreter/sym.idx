@@ -46,14 +46,14 @@ nim	sameParams	vancode/interpreter/sym.html#sameParams,Sym,Sym	proc sameParams(a
 nim	canAdd	vancode/interpreter/sym.html#canAdd,Sym,Sym	proc canAdd(choice, sym: Sym): bool		451
 nim	addVariable	vancode/interpreter/sym.html#addVariable,Scope,Sym,Node,staticbool	proc addVariable(scope: Scope; sym: Sym; lookupName: Node;\n            fromOtherModule: static bool = false): bool		483
 nim	addCallable	vancode/interpreter/sym.html#addCallable,Scope,Sym,Node,staticbool	proc addCallable(scope: Scope; sym: Sym; lookupName: Node;\n            fromOtherModule: static bool = false): bool		496
-nim	addType	vancode/interpreter/sym.html#addType,Scope,Sym,Node,staticbool	proc addType(scope: Scope; sym: Sym; lookupName: Node;\n        fromOtherModule: static bool = false): bool		530
-nim	add	vancode/interpreter/sym.html#add,Scope,Sym,Node,staticbool	proc add(scope: Scope; sym: Sym; lookupName: Node = nil;\n    fromOtherModule: static bool = false): bool		540
-nim	`$`	vancode/interpreter/sym.html#$,Scope	proc `$`(scope: Scope): string		574
-nim	`$`	vancode/interpreter/sym.html#$,Module	proc `$`(module: Module): string		583
-nim	sym	vancode/interpreter/sym.html#sym,Module,string	proc sym(module: Module; name: string): Sym		588
-nim	load	vancode/interpreter/sym.html#load,Module,Module,staticbool	proc load(module: Module; other: Module; fromOtherModule: static bool = false): bool		592
-nim	newModule	vancode/interpreter/sym.html#newModule,string,Option[string]	proc newModule(name: string; src: Option[string] = none(string)): Module		611
-nim	initSystemTypes	vancode/interpreter/sym.html#initSystemTypes,Module	proc initSystemTypes(module: Module)		615
-nim	getModuleName	vancode/interpreter/sym.html#getModuleName,Module	proc getModuleName(module: Module): string		634
+nim	addType	vancode/interpreter/sym.html#addType,Scope,Sym,Node,staticbool	proc addType(scope: Scope; sym: Sym; lookupName: Node;\n        fromOtherModule: static bool = false): bool		532
+nim	add	vancode/interpreter/sym.html#add,Scope,Sym,Node,staticbool	proc add(scope: Scope; sym: Sym; lookupName: Node = nil;\n    fromOtherModule: static bool = false): bool		542
+nim	`$`	vancode/interpreter/sym.html#$,Scope	proc `$`(scope: Scope): string		576
+nim	`$`	vancode/interpreter/sym.html#$,Module	proc `$`(module: Module): string		585
+nim	sym	vancode/interpreter/sym.html#sym,Module,string	proc sym(module: Module; name: string): Sym		590
+nim	load	vancode/interpreter/sym.html#load,Module,Module,staticbool	proc load(module: Module; other: Module; fromOtherModule: static bool = false): bool		594
+nim	newModule	vancode/interpreter/sym.html#newModule,string,Option[string]	proc newModule(name: string; src: Option[string] = none(string)): Module		613
+nim	initSystemTypes	vancode/interpreter/sym.html#initSystemTypes,Module	proc initSystemTypes(module: Module)		617
+nim	getModuleName	vancode/interpreter/sym.html#getModuleName,Module	proc getModuleName(module: Module): string		636
 nimgrp	$	vancode/interpreter/sym.html#$-procs-all	proc		222
 nimgrp	sameparams	vancode/interpreter/sym.html#sameParams-procs-all	proc		429
