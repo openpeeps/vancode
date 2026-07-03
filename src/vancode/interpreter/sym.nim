@@ -514,7 +514,8 @@ proc addCallable*(scope: Scope, sym: Sym, lookupName: Node,
     scope.functions[lookupName.ident] = choice
     when fromOtherModule == false:
       if sym.canExport():
-        if scope.exportFunctions[lookupName.ident].kind != skChoice:
+        if scope.exportFunctions.hasKey(lookupName.ident) and
+           scope.exportFunctions[lookupName.ident].kind != skChoice:
           scope.exportFunctions[lookupName.ident] = choice
 
   if scope.functions[lookupName.ident].canAdd(sym):
@@ -523,8 +524,9 @@ proc addCallable*(scope: Scope, sym: Sym, lookupName: Node,
       scope.functions[lookupName.ident].choices.add(sym)
       when fromOtherModule == false:
         if sym.canExport():
-          if sym notin scope.exportFunctions[lookupName.ident].choices:
-            scope.exportFunctions[lookupName.ident].choices.add(sym)
+          if scope.exportFunctions.hasKey(lookupName.ident):
+            if sym notin scope.exportFunctions[lookupName.ident].choices:
+              scope.exportFunctions[lookupName.ident].choices.add(sym)
     return true
 
 proc addType*(scope: Scope, sym: Sym, lookupName: Node, fromOtherModule: static bool = false): bool {.discardable.} =
