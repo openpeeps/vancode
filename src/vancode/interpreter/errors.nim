@@ -80,4 +80,6 @@ const
   ErrBadIndentation* = "Bad indentation"
   ErrUnexpectedToken* = "Unexpected token: `$1`"
 
+  ErrPolicyViolation* = "this feature is disabled by compilation policy: $1"
+
   ErrImportError* = "$1"

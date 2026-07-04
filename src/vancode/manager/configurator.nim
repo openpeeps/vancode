@@ -1,8 +1,10 @@
-# A super fast template engine for cool kids
+# VanCode - A fast, extensible bytecode generator and VM for building
+# Domain-Specific Languages (DSLs), or general-purpose programming language# A super fast template engine for cool kids
 #
-# (c) 2024 George Lemon | LGPL-v3 License
+# (c) 2025 George Lemon | MIT License
 #          Made by Humans from OpenPeeps
-#          https://github.com/openpeeps/tim
+#          https://github.com/openpeeps/vancode
+
 import pkg/[openparser/yaml, semver]
 from std/net import Port, `$`
 
@@ -19,7 +21,7 @@ type
     id: string
     version: Version
 
-  PolicyName* = enum
+  PolicyKind* = enum
     policyAny = "any"
       ## Allow all features (default)
     policyStdlib = "stdlib"
@@ -38,7 +40,7 @@ type
       ## Allow loading dynamic libraries via FFI
 
   CompilationPolicy* = object
-    allow: set[PolicyName]
+    disallow*: set[PolicyKind]
 
   CompilationSettings* = object
     source*, output*: string

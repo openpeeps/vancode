@@ -1,8 +1,9 @@
-# A super fast template engine for cool kids
+# VanCode - A fast, extensible bytecode generator and VM for building
+# Domain-Specific Languages (DSLs), or general-purpose programming language# A super fast template engine for cool kids
 #
-# (c) 2025 George Lemon | LGPL License
+# (c) 2025 George Lemon | MIT License
 #          Made by Humans from OpenPeeps
-#          https://github.com/openpeeps/tim
+#          https://github.com/openpeeps/vancode
 
 import std/[tables, strutils, os, osproc, options, sequtils]
 import pkg/openparser/[json, yaml]

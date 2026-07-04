@@ -21,7 +21,7 @@ import std/[macros, options, os, hashes,
             sequtils, strutils, tables, json]
 
 import ./[ast, chunk, errors, sym, value, resolver]
-import ../manager/packager
+import ../manager/[configurator, packager]
 import pkg/voodoo/extensibles
 
 type
@@ -111,6 +111,8 @@ type
     counter: uint16
       # a counter used for generating unique labels and symbols. this is used to
       # avoid name collisions when generating code for things like loops and if statements
+    policy*: CompilationPolicy
+      ## Compilation policy controlling which features are allowed
     # instantiationCache: Table[Hash, Sym]
 
   ModuleLibrary = proc(script: Script, systemModule: Module): Module
@@ -156,7 +158,8 @@ proc freeCtx*(allocator: ContextAllocator, ctx: Context) =
 proc initCodeGen*(script: Script, module: Module, chunk: Chunk,
         kind = gkToplevel, ctxAllocator: ContextAllocator = nil,
         pkgr: Packager = nil,
-        parserCallback: ParserCallback = nil,): CodeGen =
+        parserCallback: ParserCallback = nil,
+        policy: CompilationPolicy = CompilationPolicy()): CodeGen =
   result = CodeGen(
     script: script,
     module: module,
@@ -164,6 +167,7 @@ proc initCodeGen*(script: Script, module: Module, chunk: Chunk,
     kind: kind,
     pkgr: pkgr,
     parserCallback: parserCallback,
+    policy: policy,
   )
   if ctxAllocator == nil:
     result.ctxAllocator = ContextAllocator()
@@ -662,6 +666,9 @@ proc pushDefault(gen: CodeGen, ty: Sym) =
   of ttyAny:
     gen.chunk.emit(opcPushS)
     gen.chunk.emit(gen.chunk.getString(""))
+  of ttyArray:
+    gen.chunk.emit(opcConstrArray)
+    gen.chunk.emit(uint16(0))
   of ttyNil:
     gen.chunk.emit(opcPushS)
     gen.chunk.emit(gen.chunk.getString(""))
@@ -824,7 +831,11 @@ proc splitCall*(ast: Node): tuple[callee: Sym, args: seq[Node]] {.codegen.} =
       "Expected a variable, got " & $calleeLookup.kind
     case calleeLookup.varTy.tyKind
       of ttyObject:
-        return (calleeLookup.varTy, @[ast])
+        if ast[1].kind == nkCall:
+          return (calleeLookup.varTy, @[ast])
+        else:
+          callee = newIdent("items")
+          args = @[ast]
       of ttyPointer:
         # echo "Pointer dot access not implemented yet"
         # return (calleeLookup.varTy, @[ast])
@@ -1031,6 +1042,8 @@ proc infix*(node: Node): Sym {.codegen.} =
     case node[0].ident
     # assignment is special
     of "=":
+      if policyAny in gen.policy.disallow or policyAssignments in gen.policy.disallow:
+        node.error(ErrPolicyViolation % "assignments are disabled")
       let
         receiver = node[1]
         value = node[2]
@@ -1202,6 +1215,8 @@ proc genGetField*(node: Node): Sym {.codegen.} =
 
   # Pointers go through FFI
   if valTy.tyKind == ttyPointer:
+    if policyAny in gen.policy.disallow or policyLoadDynlib in gen.policy.disallow:
+      node.error(ErrPolicyViolation % "dynamic library loading is disabled")
     if node[1].kind == nkCall:
       for arg in node[1].children[1..^1]:
         discard gen.genExpr(arg)
@@ -1320,6 +1335,8 @@ proc genArrayAccess*(node: Node): Sym {.codegen.} =
 
 proc genIf*(node: Node, isStmt: bool): Sym {.codegen.} =
   ## Generate code for an if expression/statement.
+  if policyAny in gen.policy.disallow or policyConditionals in gen.policy.disallow:
+    node.error(ErrPolicyViolation % "conditionals are disabled")
 
   # get some properties about the statement
   let
@@ -1807,6 +1824,8 @@ proc tryElideWhile*(node: Node): bool {.codegen.} =
 
 proc genWhile*(node: Node) {.codegen.} =
   ## Generates code for a while loop.
+  if policyAny in gen.policy.disallow or policyLoops in gen.policy.disallow:
+    node.error(ErrPolicyViolation % "loops are disabled")
   
   # Fast-path - loop elision for simple monotonic loops
   if gen.tryElideWhile(node): return
@@ -1872,6 +1891,8 @@ proc genWhile*(node: Node) {.codegen.} =
 
 proc genFor*(node: Node) {.codegen.} =
   ## Generate code for a ``for`` loop.
+  if policyAny in gen.policy.disallow or policyLoops in gen.policy.disallow:
+    node.error(ErrPolicyViolation % "loops are disabled")
   ##
   ## Actually, a for loop isn't really a `loop`. It can be, if the iterator
   ## actually does use a loop, but it doesn't have to.
@@ -2030,12 +2051,15 @@ proc genYield*(node: Node) {.codegen.} =
 
 proc genArray*(node: Node, isInstantiation = false): Sym {.codegen.} =
   ## Generate code for an array literal, instantiating array[T] for the element type.
-  assert node.children.len > 0, "Cannot create an empty array without type inference"
-  
-  # Infer the element type from the first element
-  let elemTy = gen.genExpr(node[0])
-  gen.chunk.emit(opcDiscard)
-  gen.chunk.emit(1'u8)
+  let elemTy =
+    if node.children.len > 0:
+      gen.genExpr(node[0])
+    else:
+      gen.module.sym"any"
+
+  if node.children.len > 0:
+    gen.chunk.emit(opcDiscard)
+    gen.chunk.emit(1'u8)
 
   # Instantiate array[T] with the element type
   let arrayTypeSym = gen.typeLookup("array")
@@ -2193,6 +2217,8 @@ proc genIterator*(node: Node, isInstantiation = false): Sym {.codegen.} =
 
 proc genVar*(node: Node) {.codegen.} =
   # handle variable declarations
+  if policyAny in gen.policy.disallow or policyAssignments in gen.policy.disallow:
+    node.error(ErrPolicyViolation % "assignments are disabled")
   for decl in node.children[0]:
     let implNode = decl[^1]
     if implNode.kind == nkEmpty and node.kind != nkVar:
@@ -2253,12 +2279,16 @@ proc genVar*(node: Node) {.codegen.} =
 
 proc genImport*(node: Node) {.codegen.} =
   ## Generate code for an import or include statement
+  if policyAny in gen.policy.disallow or policyImports in gen.policy.disallow:
+    node.error(ErrPolicyViolation % "imports are disabled")
   for pathNode in node.children:
     var path: string
     var astProgram: Ast
     # handle package imports
     # e.g. `import "pkg/mypackage/mymodule"`
     if pathNode.stringVal.startsWith("pkg/") and gen.pkgr != nil:
+      if policyAny in gen.policy.disallow or policyPackages in gen.policy.disallow:
+        pathNode.error(ErrPolicyViolation % "packages are disabled")
       let pkgPath = pathNode.stringVal.split("/")
       if gen.pkgr.hasPackage(pkgPath[1]):
         let filePath = if pkgPath.len > 2:
@@ -2269,6 +2299,8 @@ proc genImport*(node: Node) {.codegen.} =
       else:
         pathNode.error(ErrImportError % pkgPath[1])
     elif pathNode.stringVal.startsWith("std/"):
+      if policyAny in gen.policy.disallow or policyStdlib in gen.policy.disallow:
+        pathNode.error(ErrPolicyViolation % "stdlib access is disabled")
       # handle standard library imports
       let stdLibName = pathNode.stringVal.split("/")[1]
       
@@ -2451,13 +2483,14 @@ proc initCompiler*(script: Script, module: Module,
           chunk: Chunk, pkgr: Packager,
           stdlibs: StandardLibrary,
           parserCallback: ParserCallback = nil,
-          triggerFromPath: Option[string] = none(string)
+          triggerFromPath: Option[string] = none(string),
+          policy: CompilationPolicy = CompilationPolicy()
   ): CodeGen =
   ## Initialize a new code generator with a new script and module
   ## 
   ## This is the main entry point for code generation, and can be called by
   ## your main module or by other modules to initialize code generation for a new script
-  result = initCodeGen(script, module, chunk, pkgr = pkgr)
+  result = initCodeGen(script, module, chunk, pkgr = pkgr, policy = policy)
   result.triggerFromPath = triggerFromPath
   result.stdlibs = stdlibs
   result.parserCallback = parserCallback
