@@ -48,4 +48,5 @@ nim	WarnModuleAlreadyImported	vancode/interpreter/errors.html#WarnModuleAlreadyI
 nim	ErrTypeNotConcrete	vancode/interpreter/errors.html#ErrTypeNotConcrete	const ErrTypeNotConcrete		78
 nim	ErrBadIndentation	vancode/interpreter/errors.html#ErrBadIndentation	const ErrBadIndentation		80
 nim	ErrUnexpectedToken	vancode/interpreter/errors.html#ErrUnexpectedToken	const ErrUnexpectedToken		81
-nim	ErrImportError	vancode/interpreter/errors.html#ErrImportError	const ErrImportError		83
+nim	ErrPolicyViolation	vancode/interpreter/errors.html#ErrPolicyViolation	const ErrPolicyViolation		83
+nim	ErrImportError	vancode/interpreter/errors.html#ErrImportError	const ErrImportError		85

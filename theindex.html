@@ -437,6 +437,10 @@
 <li><a class="reference external"
           data-doc-search-tag="errors: const ErrorFmt" href="vancode/interpreter/errors.html#ErrorFmt">errors: const ErrorFmt</a></li>
           </ul></dd>
+<dt><a name="ErrPolicyViolation" href="#ErrPolicyViolation"><span>ErrPolicyViolation:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="errors: const ErrPolicyViolation" href="vancode/interpreter/errors.html#ErrPolicyViolation">errors: const ErrPolicyViolation</a></li>
+          </ul></dd>
 <dt><a name="ErrProcNameExpected" href="#ErrProcNameExpected"><span>ErrProcNameExpected:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="errors: const ErrProcNameExpected" href="vancode/interpreter/errors.html#ErrProcNameExpected">errors: const ErrProcNameExpected</a></li>
@@ -801,17 +805,21 @@
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc initCodeGen(script: Script; module: Module; chunk: Chunk; kind = gkToplevel;
             ctxAllocator: ContextAllocator = nil; pkgr: Packager = nil;
-            parserCallback: ParserCallback = nil): CodeGen" href="vancode/interpreter/codegen.html#initCodeGen%2CScript%2CModule%2CChunk%2CContextAllocator%2CPackager%2CParserCallback">codegen: proc initCodeGen(script: Script; module: Module; chunk: Chunk; kind = gkToplevel;
+            parserCallback: ParserCallback = nil;
+            policy: CompilationPolicy = CompilationPolicy()): CodeGen" href="vancode/interpreter/codegen.html#initCodeGen%2CScript%2CModule%2CChunk%2CContextAllocator%2CPackager%2CParserCallback%2CCompilationPolicy">codegen: proc initCodeGen(script: Script; module: Module; chunk: Chunk; kind = gkToplevel;
             ctxAllocator: ContextAllocator = nil; pkgr: Packager = nil;
-            parserCallback: ParserCallback = nil): CodeGen</a></li>
+            parserCallback: ParserCallback = nil;
+            policy: CompilationPolicy = CompilationPolicy()): CodeGen</a></li>
           </ul></dd>
 <dt><a name="initCompiler" href="#initCompiler"><span>initCompiler:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc initCompiler(script: Script; module: Module; chunk: Chunk; pkgr: Packager;
              stdlibs: StandardLibrary; parserCallback: ParserCallback = nil;
-             triggerFromPath: Option[string] = none(string)): CodeGen" href="vancode/interpreter/codegen.html#initCompiler%2CScript%2CModule%2CChunk%2CPackager%2CStandardLibrary%2CParserCallback%2COption%5Bstring%5D">codegen: proc initCompiler(script: Script; module: Module; chunk: Chunk; pkgr: Packager;
+             triggerFromPath: Option[string] = none(string);
+             policy: CompilationPolicy = CompilationPolicy()): CodeGen" href="vancode/interpreter/codegen.html#initCompiler%2CScript%2CModule%2CChunk%2CPackager%2CStandardLibrary%2CParserCallback%2COption%5Bstring%5D%2CCompilationPolicy">codegen: proc initCompiler(script: Script; module: Module; chunk: Chunk; pkgr: Packager;
              stdlibs: StandardLibrary; parserCallback: ParserCallback = nil;
-             triggerFromPath: Option[string] = none(string)): CodeGen</a></li>
+             triggerFromPath: Option[string] = none(string);
+             policy: CompilationPolicy = CompilationPolicy()): CodeGen</a></li>
           </ul></dd>
 <dt><a name="initObject" href="#initObject"><span>initObject:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1111,39 +1119,39 @@
           </ul></dd>
 <dt><a name="policyAny" href="#policyAny"><span>policyAny:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: PolicyName.policyAny" href="vancode/manager/configurator.html#policyAny">configurator: PolicyName.policyAny</a></li>
+          data-doc-search-tag="configurator: PolicyKind.policyAny" href="vancode/manager/configurator.html#policyAny">configurator: PolicyKind.policyAny</a></li>
           </ul></dd>
 <dt><a name="policyAssignments" href="#policyAssignments"><span>policyAssignments:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: PolicyName.policyAssignments" href="vancode/manager/configurator.html#policyAssignments">configurator: PolicyName.policyAssignments</a></li>
+          data-doc-search-tag="configurator: PolicyKind.policyAssignments" href="vancode/manager/configurator.html#policyAssignments">configurator: PolicyKind.policyAssignments</a></li>
           </ul></dd>
 <dt><a name="policyConditionals" href="#policyConditionals"><span>policyConditionals:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: PolicyName.policyConditionals" href="vancode/manager/configurator.html#policyConditionals">configurator: PolicyName.policyConditionals</a></li>
+          data-doc-search-tag="configurator: PolicyKind.policyConditionals" href="vancode/manager/configurator.html#policyConditionals">configurator: PolicyKind.policyConditionals</a></li>
           </ul></dd>
 <dt><a name="policyImports" href="#policyImports"><span>policyImports:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: PolicyName.policyImports" href="vancode/manager/configurator.html#policyImports">configurator: PolicyName.policyImports</a></li>
+          data-doc-search-tag="configurator: PolicyKind.policyImports" href="vancode/manager/configurator.html#policyImports">configurator: PolicyKind.policyImports</a></li>
+          </ul></dd>
+<dt><a name="PolicyKind" href="#PolicyKind"><span>PolicyKind:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="configurator: enum PolicyKind" href="vancode/manager/configurator.html#PolicyKind">configurator: enum PolicyKind</a></li>
           </ul></dd>
 <dt><a name="policyLoadDynlib" href="#policyLoadDynlib"><span>policyLoadDynlib:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: PolicyName.policyLoadDynlib" href="vancode/manager/configurator.html#policyLoadDynlib">configurator: PolicyName.policyLoadDynlib</a></li>
+          data-doc-search-tag="configurator: PolicyKind.policyLoadDynlib" href="vancode/manager/configurator.html#policyLoadDynlib">configurator: PolicyKind.policyLoadDynlib</a></li>
           </ul></dd>
 <dt><a name="policyLoops" href="#policyLoops"><span>policyLoops:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: PolicyName.policyLoops" href="vancode/manager/configurator.html#policyLoops">configurator: PolicyName.policyLoops</a></li>
-          </ul></dd>
-<dt><a name="PolicyName" href="#PolicyName"><span>PolicyName:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="configurator: enum PolicyName" href="vancode/manager/configurator.html#PolicyName">configurator: enum PolicyName</a></li>
+          data-doc-search-tag="configurator: PolicyKind.policyLoops" href="vancode/manager/configurator.html#policyLoops">configurator: PolicyKind.policyLoops</a></li>
           </ul></dd>
 <dt><a name="policyPackages" href="#policyPackages"><span>policyPackages:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: PolicyName.policyPackages" href="vancode/manager/configurator.html#policyPackages">configurator: PolicyName.policyPackages</a></li>
+          data-doc-search-tag="configurator: PolicyKind.policyPackages" href="vancode/manager/configurator.html#policyPackages">configurator: PolicyKind.policyPackages</a></li>
           </ul></dd>
 <dt><a name="policyStdlib" href="#policyStdlib"><span>policyStdlib:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: PolicyName.policyStdlib" href="vancode/manager/configurator.html#policyStdlib">configurator: PolicyName.policyStdlib</a></li>
+          data-doc-search-tag="configurator: PolicyKind.policyStdlib" href="vancode/manager/configurator.html#policyStdlib">configurator: PolicyKind.policyStdlib</a></li>
           </ul></dd>
 <dt><a name="prefix" href="#prefix"><span>prefix:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1475,7 +1483,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-03 04:42:47 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-04 12:24:16 UTC</small>
       </div>
     </div>
   </div>

@@ -1,19 +1,19 @@
 nimTitle	configurator	vancode/manager/configurator.html	module vancode/manager/configurator		0
-nim	typeProject	vancode/manager/configurator.html#typeProject	ConfigType.typeProject		14
-nim	typePackage	vancode/manager/configurator.html#typePackage	ConfigType.typePackage		14
-nim	ConfigType	vancode/manager/configurator.html#ConfigType	enum ConfigType		14
-nim	Requirement	vancode/manager/configurator.html#Requirement	object Requirement		18
-nim	policyAny	vancode/manager/configurator.html#policyAny	PolicyName.policyAny		22
-nim	policyStdlib	vancode/manager/configurator.html#policyStdlib	PolicyName.policyStdlib		22
-nim	policyPackages	vancode/manager/configurator.html#policyPackages	PolicyName.policyPackages		22
-nim	policyImports	vancode/manager/configurator.html#policyImports	PolicyName.policyImports		22
-nim	policyLoops	vancode/manager/configurator.html#policyLoops	PolicyName.policyLoops		22
-nim	policyConditionals	vancode/manager/configurator.html#policyConditionals	PolicyName.policyConditionals		22
-nim	policyAssignments	vancode/manager/configurator.html#policyAssignments	PolicyName.policyAssignments		22
-nim	policyLoadDynlib	vancode/manager/configurator.html#policyLoadDynlib	PolicyName.policyLoadDynlib		22
-nim	PolicyName	vancode/manager/configurator.html#PolicyName	enum PolicyName		22
-nim	CompilationPolicy	vancode/manager/configurator.html#CompilationPolicy	object CompilationPolicy		40
-nim	CompilationSettings	vancode/manager/configurator.html#CompilationSettings	object CompilationSettings		43
-nim	PackageConfig	vancode/manager/configurator.html#PackageConfig	type PackageConfig		50
-nim	generateYaml	vancode/manager/configurator.html#generateYaml,PackageConfig	proc generateYaml(c: PackageConfig): string		70
-nim	`$`	vancode/manager/configurator.html#$,PackageConfig	proc `$`(c: PackageConfig): string		82
+nim	typeProject	vancode/manager/configurator.html#typeProject	ConfigType.typeProject		16
+nim	typePackage	vancode/manager/configurator.html#typePackage	ConfigType.typePackage		16
+nim	ConfigType	vancode/manager/configurator.html#ConfigType	enum ConfigType		16
+nim	Requirement	vancode/manager/configurator.html#Requirement	object Requirement		20
+nim	policyAny	vancode/manager/configurator.html#policyAny	PolicyKind.policyAny		24
+nim	policyStdlib	vancode/manager/configurator.html#policyStdlib	PolicyKind.policyStdlib		24
+nim	policyPackages	vancode/manager/configurator.html#policyPackages	PolicyKind.policyPackages		24
+nim	policyImports	vancode/manager/configurator.html#policyImports	PolicyKind.policyImports		24
+nim	policyLoops	vancode/manager/configurator.html#policyLoops	PolicyKind.policyLoops		24
+nim	policyConditionals	vancode/manager/configurator.html#policyConditionals	PolicyKind.policyConditionals		24
+nim	policyAssignments	vancode/manager/configurator.html#policyAssignments	PolicyKind.policyAssignments		24
+nim	policyLoadDynlib	vancode/manager/configurator.html#policyLoadDynlib	PolicyKind.policyLoadDynlib		24
+nim	PolicyKind	vancode/manager/configurator.html#PolicyKind	enum PolicyKind		24
+nim	CompilationPolicy	vancode/manager/configurator.html#CompilationPolicy	object CompilationPolicy		42
+nim	CompilationSettings	vancode/manager/configurator.html#CompilationSettings	object CompilationSettings		45
+nim	PackageConfig	vancode/manager/configurator.html#PackageConfig	type PackageConfig		52
+nim	generateYaml	vancode/manager/configurator.html#generateYaml,PackageConfig	proc generateYaml(c: PackageConfig): string		72
+nim	`$`	vancode/manager/configurator.html#$,PackageConfig	proc `$`(c: PackageConfig): string		84

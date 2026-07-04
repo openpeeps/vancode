@@ -1,22 +1,22 @@
 nimTitle	packager	vancode/manager/packager.html	module vancode/manager/packager		0
-nim	PackagesTable	vancode/manager/packager.html#PackagesTable	type PackagesTable		16
-nim	Packager	vancode/manager/packager.html#Packager	type Packager		17
-nim	pkgrHomeDir	vancode/manager/packager.html#pkgrHomeDir	const pkgrHomeDir		26
-nim	pkgrHomeDirTemp	vancode/manager/packager.html#pkgrHomeDirTemp	const pkgrHomeDirTemp		27
-nim	pkgrPackagesDir	vancode/manager/packager.html#pkgrPackagesDir	const pkgrPackagesDir		28
-nim	pkgrTokenPath	vancode/manager/packager.html#pkgrTokenPath	const pkgrTokenPath		29
-nim	pkgrPackageCachedDir	vancode/manager/packager.html#pkgrPackageCachedDir	const pkgrPackageCachedDir		30
-nim	pkgrPackageSourceDir	vancode/manager/packager.html#pkgrPackageSourceDir	const pkgrPackageSourceDir		31
-nim	pkgrIndexPath	vancode/manager/packager.html#pkgrIndexPath	const pkgrIndexPath		32
-nim	initPackager	vancode/manager/packager.html#initPackager	proc initPackager(): Packager		39
-nim	initPackageRemote	vancode/manager/packager.html#initPackageRemote	proc initPackageRemote(): Packager		44
-nim	hasPackage	vancode/manager/packager.html#hasPackage,Packager,string	proc hasPackage(pkgr: Packager; pkgName: string): bool		51
-nim	updatePackages	vancode/manager/packager.html#updatePackages,Packager	proc updatePackages(pkgr: Packager)		58
-nim	createPackage	vancode/manager/packager.html#createPackage,Packager,string,string,PackageConfig	proc createPackage(pkgr: Packager; orgName, pkgName: string; pkgConfig: PackageConfig): bool		62
-nim	deletePackage	vancode/manager/packager.html#deletePackage,Packager,string,Option[Version]	proc deletePackage(pkgr: Packager; pkgName: string;\n              pkgVersion: Option[Version] = none(Version))		84
-nim	loadModule	vancode/manager/packager.html#loadModule,Packager,string	proc loadModule(pkgr: Packager; pkgName: string): string		99
-nim	getModulePath	vancode/manager/packager.html#getModulePath,Packager,string,string	proc getModulePath(pkgr: Packager; pkgName, path: string): string		105
-nim	cacheModule	vancode/manager/packager.html#cacheModule,Packager,string,Ast	proc cacheModule(pkgr: Packager; pkgName: string; ast: Ast)		110
-nim	getCachedModule	vancode/manager/packager.html#getCachedModule,Packager,string	proc getCachedModule(pkgr: Packager; pkgName: string): Ast		118
-nim	hasLoadedPackages	vancode/manager/packager.html#hasLoadedPackages,Packager	proc hasLoadedPackages(pkgr: Packager): bool		126
-nim	loadPackages	vancode/manager/packager.html#loadPackages,Packager	proc loadPackages(pkgr: Packager)		130
+nim	PackagesTable	vancode/manager/packager.html#PackagesTable	type PackagesTable		17
+nim	Packager	vancode/manager/packager.html#Packager	type Packager		18
+nim	pkgrHomeDir	vancode/manager/packager.html#pkgrHomeDir	const pkgrHomeDir		27
+nim	pkgrHomeDirTemp	vancode/manager/packager.html#pkgrHomeDirTemp	const pkgrHomeDirTemp		28
+nim	pkgrPackagesDir	vancode/manager/packager.html#pkgrPackagesDir	const pkgrPackagesDir		29
+nim	pkgrTokenPath	vancode/manager/packager.html#pkgrTokenPath	const pkgrTokenPath		30
+nim	pkgrPackageCachedDir	vancode/manager/packager.html#pkgrPackageCachedDir	const pkgrPackageCachedDir		31
+nim	pkgrPackageSourceDir	vancode/manager/packager.html#pkgrPackageSourceDir	const pkgrPackageSourceDir		32
+nim	pkgrIndexPath	vancode/manager/packager.html#pkgrIndexPath	const pkgrIndexPath		33
+nim	initPackager	vancode/manager/packager.html#initPackager	proc initPackager(): Packager		40
+nim	initPackageRemote	vancode/manager/packager.html#initPackageRemote	proc initPackageRemote(): Packager		45
+nim	hasPackage	vancode/manager/packager.html#hasPackage,Packager,string	proc hasPackage(pkgr: Packager; pkgName: string): bool		52
+nim	updatePackages	vancode/manager/packager.html#updatePackages,Packager	proc updatePackages(pkgr: Packager)		59
+nim	createPackage	vancode/manager/packager.html#createPackage,Packager,string,string,PackageConfig	proc createPackage(pkgr: Packager; orgName, pkgName: string; pkgConfig: PackageConfig): bool		63
+nim	deletePackage	vancode/manager/packager.html#deletePackage,Packager,string,Option[Version]	proc deletePackage(pkgr: Packager; pkgName: string;\n              pkgVersion: Option[Version] = none(Version))		85
+nim	loadModule	vancode/manager/packager.html#loadModule,Packager,string	proc loadModule(pkgr: Packager; pkgName: string): string		100
+nim	getModulePath	vancode/manager/packager.html#getModulePath,Packager,string,string	proc getModulePath(pkgr: Packager; pkgName, path: string): string		106
+nim	cacheModule	vancode/manager/packager.html#cacheModule,Packager,string,Ast	proc cacheModule(pkgr: Packager; pkgName: string; ast: Ast)		111
+nim	getCachedModule	vancode/manager/packager.html#getCachedModule,Packager,string	proc getCachedModule(pkgr: Packager; pkgName: string): Ast		119
+nim	hasLoadedPackages	vancode/manager/packager.html#hasLoadedPackages,Packager	proc hasLoadedPackages(pkgr: Packager): bool		127
+nim	loadPackages	vancode/manager/packager.html#loadPackages,Packager	proc loadPackages(pkgr: Packager)		131

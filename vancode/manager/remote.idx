@@ -1,12 +1,12 @@
 nimTitle	remote	vancode/manager/remote.html	module vancode/manager/remote		0
-nim	Github	vancode/manager/remote.html#Github	SourceType.Github		12
-nim	Gitlab	vancode/manager/remote.html#Gitlab	SourceType.Gitlab		12
-nim	SourceType	vancode/manager/remote.html#SourceType	enum SourceType		12
-nim	GithubFileResponse	vancode/manager/remote.html#GithubFileResponse	object GithubFileResponse		16
-nim	RemoteSource	vancode/manager/remote.html#RemoteSource	object RemoteSource		23
-nim	getRemoteEndpoints	vancode/manager/remote.html#getRemoteEndpoints,SourceType	proc getRemoteEndpoints(src: SourceType): TableRef[string, string]		52
-nim	getRemotePath	vancode/manager/remote.html#getRemotePath,RemoteSource,string,varargs[string]	proc getRemotePath(rs: RemoteSource; path: string; args: varargs[string]): string		57
-nim	httpGet	vancode/manager/remote.html#httpGet,RemoteSource,string,seq[string]	proc httpGet(client: RemoteSource; path: string; args: seq[string] = @[]): Response		64
-nim	getFileContent	vancode/manager/remote.html#getFileContent,RemoteSource,Response	proc getFileContent(client: RemoteSource; res: Response): GithubFileResponse		71
-nim	download	vancode/manager/remote.html#download,RemoteSource,string,string,seq[string]	proc download(client: RemoteSource; path, tmpPath: string; args: seq[string] = @[]): bool		75
-nim	initRemoteSource	vancode/manager/remote.html#initRemoteSource,string,SourceType	proc initRemoteSource(pkgrHomeDir: string; source: SourceType = Github): RemoteSource		84
+nim	Github	vancode/manager/remote.html#Github	SourceType.Github		13
+nim	Gitlab	vancode/manager/remote.html#Gitlab	SourceType.Gitlab		13
+nim	SourceType	vancode/manager/remote.html#SourceType	enum SourceType		13
+nim	GithubFileResponse	vancode/manager/remote.html#GithubFileResponse	object GithubFileResponse		17
+nim	RemoteSource	vancode/manager/remote.html#RemoteSource	object RemoteSource		24
+nim	getRemoteEndpoints	vancode/manager/remote.html#getRemoteEndpoints,SourceType	proc getRemoteEndpoints(src: SourceType): TableRef[string, string]		53
+nim	getRemotePath	vancode/manager/remote.html#getRemotePath,RemoteSource,string,varargs[string]	proc getRemotePath(rs: RemoteSource; path: string; args: varargs[string]): string		58
+nim	httpGet	vancode/manager/remote.html#httpGet,RemoteSource,string,seq[string]	proc httpGet(client: RemoteSource; path: string; args: seq[string] = @[]): Response		65
+nim	getFileContent	vancode/manager/remote.html#getFileContent,RemoteSource,Response	proc getFileContent(client: RemoteSource; res: Response): GithubFileResponse		72
+nim	download	vancode/manager/remote.html#download,RemoteSource,string,string,seq[string]	proc download(client: RemoteSource; path, tmpPath: string; args: seq[string] = @[]): bool		76
+nim	initRemoteSource	vancode/manager/remote.html#initRemoteSource,string,SourceType	proc initRemoteSource(pkgrHomeDir: string; source: SourceType = Github): RemoteSource		85
