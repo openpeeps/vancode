@@ -64,7 +64,9 @@
   destructor*: proc (data: pointer) {.nimcall.}">ForeignData</a></li>
 <li><a class="reference" href="#ForeignProc" title="ForeignProc = proc (args: StackView; argc: int): Value">ForeignProc</a></li>
 <li><a class="reference" href="#JitHooks" title="JitHooks = object
-  getForeign*: proc (procPtr: pointer): ForeignProc ## Given a Proc pointer, returns its JIT-compiled ForeignProc if available.">JitHooks</a></li>
+  getForeign*: proc (procPtr: pointer): ForeignProc ## Given a Proc pointer, returns its JIT-compiled ForeignProc if available.
+  queueCompile*: proc (theProc: pointer) ## Queue a proc for async JIT compilation.
+                                         ## Called from markHotProc. theProc is cast(pointer, Proc).">JitHooks</a></li>
 <li><a class="reference" href="#Object" title="Object {.acyclic.} = ref object
   case isForeign*: bool
   of true:
@@ -197,7 +199,9 @@
 </div>
 <div id="JitHooks">
   <dt><pre><a href="#JitHooks"><span class="Identifier">JitHooks</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
-  <span class="Identifier">getForeign</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">procPtr</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span><span class="Other">:</span> <a href="#ForeignProc"><span class="Identifier">ForeignProc</span></a> <span class="Comment">## Given a Proc pointer, returns its JIT-compiled ForeignProc if available.</span></pre></dt>
+  <span class="Identifier">getForeign</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">procPtr</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span><span class="Other">:</span> <a href="#ForeignProc"><span class="Identifier">ForeignProc</span></a> <span class="Comment">## Given a Proc pointer, returns its JIT-compiled ForeignProc if available.</span>
+  <span class="Identifier">queueCompile</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">theProc</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span> <span class="Comment">## Queue a proc for async JIT compilation.</span>
+                                         <span class="Comment">## Called from markHotProc. theProc is cast(pointer, Proc).</span></pre></dt>
   <dd>
     
     JIT hooks installed into the VM. Uses raw pointer to avoid circular deps between vm and jit modules.
@@ -531,7 +535,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-05 08:55:12 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-05 17:52:04 UTC</small>
       </div>
     </div>
   </div>
