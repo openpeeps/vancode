@@ -220,7 +220,9 @@ proc treeRepr*(node: Node): string =
   of nkString: result = "String " & escape(node.stringVal)
   of nkIdent: result = "Ident " & node.ident
   else:
-    result = ($node.kind)[2..^1]
+    result = $node.kind
+    if result.startsWith("nk"):
+      result = result[2..^1]
     var children = ""
     for i, child in node.children:
       children.add('\n' & child.treeRepr)
