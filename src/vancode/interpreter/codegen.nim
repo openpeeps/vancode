@@ -872,7 +872,8 @@ proc splitCall*(ast: Node): tuple[callee: Sym, args: seq[Node]] {.codegen.} =
     callee = newIdent("items") # the built-in items() iterator
     args = @[ast]
   of nkArray:
-    return (gen.genExpr(ast), @[])
+    callee = newIdent("items")
+    args = @[ast]
   else: discard
   
   assert callee != nil
@@ -1436,7 +1437,9 @@ proc collectParams*(formalParams: Node,
 
     # Resolve declared parameter type (always from type position).
     var paramTy: Sym
-    if tyNode.kind == nkIndex and tyNode[0].kind == nkIdent and tyNode[0].ident == "array":
+    if tyNode.kind == nkEmpty:
+      paramTy = gen.module.sym"stmt"
+    elif tyNode.kind == nkIndex and tyNode[0].kind == nkIdent and tyNode[0].ident == "array":
       let
         baseArraySym = gen.lookup(tyNode[0])
         elemTy = gen.lookup(tyNode[1])
@@ -1517,11 +1520,11 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
       else:
         seq[Sym].none
     params = gen.collectParams(formalParams, genericParams)
-    returnTy = # empty return type == void
+    returnTy = # empty return type == any
       if formalParams[0].kind != nkEmpty:
         gen.lookup(formalParams[0])
       else:
-        gen.module.sym"void"
+        gen.module.sym"stmt"
   # create a new proc
   var (sym, theProc) =
     newProc(gen.script, name, impl = node,
@@ -1562,6 +1565,7 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
       procGen.popVar(res)
 
     # add the proc into the script
+    theProc.procId = gen.script.procs.len
     gen.script.procs.add(theProc)
     if sym.procExport:
       # export the proc if needed (exported procs need to be in procsExport
@@ -1583,6 +1587,7 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
     procGen.popScope()
   else:
     # add the proc into the script
+    theProc.procId = gen.script.procs.len
     gen.script.procs.add(theProc)
 
   # pop the generic declaration scope
@@ -1893,14 +1898,7 @@ proc genFor*(node: Node) {.codegen.} =
   ## Generate code for a ``for`` loop.
   if policyAny in gen.policy.disallow or policyLoops in gen.policy.disallow:
     node.error(ErrPolicyViolation % "loops are disabled")
-  ##
-  ## Actually, a for loop isn't really a `loop`. It can be, if the iterator
-  ## actually does use a loop, but it doesn't have to.
-  ## All a ``for`` loop does is it walks the body of the iterator and replaces
-  ## any ``yield``s with the for loop's body.
 
-  # as of now, only one loop variable is supported
-  # this will be changed when tuples are introduced
   let
     loopVarName = node[0]
     (iterSym, iterParams) = gen.splitCall(node[1])
@@ -2001,7 +1999,7 @@ proc genReturn*(node: Node) {.codegen.} =
   # otherwise if we have a value, use that
   else:
     let valTy = gen.genExpr(node[0])
-    if valTy != gen.procReturnTy:
+    if not unwrapType(valTy).sameType(unwrapType(gen.procReturnTy)):
       node[0].error(ErrTypeMismatch % [$valTy.name, $gen.procReturnTy.name])
 
   # hayago uses two different opcodes for

@@ -155,6 +155,9 @@ type
   Proc* {.acyclic.} = ref object
     ## A runtime procedure.
     name*: string
+    procId*: int
+    jitCodePtr*: pointer  ## JIT-compiled function pointer, set atomically
+    jitMaxLocal*: int     ## Max local slots used by JIT code
     case kind*: ProcKind
     of pkNative:
       chunk*: Chunk          ## the chunk of bytecode of this procedure

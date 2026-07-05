@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.1.7"
+version       = "0.1.8"
 author        = "George Lemon"
 description   = "A flexible AST, Codegen and Virtual Machine library"
 license       = "LGPL-3.0-or-later"
@@ -16,3 +16,4 @@ requires "openparser >= 0.1.0"
 requires "flatty >= 0.4.0"
 requires "checksums >= 0.2.2"
 requires "semver >= 1.2.3"
+requires "threading >= 0.1.0"

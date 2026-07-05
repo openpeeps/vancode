@@ -17,7 +17,7 @@
 ## of the VanCode framework.
 
 import std/[strutils, tables, critbits, algorithm,
-          json, options, hashes, dynlib]
+          json, options, hashes, dynlib, sysatomics]
 
 import pkg/voodoo/extensibles
 import ./chunk, ./value
@@ -196,11 +196,13 @@ proc markHotProc(vm: Vm, theProc: Proc) =
     let key = theProc.name
     let prevCount = vm.hotProcCounts.mgetOrPut(key, 0)
     vm.hotProcCounts[key] = prevCount + 1
-    if vm.hotProcCounts[key] == vm.preferences.hotProcThreshold and
-       vm.jit.getForeign != nil:
-      let jitFn = vm.jit.getForeign(cast[pointer](theProc))
-      if jitFn != nil:
-        theProc.jitForeign = jitFn
+    if vm.hotProcCounts[key] == vm.preferences.hotProcThreshold:
+      if vm.jit.queueCompile != nil:
+        vm.jit.queueCompile(cast[pointer](theProc))
+      elif vm.jit.getForeign != nil:
+        let jitFn = vm.jit.getForeign(cast[pointer](theProc))
+        if jitFn != nil:
+          theProc.jitForeign = jitFn
 
 proc parseChunk(currentChunk: Chunk): CachedOps =
   # Parsing raw bytecode into operations
@@ -853,6 +855,20 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           restoreFrame()
           if p.hasResult:
             stack.push(callResult)
+          inc(pcIdx)
+          continue
+        # Async JIT fast path — check atomically-set code pointer
+        let jitFnPtr = atomicLoadN(addr p.jitCodePtr, AtomicAcquire)
+        if jitFnPtr != nil:
+          type AsyncJitFn = proc (flatArgs: ptr int64, argc: int): int64 {.cdecl.}
+          let fn = cast[AsyncJitFn](jitFnPtr)
+          var flatArgs = newSeq[int64](max(max(p.jitMaxLocal, p.paramCount), 1))
+          for i in 0..<p.paramCount:
+            flatArgs[i] = stack[stack.len - p.paramCount + i].intVal
+          let resultI = fn(addr flatArgs[0], p.paramCount)
+          restoreFrame()
+          if p.hasResult:
+            stack.push(initValue(resultI))
           inc(pcIdx)
           continue
 

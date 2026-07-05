@@ -236,3 +236,6 @@ type
     ## Uses raw pointer to avoid circular deps between vm and jit modules.
     getForeign*: proc (procPtr: pointer): ForeignProc
       ## Given a Proc pointer, returns its JIT-compiled ForeignProc if available.
+    queueCompile*: proc (theProc: pointer)
+      ## Queue a proc for async JIT compilation.
+      ## Called from markHotProc. theProc is cast(pointer, Proc).
