@@ -142,6 +142,10 @@ type
       ## the current column number, used when emitting bytecode
     lineInfo: seq[LineInfo]
       ## a list of run-length encoded line info
+    hotLoopCount*: int
+      ## backward jump counter for hot loop detection
+    hotLoopCompiled*: bool
+      ## whether this chunk has been attempted for JIT compilation
     strings*: seq[string] = newSeqOfCap[string](64)
       ## seq of strings used in this chunk (for string literals, global names, etc.)
     stringIds: Table[string, uint16] = initTable[string, uint16](64)
@@ -158,6 +162,7 @@ type
     procId*: int
     jitCodePtr*: pointer  ## JIT-compiled function pointer, set atomically
     jitMaxLocal*: int     ## Max local slots used by JIT code
+    jitReturnBool*: bool   ## Whether the JIT-compiled proc returns bool
     case kind*: ProcKind
     of pkNative:
       chunk*: Chunk          ## the chunk of bytecode of this procedure

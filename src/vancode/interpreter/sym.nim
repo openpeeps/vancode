@@ -496,6 +496,12 @@ proc addVariable*(scope: Scope, sym: Sym, lookupName: Node,
 proc addCallable*(scope: Scope, sym: Sym, lookupName: Node,
             fromOtherModule: static bool = false): bool {.discardable.} =
   ## Add a callable to the given scope.
+  ## If ``sym`` is itself an overload choice, add each overload individually.
+  if sym.kind == skChoice:
+    for ch in sym.choices:
+      discard scope.addCallable(ch, lookupName, fromOtherModule)
+    return true
+
   if not scope.functions.hasKey(lookupName.ident):
     scope.functions[lookupName.ident] = sym
     when fromOtherModule == false:

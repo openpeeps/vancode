@@ -40,6 +40,7 @@ type
     enableHotCodeDetection*: bool
     hotProcThreshold*: int = 10
     hotChunkThreshold*: int = 100
+    hotLoopThreshold*: int = 100000
 
   CallFrame* = tuple
     ## Represents a call frame for function/procedure calls.
@@ -96,6 +97,7 @@ type
     opCache: Table[Hash, CachedOps]
     hotCounts*: Table[string, int]
     hotProcCounts*: Table[string, int]
+
     preferences: VMPreferences
     importedModules*: Table[string, Script]
     activeCoroutine*: Coroutine
@@ -601,14 +603,13 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         let val = stack.pop()
         globals[co.getArg1Str(pcIdx, currentChunk)] = val
       of opcPushL:
-        # The `opcPushL` pushes a local variable onto the stack.
         let idx = co.getArg1Int(pcIdx)
-        # ensureLocal(idx)
+        ensureLocal(idx)
         stack.push(stack[stackBottom + idx])
       of opcPopL:
         let idx = co.getArg1Int(pcIdx)
-        # ensureLocal(idx)
         let val = stack.pop()
+        ensureLocal(idx)
         stack[stackBottom + idx] = val
       #
       # Arrays / Objects
@@ -818,6 +819,19 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       of opcJumpBack:
         let tgt = co.jumpTargets[pcIdx]
         if tgt >= 0: pcIdx = tgt - 1
+        # Hot loop detection: count backward jumps per chunk
+        if vm.preferences.enableHotCodeDetection and not currentChunk.hotLoopCompiled:
+          currentChunk.hotLoopCount.inc
+          if currentChunk.hotLoopCount >= vm.preferences.hotLoopThreshold:
+            currentChunk.hotLoopCompiled = true
+            if vm.jit.queueCompile != nil:
+              vm.jit.queueCompile(cast[pointer](script))
+            elif vm.jit.getForeign != nil:
+              for p in script.procs:
+                if p.kind == pkNative and p.chunk == currentChunk and p.jitForeign == nil:
+                  let jitFn = vm.jit.getForeign(cast[pointer](p))
+                  if jitFn != nil: p.jitForeign = jitFn
+                  break
       of opcCallD:
         # The `opcCallD` calls a procedure defined
         # in the current or another chunk.
@@ -868,7 +882,10 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           let resultI = fn(addr flatArgs[0], p.paramCount)
           restoreFrame()
           if p.hasResult:
-            stack.push(initValue(resultI))
+            if p.jitReturnBool:
+              stack.push(Value(typeId: tyBool, boolVal: resultI != 0))
+            else:
+              stack.push(initValue(resultI))
           inc(pcIdx)
           continue
 

@@ -77,12 +77,12 @@ when defined(vancodeJit):
                    opcInvB, opcDiscard,
                    opcJumpFwd, opcJumpFwdF, opcJumpFwdT, opcJumpBack,
                    opcReturnVal, opcReturnVoid, opcHalt,
-                   opcNoop, opcCallD}:
+                    opcNoop, opcCallD}:
         return nil  # unsupported opcode
 
     let ctx = gcc_jit_context_acquire()
     if ctx == nil: return nil
-    gcc_jit_context_set_int_option(ctx, GCC_JIT_INT_OPTION_OPTIMIZATION_LEVEL, 2)
+    gcc_jit_context_set_int_option(ctx, GCC_JIT_INT_OPTION_OPTIMIZATION_LEVEL, 3)
     gcc_jit_context_set_bool_option(ctx, GCC_JIT_BOOL_OPTION_DEBUGINFO, 0)
     gcc_jit_context_set_bool_option(ctx, GCC_JIT_BOOL_OPTION_DUMP_GENERATED_CODE, 0)
     gcc_jit_context_set_bool_allow_unreachable_blocks(ctx, 1)
@@ -295,7 +295,11 @@ when defined(vancodeJit):
           gcc_jit_block_end_with_jump(blk, nil, getBlock(jtTargets[pc]))
         else: term()
       of opcJumpFwdF:
-        let cond = popInt(stackI, spRval)
+        let idx = gcc_jit_context_new_binary_op(ctx, nil, GCC_JIT_BINARY_OP_MINUS,
+          i64Type, spRval, gcc_jit_context_one(ctx, i64Type))
+        let cond = gcc_jit_lvalue_as_rvalue(
+          gcc_jit_context_new_array_access(ctx, nil,
+            gcc_jit_lvalue_as_rvalue(stackI), idx))
         if jtTargets[pc] >= 0:
           gcc_jit_block_end_with_conditional(blk, nil,
             gcc_jit_context_new_cast(ctx, nil, cond, jt.boolType),
@@ -303,7 +307,14 @@ when defined(vancodeJit):
         else:
           term()
       of opcJumpFwdT:
-        let cond = popInt(stackI, spRval)
+        # Peek (don't pop) — matches VM interpreter behavior
+        let spCopy = gcc_jit_function_new_local(jitFn, nil, i64Type, "jft_sp")
+        gcc_jit_block_add_assignment(blk, nil, spCopy, spRval)
+        let idx = gcc_jit_context_new_binary_op(ctx, nil, GCC_JIT_BINARY_OP_MINUS,
+          i64Type, spRval, gcc_jit_context_one(ctx, i64Type))
+        let cond = gcc_jit_lvalue_as_rvalue(
+          gcc_jit_context_new_array_access(ctx, nil,
+            gcc_jit_lvalue_as_rvalue(stackI), idx))
         if jtTargets[pc] >= 0:
           gcc_jit_block_end_with_conditional(blk, nil,
             gcc_jit_context_new_cast(ctx, nil, cond, jt.boolType),
@@ -371,10 +382,6 @@ when defined(vancodeJit):
       gcc_jit_context_release(ctx)
       raise newException(ValueError, "JIT: function '" & theProc.name & "' not found")
 
-    type JitFn = proc (flatArgs: ptr int64, argc: int): int64 {.cdecl.}
-    let jitFnPtr = cast[JitFn](fnPtr)
-
-    # Auto-detect total local count from opcodes
     var maxLocal = theProc.paramCount
     for pc in 0..<opCount:
       let oc = cached.opcodes[pc]
@@ -382,8 +389,6 @@ when defined(vancodeJit):
         let idx = cached.getArg1Int(pc)
         if idx >= maxLocal: maxLocal = idx + 1
 
-    # Store the raw function pointer and metadata on the Proc
-    # Order matters: set maxLocal BEFORE codePtr (acts as release)
     theProc.jitMaxLocal = maxLocal
     atomicStoreN(addr theProc.jitCodePtr, fnPtr, AtomicRelease)
 
@@ -401,7 +406,10 @@ when defined(vancodeJit):
       let resultI = cast[JitFn](localFn)(addr flatLocals[0], argc)
       for i in 0..<min(argc, localMaxLocal):
         args[i].intVal = flatLocals[i]
-      initValue(resultI)
+      if theProc.jitReturnBool:
+        result = Value(typeId: tyBool, boolVal: resultI != 0)
+      else:
+        result = initValue(resultI)
 
 else:
   proc compileProc*(vm: Vm, theProc: Proc): ForeignProc {.inline.} =

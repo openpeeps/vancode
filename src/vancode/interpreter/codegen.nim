@@ -250,10 +250,14 @@ proc pushScope(gen: CodeGen) =
 
 proc popScope(gen: CodeGen) =
   # Pop the top scope, discarding its variables.
-  if gen.currentScope.varCount > 0:
+  let s = gen.scopes.pop()
+  # Emit discard for each variable in the scope to clean up its
+  # stack slot. popVar stores values into slots via opcPopL, but
+  # the slot value is still on the stack array and would leak as
+  # the script result. Emitting opcDiscard removes it.
+  if s.variables.len > 0:
     gen.chunk.emit(opcDiscard)
-    gen.chunk.emit(gen.currentScope.varCount.uint8)
-  discard gen.scopes.pop()
+    gen.chunk.emit(s.variables.len.uint8)
 
 proc scope(gen: CodeGen, index: int): Scope =
   ## Gets the local scope at level ``index``.
@@ -318,7 +322,8 @@ proc newProc*(script: Script, name, impl: Node,
       Proc(
         name: identName.ident, kind: kind,
         paramCount: params.len,
-        hasResult: hasReturnType
+        hasResult: hasReturnType,
+        jitReturnBool: returnTy.kind == skType and returnTy.tyKind == ttyBool
       )
     sym = newSym(skProc, identName, impl)
   sym.procId = id
@@ -610,11 +615,8 @@ proc popVar(gen: CodeGen, name: Node) =
   assert sym != nil
   
   if sym.varLocal:
-    # if it's a local and it's already been set,
-    # use `popL`, otherwise, just leave the variable on the stack
-    if sym.varSet:
-      gen.chunk.emit(opcPopL)
-      gen.chunk.emit(sym.varStackPos.uint8)
+    gen.chunk.emit(opcPopL)
+    gen.chunk.emit(sym.varStackPos.uint8)
   else:
     # if it's a global, always use popG
     gen.chunk.emit(opcPopG)
@@ -1520,11 +1522,11 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
       else:
         seq[Sym].none
     params = gen.collectParams(formalParams, genericParams)
-    returnTy = # empty return type == any
+    returnTy = # empty return type == void
       if formalParams[0].kind != nkEmpty:
         gen.lookup(formalParams[0])
       else:
-        gen.module.sym"stmt"
+        gen.module.sym"void"
   # create a new proc
   var (sym, theProc) =
     newProc(gen.script, name, impl = node,
@@ -1904,6 +1906,70 @@ proc genFor*(node: Node) {.codegen.} =
     (iterSym, iterParams) = gen.splitCall(node[1])
     body = node[2]
 
+  # --- For-range inlining: for x in range(lo, hi) with known-constant bounds ---
+  if loopVarName.kind == nkIdent and
+     iterSym.name.ident == "range" and
+     iterParams.len == 2 and
+     iterParams[0].kind == nkInt and
+     iterParams[1].kind == nkInt:
+    let startVal = iterParams[0].intVal
+    let endVal = iterParams[1].intVal
+    let intTy = gen.module.sym("int")
+
+    # scoped counter so multiple for-range loops don't clash
+    gen.pushScope()
+    let counterName = ast.newIdent("__counter")
+    let counterSym = gen.declareVar(counterName, skVar, intTy)
+    counterSym.varSet = true
+    gen.chunk.emit(opcPushI)
+    gen.chunk.emit(startVal)
+    gen.popVar(counterName)
+
+    gen.pushFlowBlock(fbLoopOuter)
+    let beforeLoop = gen.chunk.code.len
+
+    # condition: counter > endVal → jump to exit
+    gen.pushVar(counterSym)
+    gen.chunk.emit(opcPushI)
+    gen.chunk.emit(endVal)
+    gen.chunk.emit(opcGreaterI)
+    gen.chunk.emit(opcJumpFwdT)
+    let afterLoop = gen.chunk.emitHole(2)
+    # discard the condition bool (opcJumpFwdT peeks, doesn't pop)
+    gen.chunk.emit(opcDiscard)
+    gen.chunk.emit(1'u8)
+
+    # iteration body: declare loop var $x in its own scope
+    gen.pushFlowBlock(fbLoopIter)
+    gen.pushScope()
+    let loopVar = gen.declareVar(loopVarName, skLet, intTy)
+    loopVar.varSet = true
+    gen.pushVar(counterSym)
+    gen.popVar(loopVarName)
+    discard gen.genBlock(body, isStmt = true)
+    gen.popScope()
+    gen.popFlowBlock()
+
+    # counter += 1
+    gen.pushVar(counterSym)
+    gen.chunk.emit(opcPushI)
+    gen.chunk.emit(1'i64)
+    gen.chunk.emit(opcAddI)
+    gen.popVar(counterName)
+
+    # jump back
+    gen.chunk.emit(opcJumpBack)
+    gen.chunk.emit(uint16(gen.chunk.code.len - beforeLoop - 1))
+
+    # patch exit hole
+    gen.chunk.patchHole(afterLoop)
+    gen.chunk.emit(opcDiscard)
+    gen.chunk.emit(1'u8)
+
+    gen.popFlowBlock()
+    gen.popScope()
+    return
+
   var isTuple = false
   var tupleVars: seq[Node]
 
@@ -2039,6 +2105,8 @@ proc genYield*(node: Node) {.codegen.} =
     loopVar = gen.declareVar(gen.iterForVar[0], skLet, gen.iter.iterYieldTy)
     loopVarKey = gen.declareVar(gen.iterForVar[1], skLet, gen.module.sym"string")
   loopVar.varSet = true
+  if gen.iterForVar.kind == nkIdent:
+    gen.popVar(gen.iterForVar)
   
   # run the for loop's body
   discard gen.genBlock(gen.iterForBody, isStmt = true)
