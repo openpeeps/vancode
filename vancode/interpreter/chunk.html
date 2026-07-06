@@ -67,6 +67,8 @@
   code*: seq[uint8]          ## the raw bytecode
   ln*: int = 1               ## the current line number, used when emitting ## bytecode
   col*: int                  ## the current column number, used when emitting bytecode
+  hotLoopCount*: int         ## backward jump counter for hot loop detection
+  hotLoopCompiled*: bool     ## whether this chunk has been attempted for JIT compilation
   strings*: seq[string] = [] ## seq of strings used in this chunk (for string literals, global names, etc.)">Chunk</a></li>
 <li><a class="reference" href="#LineInfo" title="LineInfo = tuple[file: string, ln, col: int, runLength: int]">LineInfo</a></li>
 <li><a class="reference" href="#Opcode" title="Opcode {..} = enum
@@ -127,6 +129,7 @@
   procId*: int
   jitCodePtr*: pointer       ## JIT-compiled function pointer, set atomically
   jitMaxLocal*: int          ## Max local slots used by JIT code
+  jitReturnBool*: bool       ## Whether the JIT-compiled proc returns bool
   case kind*: ProcKind
   of pkNative:
     chunk*: Chunk            ## the chunk of bytecode of this procedure
@@ -280,6 +283,8 @@
   <span class="Identifier">code</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">uint8</span><span class="Other">]</span>          <span class="Comment">## the raw bytecode</span>
   <span class="Identifier">ln</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">1</span>               <span class="Comment">## the current line number, used when emitting ## bytecode</span>
   <span class="Identifier">col</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>                  <span class="Comment">## the current column number, used when emitting bytecode</span>
+  <span class="Identifier">hotLoopCount</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>         <span class="Comment">## backward jump counter for hot loop detection</span>
+  <span class="Identifier">hotLoopCompiled</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>     <span class="Comment">## whether this chunk has been attempted for JIT compilation</span>
   <span class="Identifier">strings</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span> <span class="Other">=</span> <span class="Other">[</span><span class="Other">]</span> <span class="Comment">## seq of strings used in this chunk (for string literals, global names, etc.)</span></pre></dt>
   <dd>
     
@@ -361,6 +366,7 @@
   <span class="Identifier">procId</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">jitCodePtr</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">pointer</span>       <span class="Comment">## JIT-compiled function pointer, set atomically</span>
   <span class="Identifier">jitMaxLocal</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>          <span class="Comment">## Max local slots used by JIT code</span>
+  <span class="Identifier">jitReturnBool</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>       <span class="Comment">## Whether the JIT-compiled proc returns bool</span>
   <span class="Keyword">case</span> <span class="Identifier">kind</span><span class="Operator">*</span><span class="Other">:</span> <a href="#ProcKind"><span class="Identifier">ProcKind</span></a>
   <span class="Keyword">of</span> <span class="Identifier">pkNative</span><span class="Other">:</span>
     <span class="Identifier">chunk</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Chunk"><span class="Identifier">Chunk</span></a>            <span class="Comment">## the chunk of bytecode of this procedure</span>
@@ -728,7 +734,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-05 17:52:04 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-06 09:17:59 UTC</small>
       </div>
     </div>
   </div>

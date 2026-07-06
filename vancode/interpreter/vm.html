@@ -102,7 +102,8 @@
 <li><a class="reference" href="#VMPreferences" title="VMPreferences = object
   enableHotCodeDetection*: bool
   hotProcThreshold*: int = 10
-  hotChunkThreshold*: int = 100">VMPreferences</a></li>
+  hotChunkThreshold*: int = 100
+  hotLoopThreshold*: int = 100000">VMPreferences</a></li>
 
     </ul>
   </details>
@@ -288,7 +289,8 @@
   <dt><pre><a href="#VMPreferences"><span class="Identifier">VMPreferences</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
   <span class="Identifier">enableHotCodeDetection</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>
   <span class="Identifier">hotProcThreshold</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">10</span>
-  <span class="Identifier">hotChunkThreshold</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">100</span></pre></dt>
+  <span class="Identifier">hotChunkThreshold</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">100</span>
+  <span class="Identifier">hotLoopThreshold</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">100000</span></pre></dt>
   <dd>
     
     Preferences for configuring the VM's behavior. These can be set when creating a new VM instance
@@ -459,7 +461,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-05 17:52:05 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-06 09:18:00 UTC</small>
       </div>
     </div>
   </div>
