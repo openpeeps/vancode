@@ -81,6 +81,8 @@
   opcPopG = &quot;popG&quot;,         ## pop global
   opcPushL = &quot;pushL&quot;,       ## push local
   opcPopL = &quot;popL&quot;,         ## pop local
+  opcIncL = &quot;incL&quot;,         ## increment local by 1 in-place
+  opcDecL = &quot;decL&quot;,         ## decrement local by 1 in-place
   opcFFIGetProc = &quot;ffiGetProc&quot;, ## get a symbol from a dynamic library
   opcPushPointer = &quot;pushPointer&quot;, opcPopPointer = &quot;popPointer&quot;, opcConstrObj = &quot;constrObj&quot;, ## construct object
   opcGetF = &quot;getF&quot;,         ## push field
@@ -91,6 +93,7 @@
   opcDiscard = &quot;discard&quot;,   ## discard values
   opcGetJ = &quot;getJ&quot;,         ## get JSON value
   opcSetJ = &quot;setJ&quot;,         ## set JSON value
+  opcConcatStr = &quot;concatStr&quot;, ## concatenate two strings
   opcNegI = &quot;negI&quot;,         ## negate int
   opcAddI = &quot;addI&quot;,         ## add ints
   opcSubI = &quot;subI&quot;,         ## subtract ints
@@ -137,7 +140,9 @@
     foreign*: ForeignProc    ## the foreign implementation of this procedure
   paramCount*: int           ## the number of parameters this procedure takes
   hasResult*: bool           ## flag signifying whether the proc returns a value
-  jitForeign*: ForeignProc   ## JIT-compiled version of this proc (nil if not compiled or native)">Proc</a></li>
+  jitForeign*: ForeignProc   ## JIT-compiled version of this proc (nil if not compiled or native)
+  jitCallCount*: int         ## call counter for profile-guided recompilation
+  jitRecompiled*: bool       ## whether this proc has been recompiled at -O3">Proc</a></li>
 <li><a class="reference" href="#ProcKind" title="ProcKind = enum
   pkNative,                 ## a native (bytecode) proc
   pkForeign                  ## a foreign (Nim) proc defined at compile-time">ProcKind</a></li>
@@ -311,6 +316,8 @@
   <span class="Identifier">opcPopG</span> <span class="Other">=</span> <span class="StringLit">&quot;popG&quot;</span><span class="Other">,</span>         <span class="Comment">## pop global</span>
   <span class="Identifier">opcPushL</span> <span class="Other">=</span> <span class="StringLit">&quot;pushL&quot;</span><span class="Other">,</span>       <span class="Comment">## push local</span>
   <span class="Identifier">opcPopL</span> <span class="Other">=</span> <span class="StringLit">&quot;popL&quot;</span><span class="Other">,</span>         <span class="Comment">## pop local</span>
+  <span class="Identifier">opcIncL</span> <span class="Other">=</span> <span class="StringLit">&quot;incL&quot;</span><span class="Other">,</span>         <span class="Comment">## increment local by 1 in-place</span>
+  <span class="Identifier">opcDecL</span> <span class="Other">=</span> <span class="StringLit">&quot;decL&quot;</span><span class="Other">,</span>         <span class="Comment">## decrement local by 1 in-place</span>
   <span class="Identifier">opcFFIGetProc</span> <span class="Other">=</span> <span class="StringLit">&quot;ffiGetProc&quot;</span><span class="Other">,</span> <span class="Comment">## get a symbol from a dynamic library</span>
   <span class="Identifier">opcPushPointer</span> <span class="Other">=</span> <span class="StringLit">&quot;pushPointer&quot;</span><span class="Other">,</span> <span class="Identifier">opcPopPointer</span> <span class="Other">=</span> <span class="StringLit">&quot;popPointer&quot;</span><span class="Other">,</span> <span class="Identifier">opcConstrObj</span> <span class="Other">=</span> <span class="StringLit">&quot;constrObj&quot;</span><span class="Other">,</span> <span class="Comment">## construct object</span>
   <span class="Identifier">opcGetF</span> <span class="Other">=</span> <span class="StringLit">&quot;getF&quot;</span><span class="Other">,</span>         <span class="Comment">## push field</span>
@@ -321,6 +328,7 @@
   <span class="Identifier">opcDiscard</span> <span class="Other">=</span> <span class="StringLit">&quot;discard&quot;</span><span class="Other">,</span>   <span class="Comment">## discard values</span>
   <span class="Identifier">opcGetJ</span> <span class="Other">=</span> <span class="StringLit">&quot;getJ&quot;</span><span class="Other">,</span>         <span class="Comment">## get JSON value</span>
   <span class="Identifier">opcSetJ</span> <span class="Other">=</span> <span class="StringLit">&quot;setJ&quot;</span><span class="Other">,</span>         <span class="Comment">## set JSON value</span>
+  <span class="Identifier">opcConcatStr</span> <span class="Other">=</span> <span class="StringLit">&quot;concatStr&quot;</span><span class="Other">,</span> <span class="Comment">## concatenate two strings</span>
   <span class="Identifier">opcNegI</span> <span class="Other">=</span> <span class="StringLit">&quot;negI&quot;</span><span class="Other">,</span>         <span class="Comment">## negate int</span>
   <span class="Identifier">opcAddI</span> <span class="Other">=</span> <span class="StringLit">&quot;addI&quot;</span><span class="Other">,</span>         <span class="Comment">## add ints</span>
   <span class="Identifier">opcSubI</span> <span class="Other">=</span> <span class="StringLit">&quot;subI&quot;</span><span class="Other">,</span>         <span class="Comment">## subtract ints</span>
@@ -374,7 +382,9 @@
     <span class="Identifier">foreign</span><span class="Operator">*</span><span class="Other">:</span> <a href="value.html#ForeignProc"><span class="Identifier">ForeignProc</span></a>    <span class="Comment">## the foreign implementation of this procedure</span>
   <span class="Identifier">paramCount</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>           <span class="Comment">## the number of parameters this procedure takes</span>
   <span class="Identifier">hasResult</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>           <span class="Comment">## flag signifying whether the proc returns a value</span>
-  <span class="Identifier">jitForeign</span><span class="Operator">*</span><span class="Other">:</span> <a href="value.html#ForeignProc"><span class="Identifier">ForeignProc</span></a>   <span class="Comment">## JIT-compiled version of this proc (nil if not compiled or native)</span></pre></dt>
+  <span class="Identifier">jitForeign</span><span class="Operator">*</span><span class="Other">:</span> <a href="value.html#ForeignProc"><span class="Identifier">ForeignProc</span></a>   <span class="Comment">## JIT-compiled version of this proc (nil if not compiled or native)</span>
+  <span class="Identifier">jitCallCount</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>         <span class="Comment">## call counter for profile-guided recompilation</span>
+  <span class="Identifier">jitRecompiled</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>       <span class="Comment">## whether this proc has been recompiled at -O3</span></pre></dt>
   <dd>
     
     A runtime procedure.
@@ -734,7 +744,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-06 09:17:59 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-06 12:33:36 UTC</small>
       </div>
     </div>
   </div>
