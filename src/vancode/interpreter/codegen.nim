@@ -1037,6 +1037,13 @@ proc infix*(node: Node): Sym {.codegen.} =
       else: noBuiltin = true
       # bool operators return bools (duh.)
       result = gen.module.sym"bool"
+    elif aTy == bTy and aTy == gen.module.sym"string":
+      # string operators
+      case node[0].ident
+      of "&":
+        gen.chunk.emit(opcConcatStr)
+        result = gen.module.sym"string"
+      else: noBuiltin = true
     else: noBuiltin = true # no optimized operators for given type
     if noBuiltin:
       let procSym = gen.lookup(node[0])
@@ -1052,13 +1059,24 @@ proc infix*(node: Node): Sym {.codegen.} =
         value = node[2]
       case receiver.kind
       of nkIdent: # to a variable
-        let
-          sym = gen.lookup(receiver) # look the variable up
-          valTy = gen.genExpr(value) # generate the value
+        let sym = gen.lookup(receiver) # look the variable up
+        # Detect x = x +/- 1 → incL/decL
+        if sym.kind == skVar and value.kind == nkInfix and value[0].kind == nkIdent and
+           value[0].ident in ["+", "-"]:
+          let receiverName = if receiver.kind == nkIdent: receiver.ident else: ""
+          let lhs = value[1]; let rhs = value[2]
+          if (lhs.kind == nkIdent and lhs.ident == receiverName and
+              rhs.kind == nkInt and rhs.intVal == 1) or
+             (rhs.kind == nkIdent and rhs.ident == receiverName and
+              lhs.kind == nkInt and lhs.intVal == 1):
+            if value[0].ident == "+":
+              gen.chunk.emit(opcIncL); gen.chunk.emit(sym.varStackPos.uint8)
+            else:
+              gen.chunk.emit(opcDecL); gen.chunk.emit(sym.varStackPos.uint8)
+            return gen.module.sym"void"
+        let valTy = gen.genExpr(value)
         if valTy == sym.varTy:
           if sym.kind == skVar:
-            # if the variable's type matches the type of
-            # the value, we're ok
             gen.popVar(receiver)
           else:
             receiver.error(ErrImmutableReassignment % $sym.name)
@@ -1136,9 +1154,8 @@ proc infix*(node: Node): Sym {.codegen.} =
         lhs.error(ErrTypeMismatch % [$aTy, "string"])
       if bTy.tyKind != ttyString:
         rhs.error(ErrTypeMismatch % [$bTy, "string"])
-      let procSym = gen.lookup(node[0])
-      result = gen.callProc(procSym, @[aTy, bTy], errorNode = node)
-      # result = gen.procCall(node[0], sym)
+      gen.chunk.emit(opcConcatStr)
+      result = gen.module.sym"string"
     else: discard
 
 proc objConstr*(node: Node, ty: Sym, constructFromIdent = false): Sym {.codegen.} =
@@ -1644,7 +1661,10 @@ proc genExpr*(node: Node, varUnwrap = true): Sym {.codegen.} =
     of nkPrefix:
       result = gen.prefix(node)
     of nkInfix:
-      result = gen.infix(node)
+      extendableCase "codegenInfixExpr":
+        case node[0].ident:
+        else:
+          result = gen.infix(node)
     of nkDot:
       # handle field access using dot notation `$a.b`
       result = gen.genGetField(node)

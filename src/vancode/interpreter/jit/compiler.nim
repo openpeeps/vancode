@@ -12,18 +12,101 @@ import ./types
 
 when defined(vancodeJit):
   import pkg/gccjit
-  import std/[tables, sysatomics]
+  import std/[tables, sysatomics, critbits]
 
   {.passC:"-I/usr/local/include".}
   {.passL:"-L/usr/local/lib/gcc/current -lgccjit -Wl,-undefined,dynamic_lookup".}
 
   var jitFnTable*: array[65536, pointer]  # procId -> JIT function pointer
+  var jitProcTable*: array[65536, pointer] # procId -> Proc pointer (for recompilation checks)
   var jitParamCount*: array[65536, int]    # procId -> parameter count
+  var jitOptLevel*: cint = 3               # default GCC optimization level
+  const hotRecompileThreshold = 100        # call count before recompiling at -O3
 
   var jitGlobalVm*: Vm = nil
+  var jitGlobalsPtr*: pointer = nil  ## pointer to VM's globals CritBitTree
+
+  proc setJitGlobalsPtr*(p: pointer) =
+    jitGlobalsPtr = p
+
+  proc jitBridgePushG*(namePtr: pointer): int64 {.cdecl, exportc.} =
+    ## Bridge for opcPushG: reads a global variable value by name.
+    let name = cast[cstring](namePtr)
+    if name == nil or jitGlobalsPtr == nil: return 0
+    let g = cast[ptr CritBitTree[Value]](jitGlobalsPtr)
+    let key = $name
+    if key notin g[]: return 0
+    result = g[][key].intVal
+
+  proc jitBridgePopG*(namePtr: pointer, val: int64) {.cdecl, exportc.} =
+    ## Bridge for opcPopG: stores a value to a global variable by name.
+    let name = cast[cstring](namePtr)
+    if name == nil or jitGlobalsPtr == nil: return
+    let g = cast[ptr CritBitTree[Value]](jitGlobalsPtr)
+    g[][$name] = Value(typeId: tyInt, intVal: val)
 
   proc setJitVm*(vm: Vm) =
     jitGlobalVm = vm
+
+  proc compileProc*(vm: Vm, theProc: Proc): ForeignProc {.gcsafe.}
+
+  proc jitRecompileAtO3(theProc: Proc) =
+    if theProc.jitRecompiled: return
+    theProc.jitRecompiled = true
+    if jitOptLevel >= 3: return  # already at max optimization
+    let savedOpt = jitOptLevel
+    jitOptLevel = 3
+    discard compileProc(jitGlobalVm, theProc)
+    jitOptLevel = savedOpt
+
+  proc findProcById(procId: int): Proc =
+    if jitGlobalVm == nil: return nil
+    for _, s in jitGlobalVm.importedModules:
+      if procId >= 0 and procId < s.procs.len:
+        return s.procs[procId]
+    nil
+
+  proc jitCallProcBridgeFlat*(procId: int32, flatArgs: ptr int64, argc: int32): int64 {.cdecl, exportc.} =
+    ## Simplified bridge for JIT-to-JIT cross-function calls.
+    ## Uses jitFnTable for O(1) lookup by procId.
+    let fnPtr = jitFnTable[procId]
+    if fnPtr != nil:
+      let p = cast[Proc](jitProcTable[procId])
+      if p != nil and not p.jitRecompiled:
+        p.jitCallCount += 1
+        if p.jitCallCount >= hotRecompileThreshold:
+          jitRecompileAtO3(p)
+      type JitFn = proc (flatArgs: ptr int64, argc: int): int64 {.cdecl.}
+      return cast[JitFn](fnPtr)(flatArgs, argc)
+    let theProc = findProcById(procId.int)
+    if theProc == nil: return 0
+    let fnPtr2 = atomicLoadN(addr theProc.jitCodePtr, AtomicAcquire)
+    if fnPtr2 != nil:
+      jitFnTable[procId] = fnPtr2
+      let p = cast[Proc](jitProcTable[procId])
+      if p != nil and not p.jitRecompiled:
+        p.jitCallCount += 1
+        if p.jitCallCount >= hotRecompileThreshold:
+          jitRecompileAtO3(p)
+      type JitFn = proc (flatArgs: ptr int64, argc: int): int64 {.cdecl.}
+      return cast[JitFn](fnPtr2)(flatArgs, argc)
+    var tmp: array[256, Value]
+    if argc > 256: return 0
+    let arr = cast[ptr UncheckedArray[int64]](flatArgs)
+    for i in 0..<argc:
+      tmp[i] = Value(typeId: tyInt, intVal: arr[i])
+    let callResult =
+      if theProc.jitForeign != nil:
+        theProc.jitForeign(cast[StackView](addr tmp[0]), argc)
+      elif theProc.kind == pkForeign and theProc.foreign != nil:
+        theProc.foreign(cast[StackView](addr tmp[0]), argc)
+      else:
+        nil
+    if callResult == nil: return 0
+    case callResult.typeId
+    of tyInt: return callResult.intVal
+    of tyBool: return callResult.boolVal.ord.int64
+    else: return 0
 
   proc jitCallProcBridge(procId: int32, stackIPtr: ptr int64, sp: int32, deltaPtr: ptr int32, resultIntPtr: ptr int64) {.cdecl, exportc.} =
     ## C-ABI bridge: called from JIT'd code to dispatch opcCallD.
@@ -70,7 +153,8 @@ when defined(vancodeJit):
     let selfProcId = theProc.procId
     for oc in cached.opcodes:
       if oc notin {opcPushI, opcPushF, opcPushTrue, opcPushFalse,
-                   opcPushL, opcPopL, opcPushNil, opcPushS,
+                    opcPushL, opcPopL, opcIncL, opcDecL, opcPushNil, opcPushS,
+                   opcPushG, opcPopG,
                    opcAddI, opcSubI, opcMultI, opcDivI,
                    opcAddF, opcSubF, opcMultF, opcDivF,
                    opcEqI, opcLessI, opcGreaterI,
@@ -82,7 +166,7 @@ when defined(vancodeJit):
 
     let ctx = gcc_jit_context_acquire()
     if ctx == nil: return nil
-    gcc_jit_context_set_int_option(ctx, GCC_JIT_INT_OPTION_OPTIMIZATION_LEVEL, 3)
+    gcc_jit_context_set_int_option(ctx, GCC_JIT_INT_OPTION_OPTIMIZATION_LEVEL, jitOptLevel)
     gcc_jit_context_set_bool_option(ctx, GCC_JIT_BOOL_OPTION_DEBUGINFO, 0)
     gcc_jit_context_set_bool_option(ctx, GCC_JIT_BOOL_OPTION_DUMP_GENERATED_CODE, 0)
     gcc_jit_context_set_bool_allow_unreachable_blocks(ctx, 1)
@@ -153,6 +237,10 @@ when defined(vancodeJit):
           reachable[jtTargets[pc]] = true
       else:
         if pc + 1 < opCount: reachable[pc + 1] = true
+
+    proc callThroughPtr(ctxt: ptr gcc_jit_context; loc: ptr gcc_jit_location;
+        fn_ptr: ptr gcc_jit_rvalue; numargs: cint; args: ptr ptr gcc_jit_rvalue): ptr gcc_jit_rvalue
+        {.cdecl, importc: "gcc_jit_context_new_call_through_ptr".}
 
     for pc in 0..<opCount:
       if not reachable[pc]: continue
@@ -237,6 +325,53 @@ when defined(vancodeJit):
           gcc_jit_context_new_array_access(ctx, nil,
             gcc_jit_param_as_rvalue(argsParam),
             gcc_jit_context_new_rvalue_from_long(ctx, i64Type, cached.getArg1Int(pc))), val)
+        term()
+      of opcIncL:
+        let slot = cached.getArg1Int(pc)
+        let localLval = gcc_jit_context_new_array_access(ctx, nil,
+          gcc_jit_param_as_rvalue(argsParam),
+          gcc_jit_context_new_rvalue_from_long(ctx, i64Type, slot))
+        let cur = gcc_jit_lvalue_as_rvalue(localLval)
+        let plusOne = gcc_jit_context_new_binary_op(ctx, nil,
+          GCC_JIT_BINARY_OP_PLUS, i64Type, cur, gcc_jit_context_one(ctx, i64Type))
+        gcc_jit_block_add_assignment(blk, nil, localLval, plusOne)
+        term()
+      of opcDecL:
+        let slot = cached.getArg1Int(pc)
+        let localLval = gcc_jit_context_new_array_access(ctx, nil,
+          gcc_jit_param_as_rvalue(argsParam),
+          gcc_jit_context_new_rvalue_from_long(ctx, i64Type, slot))
+        let cur = gcc_jit_lvalue_as_rvalue(localLval)
+        let minusOne = gcc_jit_context_new_binary_op(ctx, nil,
+          GCC_JIT_BINARY_OP_MINUS, i64Type, cur, gcc_jit_context_one(ctx, i64Type))
+        gcc_jit_block_add_assignment(blk, nil, localLval, minusOne)
+        term()
+      of opcPushG:
+        let sid = cached.getArg1Int(pc)
+        let nameStr = theProc.chunk.strings[sid]
+        let nameLit = gcc_jit_context_new_string_literal(ctx, nameStr)
+        let namePtr = gcc_jit_context_new_cast(ctx, nil, nameLit, voidPtrType)
+        let pushGParamTypes = [voidPtrType]
+        let pushGFnType = gcc_jit_context_new_function_ptr_type(ctx, nil, i64Type, 1, addr pushGParamTypes[0], 0)
+        let pushGAddr = gcc_jit_context_new_rvalue_from_ptr(ctx, voidPtrType, jitBridgePushG)
+        let pushGFnRval = gcc_jit_context_new_cast(ctx, nil, pushGAddr, pushGFnType)
+        var callArgs: array[1, ptr gcc_jit_rvalue] = [namePtr]
+        let globalVal = callThroughPtr(ctx, nil, pushGFnRval, 1.cint, addr callArgs[0])
+        pushInt(stackI, globalVal, spRval)
+        term()
+      of opcPopG:
+        let sid = cached.getArg1Int(pc)
+        let nameStr = theProc.chunk.strings[sid]
+        let nameLit = gcc_jit_context_new_string_literal(ctx, nameStr)
+        let namePtr = gcc_jit_context_new_cast(ctx, nil, nameLit, voidPtrType)
+        let val = popInt(stackI, spRval)
+        let voidType = gcc_jit_context_get_type(ctx, GCC_JIT_TYPE_VOID)
+        let popGParamTypes = [voidPtrType, i64Type]
+        let popGFnType = gcc_jit_context_new_function_ptr_type(ctx, nil, voidType, 2, addr popGParamTypes[0], 0)
+        let popGAddr = gcc_jit_context_new_rvalue_from_ptr(ctx, voidPtrType, jitBridgePopG)
+        let popGFnRval = gcc_jit_context_new_cast(ctx, nil, popGAddr, popGFnType)
+        var callArgs: array[2, ptr gcc_jit_rvalue] = [namePtr, val]
+        discard callThroughPtr(ctx, nil, popGFnRval, 2.cint, addr callArgs[0])
         term()
       of opcNoop:
         term()
@@ -333,23 +468,62 @@ when defined(vancodeJit):
         term()
       of opcCallD:
         let targetProcId = cached.arg2[pc].int
-        if targetProcId != theProc.procId:
-          return nil
-        let nArgs = theProc.paramCount
-        let argVal = popInt(stackI, spRval)
-        let arrTy = gcc_jit_context_new_array_type(ctx, nil, i64Type, nArgs.cint.max(1))
-        let arrL = gcc_jit_function_new_local(jitFn, nil, arrTy, "_ca")
-        let slot0 = gcc_jit_context_new_array_access(ctx, nil,
-          gcc_jit_lvalue_as_rvalue(arrL),
-          gcc_jit_context_zero(ctx, i64Type))
-        gcc_jit_block_add_assignment(blk, nil, slot0, argVal)
-        let arrAddr = gcc_jit_context_new_cast(ctx, nil,
-          gcc_jit_lvalue_get_address(arrL, nil), i64PtrType)
-        let argcV = gcc_jit_context_new_rvalue_from_long(ctx, i64Type, nArgs)
-        var crv = [arrAddr, argcV]
-        let r = gcc_jit_context_new_call(ctx, nil, jitFn, 2, addr crv[0])
-        pushInt(stackI, gcc_jit_context_new_cast(ctx, nil, r, i64Type), spRval)
-        term()
+        if targetProcId == theProc.procId:
+          let nArgs = theProc.paramCount
+          let arrTy = gcc_jit_context_new_array_type(ctx, nil, i64Type, nArgs.int32.max(1))
+          let arrL = gcc_jit_function_new_local(jitFn, nil, arrTy, "_ca")
+          for i in countdown(nArgs - 1, 0):
+            let argVal = popInt(stackI, spRval)
+            let slot = gcc_jit_context_new_array_access(ctx, nil,
+              gcc_jit_lvalue_as_rvalue(arrL),
+              gcc_jit_context_new_rvalue_from_long(ctx, i64Type, i))
+            gcc_jit_block_add_assignment(blk, nil, slot, argVal)
+          let arrAddr = gcc_jit_context_new_cast(ctx, nil,
+            gcc_jit_lvalue_get_address(arrL, nil), i64PtrType)
+          let argcV = gcc_jit_context_new_rvalue_from_long(ctx, i64Type, nArgs)
+          var crv = [arrAddr, argcV]
+          let r = gcc_jit_context_new_call(ctx, nil, jitFn, 2, addr crv[0])
+          pushInt(stackI, gcc_jit_context_new_cast(ctx, nil, r, i64Type), spRval)
+          term()
+        else:
+          var targetProc: Proc = nil
+          let filePathIdx = cached.arg1[pc].uint16
+          let chunkPath = theProc.chunk.strings[filePathIdx]
+          if chunkPath in vm.importedModules:
+            let s = vm.importedModules[chunkPath]
+            if targetProcId >= 0 and targetProcId < s.procs.len:
+              targetProc = s.procs[targetProcId]
+          if targetProc == nil:
+            for _, s in vm.importedModules:
+              if targetProcId >= 0 and targetProcId < s.procs.len:
+                targetProc = s.procs[targetProcId]; break
+          if targetProc == nil:
+            return nil
+          else:
+            let nArgs = targetProc.paramCount
+            let arrTy = gcc_jit_context_new_array_type(ctx, nil, i64Type, nArgs.int32.max(1))
+            let arrL = gcc_jit_function_new_local(jitFn, nil, arrTy, "_ca")
+            for i in countdown(nArgs - 1, 0):
+              let argVal = popInt(stackI, spRval)
+              let slot = gcc_jit_context_new_array_access(ctx, nil,
+                gcc_jit_lvalue_as_rvalue(arrL),
+                gcc_jit_context_new_rvalue_from_long(ctx, i64Type, i))
+              gcc_jit_block_add_assignment(blk, nil, slot, argVal)
+            let arrAddr = gcc_jit_context_new_cast(ctx, nil,
+              gcc_jit_lvalue_get_address(arrL, nil), i64PtrType)
+            let argcV = gcc_jit_context_new_rvalue_from_long(ctx, i64Type, nArgs)
+            let bridgeParamTypes = [int32Type, i64PtrType, int32Type]
+            let bridgeFnType = gcc_jit_context_new_function_ptr_type(ctx, nil, i64Type, 3, addr bridgeParamTypes[0], 0)
+            let bridgeAddr = gcc_jit_context_new_rvalue_from_ptr(ctx, voidPtrType, jitCallProcBridgeFlat)
+            let bridgeFnRval = gcc_jit_context_new_cast(ctx, nil, bridgeAddr, bridgeFnType)
+            var callArgs: array[3, ptr gcc_jit_rvalue] = [
+              gcc_jit_context_new_rvalue_from_long(ctx, int32Type, targetProcId),
+              arrAddr,
+              gcc_jit_context_new_cast(ctx, nil, argcV, int32Type)
+            ]
+            let callResult = callThroughPtr(ctx, nil, bridgeFnRval, 3.cint, addr callArgs[0])
+            pushInt(stackI, callResult, spRval)
+            term()
       of opcPushNil:
         pushInt(stackI, gcc_jit_context_zero(ctx, i64Type), spRval)
         term()
@@ -391,6 +565,9 @@ when defined(vancodeJit):
 
     theProc.jitMaxLocal = maxLocal
     atomicStoreN(addr theProc.jitCodePtr, fnPtr, AtomicRelease)
+    jitFnTable[theProc.procId] = fnPtr
+    jitProcTable[theProc.procId] = cast[pointer](theProc)
+    jitParamCount[theProc.procId] = theProc.paramCount
 
     result = proc (args: StackView, argc: int): Value {.closure.} =
       let localFn = atomicLoadN(addr theProc.jitCodePtr, AtomicAcquire)
@@ -404,6 +581,9 @@ when defined(vancodeJit):
         flatLocals[0] = args[0].intVal
       type JitFn = proc (flatArgs: ptr int64, argc: int): int64 {.cdecl.}
       let resultI = cast[JitFn](localFn)(addr flatLocals[0], argc)
+      theProc.jitCallCount += 1
+      if theProc.jitCallCount >= hotRecompileThreshold:
+        jitRecompileAtO3(theProc)
       for i in 0..<min(argc, localMaxLocal):
         args[i].intVal = flatLocals[i]
       if theProc.jitReturnBool:

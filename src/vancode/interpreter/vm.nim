@@ -40,7 +40,7 @@ type
     enableHotCodeDetection*: bool
     hotProcThreshold*: int = 10
     hotChunkThreshold*: int = 100
-    hotLoopThreshold*: int = 100000
+    hotLoopThreshold*: int = 10_000
 
   CallFrame* = tuple
     ## Represents a call frame for function/procedure calls.
@@ -195,10 +195,8 @@ proc markHot(vm: Vm, currentChunk: Chunk) =
 
 proc markHotProc(vm: Vm, theProc: Proc) =
   if vm.preferences.enableHotCodeDetection and theProc != nil:
-    let key = theProc.name
-    let prevCount = vm.hotProcCounts.mgetOrPut(key, 0)
-    vm.hotProcCounts[key] = prevCount + 1
-    if vm.hotProcCounts[key] == vm.preferences.hotProcThreshold:
+    theProc.jitCallCount.inc
+    if theProc.jitCallCount == vm.preferences.hotProcThreshold:
       if vm.jit.queueCompile != nil:
         vm.jit.queueCompile(cast[pointer](theProc))
       elif vm.jit.getForeign != nil:
@@ -258,12 +256,12 @@ proc parseChunk(currentChunk: Chunk): CachedOps =
       of opcPushPointer:
         discard readArg[pointer](pc)
         addOp(oc)
-      of opcPushTrue, opcPushFalse:
+      of opcPushTrue, opcPushFalse, opcConcatStr:
         addOp(oc)
       of opcPushG, opcPopG:
         let sid = readArg[uint16](pc)
         addOp(oc, sid.int64, 0, akString)
-      of opcPushL, opcPopL:
+      of opcPushL, opcPopL, opcIncL, opcDecL:
         let idx = readArg[uint8](pc).int
         addOp(oc, idx.int64, 0, akInt)
       of opcJumpFwd, opcJumpFwdT, opcJumpFwdF, opcJumpBack:
@@ -388,6 +386,7 @@ proc prewarmScriptOpsRec(vm: Vm, s: Script, seen: var Table[Hash, bool]) =
   seen[h] = true
 
   if not s.mainChunk.isNil:
+    vm.importedModules[s.mainChunk.file] = s
     discard vm.getCachedOps(s.mainChunk)
 
   for p in s.procs:
@@ -465,6 +464,10 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
   var globals = CritBitTree[Value]()
   globals["app"] = initValue(globalData)
   globals["this"] = initValue(localData)
+
+  when defined(vancodeJit):
+    if vm.jit.setGlobalsPtr != nil:
+      vm.jit.setGlobalsPtr(addr globals)
 
   template unary(expr) =
     let a {.inject.} = stack.pop()
@@ -568,10 +571,10 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
 
   # Main execution loop
   while true:
+    {.computedGoto.}
     frameChanged = false
     if pcIdx < 0 or pcIdx >= co.opcodes.len: break
     let oc = co.opcodes[pcIdx]
-    discard  # chunk hot counting disabled
     
     # single debug output for opcode/stack at top of loop
     when defined(hayaVmWriteStackOps):
@@ -611,6 +614,14 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         let val = stack.pop()
         ensureLocal(idx)
         stack[stackBottom + idx] = val
+      of opcIncL:
+        let idx = co.getArg1Int(pcIdx)
+        ensureLocal(idx)
+        stack[stackBottom + idx].intVal.inc
+      of opcDecL:
+        let idx = co.getArg1Int(pcIdx)
+        ensureLocal(idx)
+        stack[stackBottom + idx].intVal.dec
       #
       # Arrays / Objects
       #
@@ -728,6 +739,16 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           of opcDivF: stack.push(initValue(av / bv))
           else: discard
       #
+      # String operations
+      #
+      of opcConcatStr:
+        let b = stack.pop()
+        let a = stack.pop()
+        var result = Value(typeId: tyString)
+        new(result.stringVal)
+        result.stringVal[] = a.stringVal[] & b.stringVal[]
+        stack.push(result)
+      #
       # Logic
       #
       of opcInvB:
@@ -819,19 +840,11 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       of opcJumpBack:
         let tgt = co.jumpTargets[pcIdx]
         if tgt >= 0: pcIdx = tgt - 1
-        # Hot loop detection: count backward jumps per chunk
-        if vm.preferences.enableHotCodeDetection and not currentChunk.hotLoopCompiled:
-          currentChunk.hotLoopCount.inc
-          if currentChunk.hotLoopCount >= vm.preferences.hotLoopThreshold:
-            currentChunk.hotLoopCompiled = true
-            if vm.jit.queueCompile != nil:
-              vm.jit.queueCompile(cast[pointer](script))
-            elif vm.jit.getForeign != nil:
-              for p in script.procs:
-                if p.kind == pkNative and p.chunk == currentChunk and p.jitForeign == nil:
-                  let jitFn = vm.jit.getForeign(cast[pointer](p))
-                  if jitFn != nil: p.jitForeign = jitFn
-                  break
+        # Hot loop detection
+        if vm.preferences.enableHotCodeDetection:
+          let cnt = currentChunk.hotLoopCount
+          if cnt < vm.preferences.hotLoopThreshold:
+            currentChunk.hotLoopCount = cnt + 1
       of opcCallD:
         # The `opcCallD` calls a procedure defined
         # in the current or another chunk.
@@ -1100,7 +1113,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           dec(vm.lvl)
       of opcNoop: discard
       else: discard # unhandled opcode (should not happen if parser is correct)
-      inc(pcIdx)
+    inc(pcIdx)
   
   if stepping != nil and stepping.state == csRunning:
     stepping.state = csCompleted

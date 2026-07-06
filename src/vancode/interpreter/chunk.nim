@@ -39,6 +39,8 @@ type
     opcPopG = "popG"              ## pop global
     opcPushL = "pushL"            ## push local
     opcPopL = "popL"              ## pop local
+    opcIncL = "incL"              ## increment local by 1 in-place
+    opcDecL = "decL"              ## decrement local by 1 in-place
 
     opcFFIGetProc = "ffiGetProc"     ## get a symbol from a dynamic library
     opcPushPointer = "pushPointer"   # push a pointer value onto the stack
@@ -58,6 +60,9 @@ type
     # json operations
     opcGetJ = "getJ"              ## get JSON value
     opcSetJ = "setJ"              ## set JSON value
+
+    # string operations
+    opcConcatStr = "concatStr"    ## concatenate two strings
 
     # arithmetic operations
     opcNegI = "negI"              ## negate int
@@ -174,6 +179,10 @@ type
       ## flag signifying whether the proc returns a value
     jitForeign*: ForeignProc
       ## JIT-compiled version of this proc (nil if not compiled or native)
+    jitCallCount*: int
+      ## call counter for profile-guided recompilation
+    jitRecompiled*: bool
+      ## whether this proc has been recompiled at -O3
 
 var nextChunkId {.global.}: int = 0
 

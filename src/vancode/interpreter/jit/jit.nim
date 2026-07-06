@@ -61,7 +61,7 @@ proc installJit*(vm: Vm) =
   globalBackend = newJitBackend()
   globalVm = vm
   compiler.setJitVm(vm)
-  vm.jit = JitHooks(getForeign: jitGetForeign)
+  vm.jit = JitHooks(getForeign: jitGetForeign, setGlobalsPtr: compiler.setJitGlobalsPtr)
 
 proc startAsyncJit*(vm: Vm) =
   globalBackend = newJitBackend()
@@ -74,7 +74,8 @@ proc startAsyncJit*(vm: Vm) =
     createThread(globalBackend.workers[i], worker, addr globalBackend)
   vm.jit = JitHooks(
     getForeign: jitGetForeign,
-    queueCompile: queueCompile
+    queueCompile: queueCompile,
+    setGlobalsPtr: compiler.setJitGlobalsPtr
   )
 
 proc stopAsyncJit*() =
