@@ -71,6 +71,7 @@ type
     nkWhile          # while loop - while cond {...}
     nkFor            # for loop - for x in y {...}
     nkBreak          # break statement - break
+    nkDiscard        # discard statement - discard [expr]
     nkContinue       # continue statement - continue
     nkReturn         # return statement - return x
     nkYield          # yield statement - yield x
@@ -315,6 +316,9 @@ proc render*(node: Node): string =
     result = "for " & node[0].render & " in " & node[1].render &
              ' ' & node[2].render
   of nkBreak: result = "break"
+  of nkDiscard:
+    result = "discard"
+    if node.len > 0: result.add(' ' & node[0].render)
   of nkContinue: result = "continue"
   of nkReturn, nkYield:
     result =
