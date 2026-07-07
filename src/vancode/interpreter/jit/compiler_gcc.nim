@@ -166,6 +166,9 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
         if simStack.len >= n: simStack.setLen(simStack.len - n)
       of opcJumpFwdT, opcJumpFwdF:
         if simStack.len >= 1: simStack.setLen(simStack.len - 1)
+      of opcI2F:
+        if simStack.len >= 1: simStack.setLen(simStack.len - 1)
+        simStack.add(tyFloat)
       else: discard
       if oc == opcCallD:
         let targetProcId2 = cached.arg2[pc].int
@@ -393,6 +396,11 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
           GCC_JIT_UNARY_OP_LOGICAL_NEGATE, jt.boolType, v)
         pushInt(stackI,
           gcc_jit_context_new_cast(ctx, nil, notV, i64Type), spRval)
+        term()
+      of opcI2F:
+        let intVal = popInt(stackI, spRval)
+        let floatVal = gcc_jit_context_new_cast(ctx, nil, intVal, jt.f64Type)
+        pushInt(stackF, floatVal, spRval)
         term()
       of opcJumpFwd:
         if jtTargets[pc] >= 0:

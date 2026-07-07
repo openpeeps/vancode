@@ -1,3 +1,12 @@
+# v0.1.9 - 2026-07-07
+
+- **FIX:** `/` operator now always returns a float (`opcDivF`), matching Python/JS
+  semantics. Previously `11 / 2` emitted `opcDivI` (integer `div`), producing `5`
+  instead of `5.5`. Added `opcI2F` (int-to-float conversion) opcode — codegen emits
+  it for each integer operand before `opcDivF` so the JIT backends see float operands
+  on the float stack. Implemented in VM, gccjit (`stackI` → cast → `stackF`), and
+  llvmjit (`iStack` → `buildSIToFP` → `gepF`).
+
 # v0.1.8 - 2026-07-07
 
 - **NEW:** `ValueStorage` — value type for inline primitive storage in `Object.fields`,

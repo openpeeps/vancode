@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.1.8"
+version       = "0.1.9"
 author        = "George Lemon"
 description   = "A flexible AST, Codegen and Virtual Machine library"
 license       = "LGPL-3.0-or-later"
