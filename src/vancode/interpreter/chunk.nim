@@ -120,12 +120,11 @@ type
       ## these are the procs that can be called from
       ## other scripts
     mainChunk*: Chunk  ## the main chunk of this script
+    mainProc*: Proc    ## synthetic Proc wrapping mainChunk (for JIT)
     scripts*: Table[string, Script]
       ## a table of scripts, basically reprresenting the
       ## modules the script imports
     jsOutput*: string
-    typeCount*: int    ## the number of types in this script.
-                       ## used for compilation
 
   LineInfo* = tuple
     ## Line information.

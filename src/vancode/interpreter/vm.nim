@@ -465,7 +465,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
   globals["app"] = initValue(globalData)
   globals["this"] = initValue(localData)
 
-  when defined(vancodeJit):
+  when defined(vancodeJit) or defined(vancodeJitLlvm):
     if vm.jit.setGlobalsPtr != nil:
       vm.jit.setGlobalsPtr(addr globals)
 
@@ -631,19 +631,19 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         if count > 0:
           let vals = stack{^count}
           for i in 0..<count:
-            arr.objectVal.fields[i] = vals[i]
+            arr.objectVal.fields[i] = vals[i].toStorage
           stack.setLen(stack.len - count)
         stack.push(arr)
       of opcGetI:
         let idxVal = stack.pop()
         let arr = stack.pop()
-        stack.push(arr.objectVal.fields[idxVal.intVal])
+        stack.push(arr.objectVal.fields[idxVal.intVal].toValue)
       of opcSetI:
         let
           val = stack.pop()
           idxVal = stack.pop()
           arr = stack.pop()
-        arr.objectVal.fields[idxVal.intVal] = val
+        arr.objectVal.fields[idxVal.intVal] = val.toStorage
       of opcConstrObj:
         let count = co.getArg1Int(pcIdx)
         var obj = initObject(15, count)
@@ -662,7 +662,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                 let fieldKey = vals[2 * i]
                 let fieldValue = vals[2 * i + 1]
                 obj.objectVal.keys.add(fieldKey.stringVal[])
-                obj.objectVal.fields[i] = fieldValue
+                obj.objectVal.fields[i] = fieldValue.toStorage
               stack.setLen(stack.len - needPairs)
           # typed object constructor => stack has values only
           if not canUsePairs:
@@ -672,20 +672,20 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                 " values (or " & $needPairs & " key/value items), have " & $stack.len)
             let vals = stack{^count}
             for i in 0 ..< count:
-              obj.objectVal.fields[i] = vals[i]
+              obj.objectVal.fields[i] = vals[i].toStorage
             stack.setLen(stack.len - count)
         stack.push(obj)
       
       of opcGetF:
         let fld = co.getArg1Int(pcIdx)
         let obj = stack.pop()
-        stack.push(obj.objectVal.fields[fld])
+        stack.push(obj.objectVal.fields[fld].toValue)
       
       of opcSetF:
         let fld = co.getArg1Int(pcIdx)
         let val = stack.pop()
         let obj = stack.pop()
-        obj.objectVal.fields[fld] = val
+        obj.objectVal.fields[fld] = val.toStorage
       
       #
       # JSON (placeholders)
@@ -840,11 +840,27 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       of opcJumpBack:
         let tgt = co.jumpTargets[pcIdx]
         if tgt >= 0: pcIdx = tgt - 1
+        when defined(hayaVmWriteStackOps):
+          stderr.writeLine "jumpBack: pc=", pcIdx, " stack.len=", stack.len
         # Hot loop detection
         if vm.preferences.enableHotCodeDetection:
           let cnt = currentChunk.hotLoopCount
           if cnt < vm.preferences.hotLoopThreshold:
             currentChunk.hotLoopCount = cnt + 1
+          elif not currentChunk.hotLoopCompiled:
+            currentChunk.hotLoopCompiled = true
+            when defined(vancodeJit) or defined(vancodeJitLlvm) or defined(vancodeJitGcc):
+              let mainProc = script.mainProc
+              if mainProc != nil and vm.jit.getForeign != nil and
+                 currentChunk == script.mainChunk:
+                let jitFn = vm.jit.getForeign(cast[pointer](mainProc))
+                if jitFn != nil:
+                  mainProc.jitForeign = jitFn
+                  stack.setLen(0)
+                  var dummy = newSeq[Value](64)
+                  discard jitFn(cast[StackView](addr dummy[0]), 0)
+                  pcIdx = co.opcodes.len
+                  break
       of opcCallD:
         # The `opcCallD` calls a procedure defined
         # in the current or another chunk.
@@ -866,6 +882,19 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
 
         let p = targetScript.procs[procId]
         vm.markHotProc(p)
+        # Tail-call optimization: reuse the current frame for self-recursive
+        # calls in tail position (next opcode is opcReturnVal).
+        if p.kind == pkNative and p.chunk == currentChunk and
+           pcIdx + 1 < co.opcodes.len and co.opcodes[pcIdx + 1] == opcReturnVal:
+          if stack.len < p.paramCount:
+            raise newException(ValueError,
+              "Not enough arguments on stack for call to " & p.name & ": need " & $p.paramCount & ", have " & $stack.len)
+          stackBottom = stack.len - p.paramCount
+          currentChunk = p.chunk
+          cached = vm.getCachedOps(currentChunk)
+          co = cached
+          pcIdx = 0
+          continue
         storeFrame()
         if stack.len < p.paramCount:
           raise newException(ValueError,
@@ -1122,6 +1151,8 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
 
   if result == nil or result.typeId == tyNil:
     if stack.len > 0:
+      # when defined(vancodeJit) or defined(vancodeJitLlvm) or defined(vancodeJitGcc):
+      #   stderr.writeLine "DEBUG: stack.len at end = " & $stack.len & " last.typeId = " & $stack[^1].typeId
       return stack[^1]
     else:
       return Value(typeId: tyNil)

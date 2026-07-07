@@ -24,6 +24,8 @@ import ./[ast, chunk, errors, sym, value, resolver]
 import ../manager/[configurator, packager]
 import pkg/voodoo/extensibles
 
+var globalTypeCounter* {.global.}: int = 0
+
 type
   ContextAllocator {.acyclic.} = ref object
     # A context allocator. shared between codegen instances
@@ -470,8 +472,13 @@ proc inferGenericArgs(gen: CodeGen, sym: Sym,
       if procTy notin types:
         types[procTy] = callTy
       else:
-        if types[procTy] != callTy:
-          callNode.error(ErrTypeMismatch % [$callTy, $types[procTy]])
+        let existing = types[procTy]
+        let existingIsAny = existing.kind == skType and existing.tyKind == ttyAny
+        let callTyIsAny = callTy.kind == skType and callTy.tyKind == ttyAny
+        if existingIsAny and not callTyIsAny:
+          types[procTy] = callTy
+        elif not existingIsAny and not callTyIsAny and existing != callTy:
+          callNode.error(ErrTypeMismatch % [$callTy, $existing])
 
     # as for generic types: we take all their arguments and recursively walk
     # through them. we know that ``callTy`` is compatible with this, because
@@ -906,6 +913,17 @@ proc callProc*(procSym: Sym, argTypes: seq[Sym],
     # resolve generic params
     gen.resolveGenerics(theProc, argTypes, errorNode)
 
+    # Array type inference: when `add` is called on an array with `any`
+    # element type, fix the element type from the item argument
+    if theProc.name.ident == "add" and argTypes.len >= 2:
+      let arrTy = unwrapType(argTypes[0])
+      if arrTy.tyKind == ttyArray:
+        let itemTy = unwrapType(argTypes[1])
+        if arrTy.arrayTy == nil or arrTy.arrayTy.tyKind == ttyAny:
+          arrTy.arrayTy = itemTy
+        elif errorNode != nil and not arrTy.arrayTy.sameType(itemTy):
+          errorNode.error(ErrTypeMismatch % [$itemTy, $arrTy.arrayTy])
+
     # Fill omitted optional parameters with defaults
     let params = theProc.procParams
     if argTypes.len < params.len:
@@ -1060,8 +1078,8 @@ proc infix*(node: Node): Sym {.codegen.} =
       case receiver.kind
       of nkIdent: # to a variable
         let sym = gen.lookup(receiver) # look the variable up
-        # Detect x = x +/- 1 → incL/decL
-        if sym.kind == skVar and value.kind == nkInfix and value[0].kind == nkIdent and
+        # Detect x = x +/- 1 → incL/decL (local vars only)
+        if sym.kind == skVar and sym.varLocal and value.kind == nkInfix and value[0].kind == nkIdent and
            value[0].ident in ["+", "-"]:
           let receiverName = if receiver.kind == nkIdent: receiver.ident else: ""
           let lhs = value[1]; let rhs = value[2]
@@ -2058,6 +2076,14 @@ proc genBreak*(node: Node) {.codegen.} =
     node.error(ErrOnlyUsableInABlock % "break")
   gen.breakFlowBlock(fblock)
 
+proc genDiscard*(node: Node) {.codegen.} =
+  if node.len > 0:
+    let ty = gen.genExpr(node[0])
+    if ty.sameType(gen.module.sym"void"):
+      node[0].error(ErrCannotDiscardVoid % node[0].render)
+    gen.chunk.emit(opcDiscard)
+    gen.chunk.emit(1'u8)
+
 proc genContinue*(node: Node) {.codegen.} =
   ## Generate code for a ``continue`` statement.
 
@@ -2228,8 +2254,9 @@ proc genObject*(node: Node, isInstantiation = false): Sym {.codegen.} =
     result.genericParams = gen.collectGenericParams(genericNode)
 
   # process object fields
-  result.objectId = gen.script.typeCount
-  inc(gen.script.typeCount)
+  result.objectId = globalTypeCounter
+  inc(globalTypeCounter)
+  result.src = some(gen.chunk.file)
 
   for fields in recFieldsNode:
     let fieldsTy = gen.lookup(fields[^2])
@@ -2503,6 +2530,7 @@ proc genStmt*(node: Node) {.codegen.} =
     of nkWhile: gen.genWhile(node)                # while loop
     of nkFor: gen.genFor(node)                    # for loop
     of nkBreak: gen.genBreak(node)                # break statement
+    of nkDiscard: gen.genDiscard(node)             # discard statement
     of nkContinue: gen.genContinue(node)          # continue statement
     of nkReturn: gen.genReturn(node)              # return statement
     of nkYield: gen.genYield(node)                # yield statement
@@ -2515,7 +2543,8 @@ proc genStmt*(node: Node) {.codegen.} =
     of nkDocComment: gen.genComment(node) # generate HTML comment
     else:                                         # expression statement
       let ty = gen.genExpr(node)
-      if ty != gen.module.sym"void":
+      # if ty != gen.module.sym"void":
+      if not ty.sameType(gen.module.sym"void"):
         if not gen.allowExprResult:
           node.error(ErrUseOrDiscard % [node.render, $ty.name])
 

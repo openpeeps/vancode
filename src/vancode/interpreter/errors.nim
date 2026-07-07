@@ -71,6 +71,7 @@ const
   ErrNotGeneric* = "'$1' is not generic"
   ErrGenericArgLenMismatch* = "got $1 generic arguments, but expected $2"
   ErrUseOrDiscard* = "expression $1 is of type `$2` and has to be used or discarded"
+  ErrCannotDiscardVoid* = "expression '$1' of type `void` cannot be discarded"
   ErrExportOnlyTopLevel* = "exporting symbols is only allowed at the top level"
   ErrImportOnlyTopLevel* = "importing modules is only allowed at the top level"
   WarnEmptyStmt* = "Empty statement is redundant"

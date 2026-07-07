@@ -51,7 +51,8 @@ proc defaultNodeFromValue*(v: Value): Node =
 
 proc addProc*(script: Script, module: Module, name: string,
               params: seq[TempParamDef] = @[], returnTy: TypeKind,
-              impl: ForeignProc = nil, exportSym = true) =
+              impl: ForeignProc = nil, exportSym = true,
+              returnTySym: Sym = nil) =
   var nodeParams: seq[ProcParam]
 
   for raw in params:
@@ -82,12 +83,16 @@ proc addProc*(script: Script, module: Module, name: string,
       optional
     ))
 
+  let resolvedReturnTy =
+    if returnTySym != nil: returnTySym
+    else: module.sym($returnTy)
+
   let (sym, theProc) =
     script.newProc(
       ast.newIdent(name),
       impl = nil,
       nodeParams,
-      module.sym($returnTy),
+      resolvedReturnTy,
       pkForeign,
       exportSym
     )

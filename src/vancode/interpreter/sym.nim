@@ -399,6 +399,8 @@ proc sameType*(a, b: Sym): bool =
       of ttyObject:
         # Compare object type ids (structural comparison could be added)
         return a.objectId == b.objectId
+      of ttyAlias, ttyPointer, ttyCustom:
+        return a == b
       else:
         return true
     else:

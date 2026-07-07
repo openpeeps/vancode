@@ -7,10 +7,10 @@
 #          Made by Humans from OpenPeeps
 #          https://github.com/openpeeps/vancode
 
-import std/[locks, sysatomics]
+import std/[locks, sysatomics, dynlib]
 import pkg/threading/channels
 import ../[chunk, vm, value]
-import ./types, ./compiler, ./cache
+import ./types, ./compiler, ./cache, ./compiler_bridge
 
 const WorkerCount* = 4
 
@@ -30,7 +30,6 @@ proc queueCompile(theProcPtr: pointer) =
   if globalBackend == nil or not globalBackend.running: return
   let p = cast[Proc](theProcPtr)
   if p == nil: return
-  # Atomic check: skip if already compiled (either sync or async)
   if atomicLoadN(addr p.jitCodePtr, AtomicAcquire) != nil: return
   globalBackend.channel.send(cast[ptr Proc](p))
 
@@ -41,7 +40,6 @@ proc worker(backend: ptr JitBackend) {.thread.} =
     if pp == nil: break
     let p = cast[Proc](pp)
     if p.kind != pkNative: continue
-    # Double-check: skip if already compiled (e.g., by sync JIT or another worker)
     if atomicLoadN(addr p.jitCodePtr, AtomicAcquire) != nil: continue
     discard compileProc(vm, p)
 
@@ -57,25 +55,53 @@ proc jitGetForeign(procPtr: pointer): ForeignProc =
       p.jitForeign = compiled
       result = compiled
 
-proc installJit*(vm: Vm) =
+proc detectBackend*(): JitBackendKind =
+  when defined(vancodeJitLlvm):
+    let lib = loadLib("libLLVM-20.dylib")
+    if lib != nil:
+      result = jbkLlvm
+      lib.unloadLib()
+    else:
+      result = jbkNone
+  if result == jbkNone:
+    when defined(vancodeJitGcc) or defined(vancodeJit):
+      result = jbkGcc
+    else:
+      result = jbkNone
+
+proc installJitWithBackend*(vm: Vm, backend: JitBackendKind) =
+  compiler.selectedBackend = backend
   globalBackend = newJitBackend()
   globalVm = vm
-  compiler.setJitVm(vm)
-  vm.jit = JitHooks(getForeign: jitGetForeign, setGlobalsPtr: compiler.setJitGlobalsPtr)
+  setJitVm(vm)
+  compileProcHook = compileProc
+  jitRecompileHook = jitRecompileAtO3
+  vm.jit = JitHooks(
+    getForeign: jitGetForeign,
+    setGlobalsPtr: setJitGlobalsPtr
+  )
+
+proc installJit*(vm: Vm) =
+  let backend = detectBackend()
+  installJitWithBackend(vm, backend)
 
 proc startAsyncJit*(vm: Vm) =
+  let backend = detectBackend()
+  compiler.selectedBackend = backend
   globalBackend = newJitBackend()
   globalBackend.channel.open()
   globalBackend.running = true
   globalBackend.vmPtr = cast[pointer](vm)
   globalVm = vm
-  compiler.setJitVm(vm)
+  setJitVm(vm)
+  compileProcHook = compileProc
+  jitRecompileHook = jitRecompileAtO3
   for i in 0..<WorkerCount:
     createThread(globalBackend.workers[i], worker, addr globalBackend)
   vm.jit = JitHooks(
     getForeign: jitGetForeign,
     queueCompile: queueCompile,
-    setGlobalsPtr: compiler.setJitGlobalsPtr
+    setGlobalsPtr: setJitGlobalsPtr
   )
 
 proc stopAsyncJit*() =

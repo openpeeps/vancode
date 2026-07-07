@@ -60,7 +60,7 @@ type
       keys*: seq[string]
         ## the field names of this object
         ## stored in the same order as `fields`
-      fields*: seq[Value]
+      fields*: seq[ValueStorage]
         ## the fields of this object, stored
         ## in the same order as `keys`
 
@@ -81,6 +81,15 @@ type
     else:
       objectVal*: Object
 
+  ValueStorage* = object
+    case typeId*: TypeId
+    of tyInt: intVal*: int64
+    of tyBool: boolVal*: bool
+    of tyFloat: floatVal*: float64
+    of tyNil: discard
+    else:
+      refVal*: Value
+
   # ValuePtr* = Value
   #  ## A pointer to a value.
 
@@ -93,6 +102,22 @@ type
   ForeignProc* = proc (args: StackView, argc: int): Value
     ## A foreign proc implementation, used for native code in
     ## the standard library and user-defined foreign procs in general
+
+proc toValue*(vs: ValueStorage): Value {.inline.} =
+  case vs.typeId
+  of tyInt: Value(typeId: tyInt, intVal: vs.intVal)
+  of tyBool: Value(typeId: tyBool, boolVal: vs.boolVal)
+  of tyFloat: Value(typeId: tyFloat, floatVal: vs.floatVal)
+  of tyNil: nil
+  else: vs.refVal
+
+proc toStorage*(v: Value): ValueStorage {.inline.} =
+  if v == nil: return ValueStorage(typeId: tyNil)
+  case v.typeId
+  of tyInt: ValueStorage(typeId: tyInt, intVal: v.intVal)
+  of tyBool: ValueStorage(typeId: tyBool, boolVal: v.boolVal)
+  of tyFloat: ValueStorage(typeId: tyFloat, floatVal: v.floatVal)
+  else: ValueStorage(typeId: v.typeId, refVal: v)
 
 proc `=destroy`*(fd: ForeignData) =
   if fd.destructor != nil and fd.data != nil:
@@ -108,14 +133,17 @@ proc dumpHook*(s: var string, val: Value) =
   of tyString: s.add(val.stringVal[])
   of tyJsonStorage: 
     dumpHook(s, val.jsonVal)
-  of tyArrayObject: 
+  of tyArrayObject:
     for i in 0..<val.objectVal.fields.len:
       if i > 0: s.add(", ")
-      case val.objectVal.fields[i].typeId
+      let f = val.objectVal.fields[i]
+      case f.typeId
       of tyString:
-        s.add("\"" & val.objectVal.fields[i].stringVal[] & "\"")
+        s.add("\"" & f.refVal.stringVal[] & "\"")
+      of tyInt, tyBool, tyFloat:
+        dumpHook(s, f.toValue)
       else:
-        dumpHook(s, val.objectVal.fields[i])
+        dumpHook(s, f.refVal)
   of tyPointer:
     case val.objectVal.isForeign:
     of true:
@@ -136,7 +164,10 @@ proc `$`*(value: Value): string =
     of tyFloat: $value.floatVal
     of tyString: value.stringVal[]
     of tyJsonStorage: toJson(value.jsonVal)
-    of tyArrayObject: toJson(value.objectVal.fields)
+    of tyArrayObject:
+      var vs = newSeq[Value](value.objectVal.fields.len)
+      for i, f in value.objectVal.fields: vs[i] = f.toValue
+      toJson(vs)
     of tyPointer:
       case value.objectVal.isForeign:
       of true:
@@ -222,13 +253,13 @@ proc initObject*(id: TypeId, fieldCount: int): Value =
     result.objectVal = nil
   else:
     result.objectVal =
-      Object(isForeign: false, fields: newSeq[Value](fieldCount))
+      Object(isForeign: false, fields: newSeq[ValueStorage](fieldCount))
 
 proc initArray*(length: int): Value =
   ## Initializes an array value.
   result = initObject(tyArrayObject, 0)
   result.objectVal =
-    Object(isForeign: false, fields: newSeq[Value](length))
+    Object(isForeign: false, fields: newSeq[ValueStorage](length))
 
 type
   JitHooks* = object
