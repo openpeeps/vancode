@@ -86,6 +86,7 @@
     <summary><a class="reference reference-toplevel" href="#8" id="58">Vars</a></summary>
     <ul class="simple simple-toc-section">
       <li><a class="reference" href="#codegenCache_2" title="codegenCache = CodeGenCache()">codegenCache</a></li>
+<li><a class="reference" href="#globalTypeCounter" title="globalTypeCounter {.global.}: int = 0">globalTypeCounter</a></li>
 <li><a class="reference" href="#vanCodeStmtNodeKinds" title="vanCodeStmtNodeKinds: seq[NodeKind] = @[nkFor, nkWhile, nkIf, nkBlock]">vanCodeStmtNodeKinds</a></li>
 
     </ul>
@@ -167,6 +168,10 @@
 </ul>
 <ul class="simple nested-toc-section">genContinue
   <li><a class="reference" href="#genContinue%2CCodeGen%2CNode" title="genContinue(gen: CodeGen; node: Node)">genContinue(gen: CodeGen; node: Node)</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">genDiscard
+  <li><a class="reference" href="#genDiscard%2CCodeGen%2CNode" title="genDiscard(gen: CodeGen; node: Node)">genDiscard(gen: CodeGen; node: Node)</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">genExpr
@@ -382,6 +387,14 @@
   <dl class="item">
     <div id="codegenCache_2">
   <dt><pre><a href="#codegenCache"><span class="Identifier">codegenCache</span></a> <span class="Other">=</span> <a href="#CodeGenCache"><span class="Identifier">CodeGenCache</span></a><span class="Other">(</span><span class="Other">)</span></pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+<div id="globalTypeCounter">
+  <dt><pre><a href="#globalTypeCounter"><span class="Identifier">globalTypeCounter</span></a> {.<span class="Identifier">global</span>.}<span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">0</span></pre></dt>
   <dd>
     
     
@@ -607,6 +620,19 @@
   <div id="genContinue,CodeGen,Node">
   <dt><pre><span class="Keyword">proc</span> <a href="#genContinue%2CCodeGen%2CNode"><span class="Identifier">genContinue</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
+<div id="genDiscard-procs-all">
+  <div id="genDiscard,CodeGen,Node">
+  <dt><pre><span class="Keyword">proc</span> <a href="#genDiscard%2CCodeGen%2CNode"><span class="Identifier">genDiscard</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     
@@ -1009,7 +1035,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-06 12:33:37 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-07 17:00:25 UTC</small>
       </div>
     </div>
   </div>

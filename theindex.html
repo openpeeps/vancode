@@ -99,9 +99,9 @@
 <li><a class="reference external"
           data-doc-search-tag="utils: proc addProc(script: Script; module: Module; name: string;
         params: seq[TempParamDef] = @[]; returnTy: TypeKind;
-        impl: ForeignProc = nil; exportSym = true)" href="vancode/interpreter/stdlib/utils.html#addProc%2CScript%2CModule%2Cstring%2Cseq%5BTempParamDef%5D%2CTypeKind%2CForeignProc">utils: proc addProc(script: Script; module: Module; name: string;
+        impl: ForeignProc = nil; exportSym = true; returnTySym: Sym = nil)" href="vancode/interpreter/stdlib/utils.html#addProc%2CScript%2CModule%2Cstring%2Cseq%5BTempParamDef%5D%2CTypeKind%2CForeignProc%2CSym">utils: proc addProc(script: Script; module: Module; name: string;
         params: seq[TempParamDef] = @[]; returnTy: TypeKind;
-        impl: ForeignProc = nil; exportSym = true)</a></li>
+        impl: ForeignProc = nil; exportSym = true; returnTySym: Sym = nil)</a></li>
           </ul></dd>
 <dt><a name="addType" href="#addType"><span>addType:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -328,6 +328,10 @@
 <dt><a name="ErrBadIndentation" href="#ErrBadIndentation"><span>ErrBadIndentation:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="errors: const ErrBadIndentation" href="vancode/interpreter/errors.html#ErrBadIndentation">errors: const ErrBadIndentation</a></li>
+          </ul></dd>
+<dt><a name="ErrCannotDiscardVoid" href="#ErrCannotDiscardVoid"><span>ErrCannotDiscardVoid:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="errors: const ErrCannotDiscardVoid" href="vancode/interpreter/errors.html#ErrCannotDiscardVoid">errors: const ErrCannotDiscardVoid</a></li>
           </ul></dd>
 <dt><a name="ErrCouldNotInferGeneric" href="#ErrCouldNotInferGeneric"><span>ErrCouldNotInferGeneric:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -581,6 +585,10 @@
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc genContinue(gen: CodeGen; node: Node)" href="vancode/interpreter/codegen.html#genContinue%2CCodeGen%2CNode">codegen: proc genContinue(gen: CodeGen; node: Node)</a></li>
           </ul></dd>
+<dt><a name="genDiscard" href="#genDiscard"><span>genDiscard:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="codegen: proc genDiscard(gen: CodeGen; node: Node)" href="vancode/interpreter/codegen.html#genDiscard%2CCodeGen%2CNode">codegen: proc genDiscard(gen: CodeGen; node: Node)</a></li>
+          </ul></dd>
 <dt><a name="generateYaml" href="#generateYaml"><span>generateYaml:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="configurator: proc generateYaml(c: PackageConfig): string" href="vancode/manager/configurator.html#generateYaml%2CPackageConfig">configurator: proc generateYaml(c: PackageConfig): string</a></li>
@@ -748,6 +756,10 @@
 <dt><a name="Gitlab" href="#Gitlab"><span>Gitlab:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="remote: SourceType.Gitlab" href="vancode/manager/remote.html#Gitlab">remote: SourceType.Gitlab</a></li>
+          </ul></dd>
+<dt><a name="globalTypeCounter" href="#globalTypeCounter"><span>globalTypeCounter:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="codegen: var globalTypeCounter" href="vancode/interpreter/codegen.html#globalTypeCounter">codegen: var globalTypeCounter</a></li>
           </ul></dd>
 <dt><a name="hash" href="#hash"><span>hash:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1347,9 +1359,17 @@
 <li><a class="reference external"
           data-doc-search-tag="utils: tuple TempParamDef" href="vancode/interpreter/stdlib/utils.html#TempParamDef">utils: tuple TempParamDef</a></li>
           </ul></dd>
+<dt><a name="toStorage" href="#toStorage"><span>toStorage:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="value: proc toStorage(v: Value): ValueStorage" href="vancode/interpreter/value.html#toStorage%2CValue">value: proc toStorage(v: Value): ValueStorage</a></li>
+          </ul></dd>
 <dt><a name="toString" href="#toString"><span>toString:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="value: proc toString(value: JsonNode): string" href="vancode/interpreter/value.html#toString%2CJsonNode">value: proc toString(value: JsonNode): string</a></li>
+          </ul></dd>
+<dt><a name="toValue" href="#toValue"><span>toValue:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="value: proc toValue(vs: ValueStorage): Value" href="vancode/interpreter/value.html#toValue%2CValueStorage">value: proc toValue(vs: ValueStorage): Value</a></li>
           </ul></dd>
 <dt><a name="treeRepr" href="#treeRepr"><span>treeRepr:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1443,6 +1463,10 @@
 <li><a class="reference external"
           data-doc-search-tag="value: const ValueSize" href="vancode/interpreter/value.html#ValueSize">value: const ValueSize</a></li>
           </ul></dd>
+<dt><a name="ValueStorage" href="#ValueStorage"><span>ValueStorage:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="value: object ValueStorage" href="vancode/interpreter/value.html#ValueStorage">value: object ValueStorage</a></li>
+          </ul></dd>
 <dt><a name="vanCodeStmtNodeKinds" href="#vanCodeStmtNodeKinds"><span>vanCodeStmtNodeKinds:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="codegen: var vanCodeStmtNodeKinds" href="vancode/interpreter/codegen.html#vanCodeStmtNodeKinds">codegen: var vanCodeStmtNodeKinds</a></li>
@@ -1483,7 +1507,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-06 12:33:37 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-07 17:00:25 UTC</small>
       </div>
     </div>
   </div>

@@ -75,8 +75,8 @@
   of false:
     keys*: seq[string]       ## the field names of this object
                              ## stored in the same order as `fields`
-    fields*: seq[Value]      ## the fields of this object, stored
-                             ## in the same order as `keys`">Object</a></li>
+    fields*: seq[ValueStorage] ## the fields of this object, stored
+                               ## in the same order as `keys`">Object</a></li>
 <li><a class="reference" href="#Stack" title="Stack = seq[Value]">Stack</a></li>
 <li><a class="reference" href="#StackView" title="StackView = ptr UncheckedArray[Value]">StackView</a></li>
 <li><a class="reference" href="#TypeId" title="TypeId = range[0 .. 32766]">TypeId</a></li>
@@ -94,6 +94,18 @@
     jsonVal*: JsonNode
   else:
     objectVal*: Object">Value</a></li>
+<li><a class="reference" href="#ValueStorage" title="ValueStorage = object
+  case typeId*: TypeId
+  of tyInt:
+    intVal*: int64
+  of tyBool:
+    boolVal*: bool
+  of tyFloat:
+    floatVal*: float64
+  of tyNil:
+    nil
+  else:
+    refVal*: Value">ValueStorage</a></li>
 
     </ul>
   </details>
@@ -157,8 +169,16 @@
 <li><a class="reference" href="#initValue%2CTypeId%2CT" title="initValue[T: tuple | object | ref](id: TypeId; value: T): Value">initValue[T: tuple | object | ref](id: TypeId; value: T): Value</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">toStorage
+  <li><a class="reference" href="#toStorage%2CValue" title="toStorage(v: Value): ValueStorage">toStorage(v: Value): ValueStorage</a></li>
+
+</ul>
 <ul class="simple nested-toc-section">toString
   <li><a class="reference" href="#toString%2CJsonNode" title="toString(value: JsonNode): string">toString(value: JsonNode): string</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">toValue
+  <li><a class="reference" href="#toValue%2CValueStorage" title="toValue(vs: ValueStorage): Value">toValue(vs: ValueStorage): Value</a></li>
 
 </ul>
 
@@ -218,8 +238,8 @@
   <span class="Keyword">of</span> <span class="Identifier">false</span><span class="Other">:</span>
     <span class="Identifier">keys</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span>       <span class="Comment">## the field names of this object</span>
                              <span class="Comment">## stored in the same order as `fields`</span>
-    <span class="Identifier">fields</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#Value"><span class="Identifier">Value</span></a><span class="Other">]</span>      <span class="Comment">## the fields of this object, stored</span>
-                             <span class="Comment">## in the same order as `keys`</span></pre></dt>
+    <span class="Identifier">fields</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#ValueStorage"><span class="Identifier">ValueStorage</span></a><span class="Other">]</span> <span class="Comment">## the fields of this object, stored</span>
+                               <span class="Comment">## in the same order as `keys`</span></pre></dt>
   <dd>
     
     Represents an object value, which can be either a native object with fields or a foreign object with a data pointer and library path
@@ -265,6 +285,25 @@
     <span class="Identifier">jsonVal</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">JsonNode</span>
   <span class="Keyword">else</span><span class="Other">:</span>
     <span class="Identifier">objectVal</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Object"><span class="Identifier">Object</span></a></pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+<div id="ValueStorage">
+  <dt><pre><a href="#ValueStorage"><span class="Identifier">ValueStorage</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Keyword">case</span> <span class="Identifier">typeId</span><span class="Operator">*</span><span class="Other">:</span> <a href="#TypeId"><span class="Identifier">TypeId</span></a>
+  <span class="Keyword">of</span> <span class="Identifier">tyInt</span><span class="Other">:</span>
+    <span class="Identifier">intVal</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int64</span>
+  <span class="Keyword">of</span> <span class="Identifier">tyBool</span><span class="Other">:</span>
+    <span class="Identifier">boolVal</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>
+  <span class="Keyword">of</span> <span class="Identifier">tyFloat</span><span class="Other">:</span>
+    <span class="Identifier">floatVal</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">float64</span>
+  <span class="Keyword">of</span> <span class="Identifier">tyNil</span><span class="Other">:</span>
+    <span class="Keyword">nil</span>
+  <span class="Keyword">else</span><span class="Other">:</span>
+    <span class="Identifier">refVal</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Value"><span class="Identifier">Value</span></a></pre></dt>
   <dd>
     
     
@@ -515,6 +554,18 @@
 </div>
 
 </div>
+<div id="toStorage-procs-all">
+  <div id="toStorage,Value">
+  <dt><pre><span class="Keyword">proc</span> <a href="#toStorage%2CValue"><span class="Identifier">toStorage</span></a><span class="Other">(</span><span class="Identifier">v</span><span class="Other">:</span> <a href="#Value"><span class="Identifier">Value</span></a><span class="Other">)</span><span class="Other">:</span> <a href="#ValueStorage"><span class="Identifier">ValueStorage</span></a> {.<span class="Identifier">inline</span><span class="Other">,</span> <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
 <div id="toString-procs-all">
   <div id="toString,JsonNode">
   <dt><pre><span class="Keyword">proc</span> <a href="#toString%2CJsonNode"><span class="Identifier">toString</span></a><span class="Other">(</span><span class="Identifier">value</span><span class="Other">:</span> <span class="Identifier">JsonNode</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
@@ -522,6 +573,18 @@
   <dd>
     
     Converts a JSON node to a string.
+    
+  </dd>
+</div>
+
+</div>
+<div id="toValue-procs-all">
+  <div id="toValue,ValueStorage">
+  <dt><pre><span class="Keyword">proc</span> <a href="#toValue%2CValueStorage"><span class="Identifier">toValue</span></a><span class="Other">(</span><span class="Identifier">vs</span><span class="Other">:</span> <a href="#ValueStorage"><span class="Identifier">ValueStorage</span></a><span class="Other">)</span><span class="Other">:</span> <a href="#Value"><span class="Identifier">Value</span></a> {.<span class="Identifier">inline</span><span class="Other">,</span> <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+                                        <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
     
   </dd>
 </div>
@@ -537,7 +600,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-06 12:33:36 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-07 17:00:24 UTC</small>
       </div>
     </div>
   </div>

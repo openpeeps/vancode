@@ -154,11 +154,10 @@
                              ## these are the procs that can be called from
                              ## other scripts
   mainChunk*: Chunk          ## the main chunk of this script
+  mainProc*: Proc            ## synthetic Proc wrapping mainChunk (for JIT)
   scripts*: Table[string, Script] ## a table of scripts, basically reprresenting the
                                   ## modules the script imports
-  jsOutput*: string
-  typeCount*: int            ## the number of types in this script.
-                             ## used for compilation">Script</a></li>
+  jsOutput*: string">Script</a></li>
 
     </ul>
   </details>
@@ -410,11 +409,10 @@
                              <span class="Comment">## these are the procs that can be called from</span>
                              <span class="Comment">## other scripts</span>
   <span class="Identifier">mainChunk</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Chunk"><span class="Identifier">Chunk</span></a>          <span class="Comment">## the main chunk of this script</span>
+  <span class="Identifier">mainProc</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Proc"><span class="Identifier">Proc</span></a>            <span class="Comment">## synthetic Proc wrapping mainChunk (for JIT)</span>
   <span class="Identifier">scripts</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="#Script"><span class="Identifier">Script</span></a><span class="Other">]</span> <span class="Comment">## a table of scripts, basically reprresenting the</span>
                                   <span class="Comment">## modules the script imports</span>
-  <span class="Identifier">jsOutput</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>
-  <span class="Identifier">typeCount</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>            <span class="Comment">## the number of types in this script.</span>
-                             <span class="Comment">## used for compilation</span></pre></dt>
+  <span class="Identifier">jsOutput</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span></pre></dt>
   <dd>
     
     
@@ -744,7 +742,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-06 12:33:36 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-07 17:00:24 UTC</small>
       </div>
     </div>
   </div>
