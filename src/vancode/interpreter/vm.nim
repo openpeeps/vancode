@@ -724,9 +724,6 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           of opcMultI: stack.push(initValue(a.intVal * b.intVal))
           of opcDivI: stack.push(initValue(a.intVal div b.intVal))
           else: discard
-      of opcI2F:
-        let a = stack.pop()
-        stack.push(initValue(a.intVal.toFloat))
       of opcNegF:
         let a = stack.pop()
         stack.push(initValue(-a.floatVal))

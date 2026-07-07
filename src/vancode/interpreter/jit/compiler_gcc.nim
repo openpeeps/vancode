@@ -120,6 +120,7 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
     # Pre-scan: collect known-call arg types indexed by pc
     var callArgTypes = newSeq[seq[TypeId]](opCount)
     var popGType = newSeq[TypeId](opCount)  # type for each popG
+    var divFTypes = newSeq[tuple[a, b: TypeId]](opCount)  # operand types for opcDivF
     for pc in 0..<opCount:
       if not reachable[pc]: continue
       let oc = cached.opcodes[pc]
@@ -155,6 +156,8 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
           if simStack.len >= 2: simStack.setLen(simStack.len - 2)
         simStack.add(tyInt)
       of opcAddF, opcSubF, opcMultF, opcDivF:
+        if oc == opcDivF and simStack.len >= 2:
+          divFTypes[pc] = (simStack[^2], simStack[^1])
         if simStack.len >= 2: simStack.setLen(simStack.len - 2)
         simStack.add(tyFloat)
       of opcEqI, opcLessI, opcGreaterI, opcInvB:
@@ -166,9 +169,6 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
         if simStack.len >= n: simStack.setLen(simStack.len - n)
       of opcJumpFwdT, opcJumpFwdF:
         if simStack.len >= 1: simStack.setLen(simStack.len - 1)
-      of opcI2F:
-        if simStack.len >= 1: simStack.setLen(simStack.len - 1)
-        simStack.add(tyFloat)
       else: discard
       if oc == opcCallD:
         let targetProcId2 = cached.arg2[pc].int
@@ -360,15 +360,23 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
           gcc_jit_context_new_binary_op(ctx, nil, binOp, i64Type, a, b), spRval)
         term()
       of opcAddF, opcSubF, opcMultF, opcDivF:
-        let b = popInt(stackF, spRval)
-        let a = popInt(stackF, spRval)
+        let types = if oc == opcDivF and pc < divFTypes.len: divFTypes[pc]
+                    else: (tyFloat, tyFloat)
+        # pop top (second operand) first
+        let bVal = if types.b == tyInt:
+          gcc_jit_context_new_cast(ctx, nil, popInt(stackI, spRval), jt.f64Type)
+        else: popInt(stackF, spRval)
+        # pop second (first operand) next
+        let aVal = if types.a == tyInt:
+          gcc_jit_context_new_cast(ctx, nil, popInt(stackI, spRval), jt.f64Type)
+        else: popInt(stackF, spRval)
         let binOp = case oc
           of opcAddF:  GCC_JIT_BINARY_OP_PLUS
           of opcSubF:  GCC_JIT_BINARY_OP_MINUS
           of opcMultF: GCC_JIT_BINARY_OP_MULT
           of opcDivF:  GCC_JIT_BINARY_OP_DIVIDE
           else:        GCC_JIT_BINARY_OP_PLUS
-        let result = gcc_jit_context_new_binary_op(ctx, nil, binOp, jt.f64Type, a, b)
+        let result = gcc_jit_context_new_binary_op(ctx, nil, binOp, jt.f64Type, aVal, bVal)
         let ap = gcc_jit_context_new_array_access(ctx, nil,
           gcc_jit_lvalue_as_rvalue(stackF),
           gcc_jit_context_new_binary_op(ctx, nil, GCC_JIT_BINARY_OP_PLUS,
@@ -396,11 +404,6 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
           GCC_JIT_UNARY_OP_LOGICAL_NEGATE, jt.boolType, v)
         pushInt(stackI,
           gcc_jit_context_new_cast(ctx, nil, notV, i64Type), spRval)
-        term()
-      of opcI2F:
-        let intVal = popInt(stackI, spRval)
-        let floatVal = gcc_jit_context_new_cast(ctx, nil, intVal, jt.f64Type)
-        pushInt(stackF, floatVal, spRval)
         term()
       of opcJumpFwd:
         if jtTargets[pc] >= 0:

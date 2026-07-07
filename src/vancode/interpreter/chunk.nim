@@ -70,7 +70,6 @@ type
     opcSubI = "subI"              ## subtract ints
     opcMultI = "multI"            ## multiply ints
     opcDivI = "divI"              ## divide ints
-    opcI2F = "i2f"                ## int to float
     opcNegF = "negF"              ## negate float
     opcAddF = "addF"              ## add floats
     opcSubF = "subF"              ## subtract floats

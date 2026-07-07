@@ -1021,11 +1021,7 @@ proc infix*(node: Node): Sym {.codegen.} =
       of "+": gen.chunk.emit(if areFloats: opcAddF else: opcAddI)
       of "-": gen.chunk.emit(if areFloats: opcSubF else: opcSubI)
       of "*": gen.chunk.emit(if areFloats: opcMultF else: opcMultI)
-      of "/":
-        if not areFloats:
-          gen.chunk.emit(opcI2F)
-          gen.chunk.emit(opcI2F)
-        gen.chunk.emit(opcDivF)
+      of "/": gen.chunk.emit(opcDivF)
       # relational
       of "==": gen.chunk.emit(if areFloats: opcEqF else: opcEqI)
       of "!=":
@@ -1043,9 +1039,10 @@ proc infix*(node: Node): Sym {.codegen.} =
       result =
         case node[0].ident
         # arithmetic operators return numbers.
-        of "+", "-", "*", "/":
+        of "+", "-", "*":
           if areFloats: gen.module.sym"float"
           else: gen.module.sym"int"
+        of "/": gen.module.sym"float"
         # relational operators return bools
         of "==", "!=", "<", "<=", ">", ">=":
           gen.module.sym"bool"

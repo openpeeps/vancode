@@ -1,5 +1,12 @@
-# v0.1.9 - 2026-07-07
+# v0.1.95 - 2026-07-07
 
+- **FIX:** Reverted the `opcI2F` approach from v0.1.9 — emitting two sequential
+  `opcI2F` instructions broke the stack (first one pushes a float, the second tries
+  to read `.intVal` on it). Instead, `/` always emits `opcDivF` with result type
+  `float`, and the gcc JIT's SIM stack tracks operand types per-pc (`divFTypes`) to
+  pop from `stackI` (cast to `f64`) when operands are ints.
+
+# v0.1.9 - 2026-07-07
 - **FIX:** `/` operator now always returns a float (`opcDivF`), matching Python/JS
   semantics. Previously `11 / 2` emitted `opcDivI` (integer `div`), producing `5`
   instead of `5.5`. Added `opcI2F` (int-to-float conversion) opcode — codegen emits
