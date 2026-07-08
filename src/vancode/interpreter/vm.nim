@@ -40,7 +40,7 @@ type
     enableHotCodeDetection*: bool
     hotProcThreshold*: int = 10
     hotChunkThreshold*: int = 100
-    hotLoopThreshold*: int = 10_000
+    hotLoopThreshold*: int = 500
 
   CallFrame* = tuple
     ## Represents a call frame for function/procedure calls.
@@ -472,7 +472,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
   # initialize globals with provided data
   # this is a Tim-specific hack and must be rethought for a more
   # general VM design. for now we just want to get Tim's rendering working with
-  var globals = CritBitTree[Value]()
+  var globals = Table[string, Value]()
   globals["app"] = initValue(globalData)
   globals["this"] = initValue(localData)
 
@@ -864,18 +864,48 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
             currentChunk.hotLoopCount = cnt + 1
           elif not currentChunk.hotLoopCompiled:
             currentChunk.hotLoopCompiled = true
+            when defined(vancodeJitLog):
+              stderr.writeLine "[jit] hotLoop threshold reached"
             when defined(vancodeJit) or defined(vancodeJitLlvm) or defined(vancodeJitGcc):
-              let mainProc = script.mainProc
-              if mainProc != nil and vm.jit.getForeign != nil and
-                 currentChunk == script.mainChunk:
-                let jitFn = vm.jit.getForeign(cast[pointer](mainProc))
-                if jitFn != nil:
-                  mainProc.jitForeign = jitFn
-                  stack.setLen(0)
-                  var dummy = newSeq[Value](64)
-                  discard jitFn(cast[StackView](addr dummy[0]), 0)
-                  pcIdx = co.opcodes.len
-                  break
+              if vm.jit.getForeign != nil:
+                if currentChunk != script.mainChunk:
+                  # Function chunk: find owning Proc and JIT compile it
+                  var owningProc: Proc = nil
+                  for i in 0..<script.procs.len:
+                    let p = script.procs[i]
+                    if p.kind == pkNative and p.chunk == currentChunk:
+                      owningProc = p
+                      break
+                  when defined(vancodeJitLog):
+                    if owningProc != nil:
+                      stderr.writeLine "[jit] found proc: " & owningProc.name
+                    else:
+                      stderr.writeLine "[jit] owningProc NOT FOUND"
+                  if owningProc != nil:
+                    let jitFn = vm.jit.getForeign(cast[pointer](owningProc))
+                    when defined(vancodeJitLog):
+                      if jitFn != nil: stderr.writeLine "[jit] compile OK, executing"
+                      else: stderr.writeLine "[jit] compile FAILED (nil)"
+                    if jitFn != nil:
+                      owningProc.jitForeign = jitFn
+                      # Save args before restoreFrame truncates the stack
+                      var savedArgs: seq[Value]
+                      if owningProc.paramCount > 0:
+                        savedArgs = newSeq[Value](owningProc.paramCount)
+                        for i in 0..<owningProc.paramCount:
+                          savedArgs[i] = stack[stackBottom + i]
+                      # Pop back to caller frame (pcIdx points to opcCallD/opcCallI)
+                      restoreFrame()
+                      inc(pcIdx)  # advance past the call opcode
+                      # Call JIT function with saved args
+                      let callResult =
+                        if owningProc.paramCount > 0:
+                          jitFn(cast[StackView](addr savedArgs[0]), owningProc.paramCount)
+                        else:
+                          jitFn(nil, 0)
+                      if owningProc.hasResult:
+                        stack.push(callResult)
+                      continue
       of opcCallD:
         # The `opcCallD` calls a procedure defined
         # in the current or another chunk.

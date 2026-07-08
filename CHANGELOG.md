@@ -36,6 +36,8 @@
   `tyString` from broken JIT string returns). Uses `interpret` directly.
 - **CHANGE:** `ForeignData.libpath` renamed to `ForeignData.tag` for clarity (stores
   an arbitrary string descriptor, not necessarily a library path).
+- **FIX** in compiler_gcc.nim: When targetProc.hasResult is false, store the bridge call's return value in a dummy local variable to prevent the optimizer from eliminating the call
+- **FIX** libgccjit at -O3 optimizes away calls to jitCallProcBridgeFlat when the return value is unused (void/ttyVoid functions like echo). The optimizer treats it as a pure computation with no observable side effects
 
 # v0.1.95 - 2026-07-07
 

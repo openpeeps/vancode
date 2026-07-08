@@ -82,7 +82,7 @@ type
     of tyJsonStorage:
       jsonVal*: JsonNode
     of tyProc:
-      procVal*: ProcRef
+      procVal*: ref ProcRef
     else:
       objectVal*: Object
 
@@ -227,7 +227,9 @@ proc initValue*(nptr: pointer, tag: string): Value =
 
 proc initValue*(procId: int, procScript: string): Value =
   ## Initializes a proc reference value.
-  result = Value(typeId: tyProc, procVal: ProcRef(procId: procId, procScript: procScript))
+  result = Value(typeId: tyProc)
+  new(result.procVal)
+  result.procVal[] = ProcRef(procId: procId, procScript: procScript)
 
 proc initValue*[T: tuple | object | ref](id: TypeId, value: T): Value =
   ## Safely initializes a foreign object value.

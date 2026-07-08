@@ -8,7 +8,7 @@
 #          https://github.com/openpeeps/vancode
 
 import ../[chunk, vm, value]
-import std/[tables, sysatomics, critbits]
+import std/[tables, sysatomics, critbits, hashes]
 
 var jitFnTable*: array[65536, pointer]
 var jitProcTable*: array[65536, pointer]
@@ -35,35 +35,63 @@ proc jitRecompileAtO3*(theProc: Proc) {.nimcall.} =
     discard compileProcHook(jitGlobalVm, theProc)
   jitOptLevel = savedOpt
 
+# JIT global cache using raw C arrays to avoid ARC/GC issues.
+# `jitGlobalsCount` is the number of globals. Each global is stored as a
+# (name_hash: uint32, value: int64) pair in two parallel arrays.
+var jitGlobalsCount*: int32 = 0
+var jitGlobalsKeys: array[256, uint32]
+var jitGlobalsVals: array[256, int64]
+var jitGlobalsTypes: array[256, int32]
+
+proc setJitGlobalsFromTable*(t: ptr Table[string, Value]) {.cdecl, exportc.} =
+  ## Copy globals from the VM's table into the JIT raw cache.
+  jitGlobalsCount = 0
+  for k, v in t[]:
+    if v != nil:
+      jitGlobalsKeys[jitGlobalsCount] = hash(k).uint32
+      case v.typeId
+      of tyInt: jitGlobalsVals[jitGlobalsCount] = v.intVal
+      of tyBool: jitGlobalsVals[jitGlobalsCount] = int64(v.boolVal.ord)
+      else: jitGlobalsVals[jitGlobalsCount] = cast[int64](v)
+      jitGlobalsTypes[jitGlobalsCount] = v.typeId.int32
+      inc jitGlobalsCount
+
 proc setJitGlobalsPtr*(p: pointer) =
-  ## Set the global VM globals pointer for JIT bridge access
+  ## Set the global VM globals pointer for JIT bridge access and populate cache
   jitGlobalsPtr = p
+  if p != nil:
+    setJitGlobalsFromTable(cast[ptr Table[string, Value]](p))
 
 proc setJitVm*(vm: Vm) =
   ## Set the global VM instance used by JIT bridge functions
   jitGlobalVm = vm
 
 proc jitBridgePushG*(namePtr: pointer): int64 {.cdecl, exportc.} =
-  ## JIT bridge: push a global variable value by name, returns cast[int64]
+  ## JIT bridge: push a global variable value by name
   let name = cast[cstring](namePtr)
-  if name == nil or jitGlobalsPtr == nil: return 0
-  let g = cast[ptr CritBitTree[Value]](jitGlobalsPtr)
-  let key = $name
-  if key notin g[]: return 0
-  result = cast[int64](g[][key])
+  if name == nil: return 0
+  let h = hash($name).uint32
+  for i in 0..<jitGlobalsCount:
+    if jitGlobalsKeys[i] == h:
+      return jitGlobalsVals[i]
+  0
 
 proc jitBridgePopG*(namePtr: pointer, val: int64, typeId: int32) {.cdecl, exportc.} =
   ## JIT bridge: pop a value into a global variable by name
   let name = cast[cstring](namePtr)
-  if name == nil or jitGlobalsPtr == nil: return
-  let g = cast[ptr CritBitTree[Value]](jitGlobalsPtr)
-  let key = $name
-  if typeId == tyInt:
-    g[][key] = Value(typeId: tyInt, intVal: val)
-  elif typeId == tyBool:
-    g[][key] = Value(typeId: tyBool, boolVal: val != 0)
-  else:
-    g[][key] = cast[Value](val)
+  if name == nil: return
+  let h = hash($name).uint32
+  for i in 0..<jitGlobalsCount:
+    if jitGlobalsKeys[i] == h:
+      jitGlobalsVals[i] = val
+      jitGlobalsTypes[i] = typeId
+      return
+  # New global: add it
+  if jitGlobalsCount < 256:
+    jitGlobalsKeys[jitGlobalsCount] = h
+    jitGlobalsVals[jitGlobalsCount] = val
+    jitGlobalsTypes[jitGlobalsCount] = typeId
+    inc jitGlobalsCount
 
 proc findProcById*(procId: int): Proc =
   ## Find a Proc by its procId across all imported modules
@@ -172,8 +200,9 @@ proc jitBridgePushProc*(scriptPath: cstring, procId: int32): int64 {.cdecl, expo
   ## JIT bridge: create a tyProc Value from scriptPath and procId
   if jitGlobalVm == nil: return 0
   let path = if scriptPath != nil: $scriptPath else: ""
-  let procRef = ProcRef(procId: procId.int, procScript: path)
-  let val = Value(typeId: tyProc, procVal: procRef)
+  let val = Value(typeId: tyProc)
+  new(val.procVal)
+  val.procVal[] = ProcRef(procId: procId.int, procScript: path)
   result = cast[int64](val)
 
 proc jitBridgeCallI*(procRefVal: int64, flatArgs: ptr int64, argc: int32, argTypes: ptr int32): int64 {.cdecl, exportc.} =
@@ -228,6 +257,8 @@ proc jitCallProcBridgeFlat*(procId: int32, flatArgs: ptr int64, argc: int32, arg
       cast[Proc](jitProcCache[procId])
     else:
       let p = findProcById(procId.int)
+      when defined(vancodeJitLog):
+        if p == nil: stderr.writeLine "[jit] bridge: findProcById(", procId, ") returned nil"
       if p != nil: jitProcCache[procId] = cast[pointer](p)
       p
   if theProc == nil: return 0
@@ -256,6 +287,8 @@ proc jitCallProcBridgeFlat*(procId: int32, flatArgs: ptr int64, argc: int32, arg
         jitBridgeTmpBuf[i] = Value(typeId: tyBool, boolVal: arr[i] != 0)
       else:
         jitBridgeTmpBuf[i] = cast[Value](arr[i])
+  when defined(vancodeJitLog):
+    stderr.writeLine "[jit] bridge: calling proc " & theProc.name
   let callResult =
     if theProc.jitForeign != nil:
       theProc.jitForeign(cast[StackView](addr jitBridgeTmpBuf[0]), argc)
@@ -321,8 +354,10 @@ proc callCallback*(procScript: cstring, procId: int32,
   if theProc.jitForeign != nil:
     discard theProc.jitForeign(nil, 0)
     return 1
-  jitGlobalVm.pendingCallback = Value(typeId: tyProc,
-    procVal: ProcRef(procId: procId, procScript: scriptPath))
+  var cbVal = Value(typeId: tyProc)
+  new(cbVal.procVal)
+  cbVal.procVal[] = ProcRef(procId: procId, procScript: scriptPath)
+  jitGlobalVm.pendingCallback = cbVal
   result = 1
 
 proc execCallback*(procScript: cstring, procId: int32,

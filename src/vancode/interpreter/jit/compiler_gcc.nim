@@ -145,15 +145,12 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
           let t = simStack.pop()
           popGType[pc] = t
           globalTypes[name] = t
-        else:
-          simStack.setLen(simStack.len - 1)
       of opcPushL:
         let idx = cached.getArg1Int(pc)
         simStack.add(localTypes[idx])
       of opcPopL:
         let idx = cached.getArg1Int(pc)
         if simStack.len > 0: localTypes[idx] = simStack.pop()
-        else: simStack.setLen(simStack.len - 1)
       of opcAddI, opcSubI, opcMultI, opcDivI, opcNegI:
         if oc == opcNegI:
           if simStack.len >= 1: simStack.setLen(simStack.len - 1)
@@ -570,7 +567,11 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
                 gcc_jit_lvalue_as_rvalue(fastAddArg1)
               ]
               let callResult = callThroughPtr(ctx, nil, fastAddFnRval, 2.cint, addr fastArgs[0])
-              pushInt(stackI, callResult, spRval)
+              if targetProc.hasResult:
+                pushInt(stackI, callResult, spRval)
+              else:
+                let dummyVar = gcc_jit_function_new_local(jitFn, nil, i64Type, "dummy")
+                gcc_jit_block_add_assignment(blk, nil, dummyVar, callResult)
             else:
               let arrAddr = gcc_jit_context_new_cast(ctx, nil,
                 gcc_jit_lvalue_get_address(arrL, nil), i64PtrType)
@@ -588,7 +589,11 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
                 typeArrAddr
               ]
               let callResult = callThroughPtr(ctx, nil, bridgeFnRval, 4.cint, addr callArgs[0])
-              pushInt(stackI, callResult, spRval)
+              if targetProc.hasResult:
+                pushInt(stackI, callResult, spRval)
+              else:
+                let dummyVar = gcc_jit_function_new_local(jitFn, nil, i64Type, "dummy")
+                gcc_jit_block_add_assignment(blk, nil, dummyVar, callResult)
             term()
       of opcPushNil:
         pushInt(stackI, gcc_jit_context_zero(ctx, i64Type), spRval)
@@ -809,6 +814,8 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
         flatLocals[0] = args[0].intVal
       type JitFn = proc (flatArgs: ptr int64, argc: int): int64 {.cdecl.}
       let resultI = cast[JitFn](localFn)(addr flatLocals[0], argc)
+      when defined(vancodeJitLog):
+        stderr.writeLine "[jit-wrapper] flatLocals[0]=" & $flatLocals[0]
       theProc.jitCallCount += 1
       if theProc.jitCallCount >= hotRecompileThreshold:
         jitRecompileAtO3(theProc)
