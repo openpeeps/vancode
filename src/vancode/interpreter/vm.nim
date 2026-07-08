@@ -582,7 +582,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
 
   # Main execution loop
   while true:
-    {.computedGoto.}
+    # {.computedGoto.}
     frameChanged = false
     if pcIdx < 0 or pcIdx >= co.opcodes.len: break
     let oc = co.opcodes[pcIdx]
@@ -823,6 +823,73 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       #
       of opcJumpFwd:
         let tgt = co.jumpTargets[pcIdx]
+        # Hot loop detection for backward jumps using opcJumpFwd
+        if vm.preferences.enableHotCodeDetection and tgt >= 0 and tgt < pcIdx:
+          let cnt = currentChunk.hotLoopCount
+          if cnt < vm.preferences.hotLoopThreshold:
+            currentChunk.hotLoopCount = cnt + 1
+          elif not currentChunk.hotLoopCompiled:
+            currentChunk.hotLoopCompiled = true
+            when defined(vancodeJitLog):
+              stderr.writeLine "[jit] hotLoop threshold reached"
+            when defined(vancodeJit) or defined(vancodeJitLlvm) or defined(vancodeJitGcc):
+              if vm.jit.getForeign != nil and currentChunk != script.mainChunk:
+                var owningProc: Proc = nil
+                for i in 0..<script.procs.len:
+                  let p = script.procs[i]
+                  if p.kind == pkNative and p.chunk == currentChunk:
+                    owningProc = p
+                    break
+                when defined(vancodeJitLog):
+                  if owningProc != nil: stderr.writeLine "[jit] found proc: " & owningProc.name
+                  else: stderr.writeLine "[jit] owningProc NOT FOUND"
+                if owningProc != nil:
+                  currentChunk.hotLoopOwner = owningProc
+                  let jitFn = vm.jit.getForeign(cast[pointer](owningProc))
+                  if jitFn != nil:
+                    when defined(vancodeJitLog): stderr.writeLine "[jit] sync compile OK, executing"
+                    owningProc.jitForeign = jitFn
+                    var savedArgs: seq[Value]
+                    if owningProc.paramCount > 0:
+                      savedArgs = newSeq[Value](owningProc.paramCount)
+                      for i in 0..<owningProc.paramCount:
+                        savedArgs[i] = stack[stackBottom + i]
+                    restoreFrame()
+                    inc(pcIdx)
+                    let callResult =
+                      if owningProc.paramCount > 0:
+                        jitFn(cast[StackView](addr savedArgs[0]), owningProc.paramCount)
+                      else:
+                        jitFn(nil, 0)
+                    if owningProc.hasResult:
+                      stack.push(callResult)
+                    continue
+                  else:
+                    when defined(vancodeJitLog): stderr.writeLine "[jit] queue async compile"
+                    currentChunk.hotLoopQueued = true
+                    if vm.jit.queueCompile != nil:
+                      vm.jit.queueCompile(cast[pointer](owningProc))
+          elif currentChunk.hotLoopQueued and currentChunk.hotLoopOwner != nil:
+            let owningProc = currentChunk.hotLoopOwner
+            if owningProc.jitForeign != nil:
+              when defined(vancodeJitLog): stderr.writeLine "[jit] async compile done, executing"
+              currentChunk.hotLoopQueued = false
+              let jitFn = owningProc.jitForeign
+              var savedArgs: seq[Value]
+              if owningProc.paramCount > 0:
+                savedArgs = newSeq[Value](owningProc.paramCount)
+                for i in 0..<owningProc.paramCount:
+                  savedArgs[i] = stack[stackBottom + i]
+              restoreFrame()
+              inc(pcIdx)
+              let callResult =
+                if owningProc.paramCount > 0:
+                  jitFn(cast[StackView](addr savedArgs[0]), owningProc.paramCount)
+                else:
+                  jitFn(nil, 0)
+              if owningProc.hasResult:
+                stack.push(callResult)
+              continue
         if tgt >= 0: pcIdx = tgt - 1
       of opcJumpFwdT:
         # jump if true
@@ -854,11 +921,8 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
             echo "JumpFwdF: tgt=", tgt, " cond=", cond
       of opcJumpBack:
         let tgt = co.jumpTargets[pcIdx]
-        if tgt >= 0: pcIdx = tgt - 1
-        when defined(hayaVmWriteStackOps):
-          stderr.writeLine "jumpBack: pc=", pcIdx, " stack.len=", stack.len
-        # Hot loop detection
-        if vm.preferences.enableHotCodeDetection:
+        # Hot loop detection for backward jumps using opcJumpBack
+        if vm.preferences.enableHotCodeDetection and tgt >= 0 and tgt < pcIdx:
           let cnt = currentChunk.hotLoopCount
           if cnt < vm.preferences.hotLoopThreshold:
             currentChunk.hotLoopCount = cnt + 1
@@ -867,45 +931,66 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
             when defined(vancodeJitLog):
               stderr.writeLine "[jit] hotLoop threshold reached"
             when defined(vancodeJit) or defined(vancodeJitLlvm) or defined(vancodeJitGcc):
-              if vm.jit.getForeign != nil:
-                if currentChunk != script.mainChunk:
-                  # Function chunk: find owning Proc and JIT compile it
-                  var owningProc: Proc = nil
-                  for i in 0..<script.procs.len:
-                    let p = script.procs[i]
-                    if p.kind == pkNative and p.chunk == currentChunk:
-                      owningProc = p
-                      break
-                  when defined(vancodeJitLog):
-                    if owningProc != nil:
-                      stderr.writeLine "[jit] found proc: " & owningProc.name
-                    else:
-                      stderr.writeLine "[jit] owningProc NOT FOUND"
-                  if owningProc != nil:
-                    let jitFn = vm.jit.getForeign(cast[pointer](owningProc))
-                    when defined(vancodeJitLog):
-                      if jitFn != nil: stderr.writeLine "[jit] compile OK, executing"
-                      else: stderr.writeLine "[jit] compile FAILED (nil)"
-                    if jitFn != nil:
-                      owningProc.jitForeign = jitFn
-                      # Save args before restoreFrame truncates the stack
-                      var savedArgs: seq[Value]
+              if vm.jit.getForeign != nil and currentChunk != script.mainChunk:
+                var owningProc: Proc = nil
+                for i in 0..<script.procs.len:
+                  let p = script.procs[i]
+                  if p.kind == pkNative and p.chunk == currentChunk:
+                    owningProc = p
+                    break
+                when defined(vancodeJitLog):
+                  if owningProc != nil: stderr.writeLine "[jit] found proc: " & owningProc.name
+                  else: stderr.writeLine "[jit] owningProc NOT FOUND"
+                if owningProc != nil:
+                  currentChunk.hotLoopOwner = owningProc
+                  let jitFn = vm.jit.getForeign(cast[pointer](owningProc))
+                  if jitFn != nil:
+                    when defined(vancodeJitLog): stderr.writeLine "[jit] sync compile OK, executing"
+                    owningProc.jitForeign = jitFn
+                    var savedArgs: seq[Value]
+                    if owningProc.paramCount > 0:
+                      savedArgs = newSeq[Value](owningProc.paramCount)
+                      for i in 0..<owningProc.paramCount:
+                        savedArgs[i] = stack[stackBottom + i]
+                    restoreFrame()
+                    inc(pcIdx)
+                    let callResult =
                       if owningProc.paramCount > 0:
-                        savedArgs = newSeq[Value](owningProc.paramCount)
-                        for i in 0..<owningProc.paramCount:
-                          savedArgs[i] = stack[stackBottom + i]
-                      # Pop back to caller frame (pcIdx points to opcCallD/opcCallI)
-                      restoreFrame()
-                      inc(pcIdx)  # advance past the call opcode
-                      # Call JIT function with saved args
-                      let callResult =
-                        if owningProc.paramCount > 0:
-                          jitFn(cast[StackView](addr savedArgs[0]), owningProc.paramCount)
-                        else:
-                          jitFn(nil, 0)
-                      if owningProc.hasResult:
-                        stack.push(callResult)
-                      continue
+                        jitFn(cast[StackView](addr savedArgs[0]), owningProc.paramCount)
+                      else:
+                        jitFn(nil, 0)
+                    if owningProc.hasResult:
+                      stack.push(callResult)
+                    continue
+                  else:
+                    when defined(vancodeJitLog): stderr.writeLine "[jit] queue async compile"
+                    currentChunk.hotLoopQueued = true
+                    if vm.jit.queueCompile != nil:
+                      vm.jit.queueCompile(cast[pointer](owningProc))
+          elif currentChunk.hotLoopQueued and currentChunk.hotLoopOwner != nil:
+            let owningProc = currentChunk.hotLoopOwner
+            if owningProc.jitForeign != nil:
+              when defined(vancodeJitLog): stderr.writeLine "[jit] async compile done, executing"
+              currentChunk.hotLoopQueued = false
+              let jitFn = owningProc.jitForeign
+              var savedArgs: seq[Value]
+              if owningProc.paramCount > 0:
+                savedArgs = newSeq[Value](owningProc.paramCount)
+                for i in 0..<owningProc.paramCount:
+                  savedArgs[i] = stack[stackBottom + i]
+              restoreFrame()
+              inc(pcIdx)
+              let callResult =
+                if owningProc.paramCount > 0:
+                  jitFn(cast[StackView](addr savedArgs[0]), owningProc.paramCount)
+                else:
+                  jitFn(nil, 0)
+              if owningProc.hasResult:
+                stack.push(callResult)
+              continue
+        if tgt >= 0: pcIdx = tgt - 1
+        when defined(hayaVmWriteStackOps):
+          stderr.writeLine "jumpBack: pc=", pcIdx, " stack.len=", stack.len
       of opcCallD:
         # The `opcCallD` calls a procedure defined
         # in the current or another chunk.

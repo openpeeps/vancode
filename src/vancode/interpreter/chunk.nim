@@ -151,6 +151,10 @@ type
       ## backward jump counter for hot loop detection
     hotLoopCompiled*: bool
       ## whether this chunk has been attempted for JIT compilation
+    hotLoopQueued*: bool
+      ## whether JIT compilation has been queued for this chunk
+    hotLoopOwner*: Proc
+      ## cached owning Proc for this chunk (used by async JIT)
     strings*: seq[string] = newSeqOfCap[string](64)
       ## seq of strings used in this chunk (for string literals, global names, etc.)
     stringIds: Table[string, uint16] = initTable[string, uint16](64)

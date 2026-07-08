@@ -35,13 +35,21 @@ proc queueCompile(theProcPtr: pointer) =
 
 proc worker(backend: ptr JitBackend) {.thread.} =
   let vm = cast[Vm](backend[].vmPtr)
+  when defined(vancodeJitLog): stderr.writeLine "[jit] worker started"
   while true:
+    when defined(vancodeJitLog): stderr.writeLine "[jit] worker waiting for channel"
     let pp = backend[].channel.recv()
+    when defined(vancodeJitLog): stderr.writeLine "[jit] worker received " & (if pp == nil: "nil" else: "proc")
     if pp == nil: break
     let p = cast[Proc](pp)
     if p.kind != pkNative: continue
     if atomicLoadN(addr p.jitCodePtr, AtomicAcquire) != nil: continue
-    discard compileProc(vm, p)
+    when defined(vancodeJitLog): stderr.writeLine "[jit] worker compiling " & p.name
+    let compiled = compileProc(vm, p)
+    when defined(vancodeJitLog): stderr.writeLine "[jit] worker compile result: " & (if compiled != nil: "ok" else: "nil")
+    if compiled != nil:
+      p.jitForeign = compiled
+  when defined(vancodeJitLog): stderr.writeLine "[jit] worker exiting"
 
 proc newJitBackend*(): JitBackend =
   JitBackend(cache: newJitCache(), enabled: true)
@@ -49,11 +57,8 @@ proc newJitBackend*(): JitBackend =
 proc jitGetForeign(procPtr: pointer): ForeignProc =
   if procPtr == nil or globalBackend == nil: return nil
   let p = cast[Proc](procPtr)
-  if p.kind == pkNative and p.jitForeign == nil:
-    let compiled = compileProc(globalVm, p)
-    if compiled != nil:
-      p.jitForeign = compiled
-      result = compiled
+  if p.kind == pkNative:
+    result = p.jitForeign  # may be nil if not compiled yet
 
 proc detectBackend*(): JitBackendKind =
   when defined(vancodeJitLlvm):
@@ -81,10 +86,6 @@ proc installJitWithBackend*(vm: Vm, backend: JitBackendKind) =
     setGlobalsPtr: setJitGlobalsPtr
   )
 
-proc installJit*(vm: Vm) =
-  let backend = detectBackend()
-  installJitWithBackend(vm, backend)
-
 proc startAsyncJit*(vm: Vm) =
   let backend = detectBackend()
   compiler.selectedBackend = backend
@@ -103,6 +104,9 @@ proc startAsyncJit*(vm: Vm) =
     queueCompile: queueCompile,
     setGlobalsPtr: setJitGlobalsPtr
   )
+
+proc installJit*(vm: Vm) =
+  startAsyncJit(vm)
 
 proc stopAsyncJit*() =
   if globalBackend == nil or not globalBackend.running: return

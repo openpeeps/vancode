@@ -13,7 +13,7 @@ import std/[tables, sysatomics, critbits, hashes]
 var jitFnTable*: array[65536, pointer]
 var jitProcTable*: array[65536, pointer]
 var jitParamCount*: array[65536, int]
-var jitOptLevel*: cint = 3
+var jitOptLevel*: cint = 2
 const hotRecompileThreshold* = 100
 
 var jitGlobalVm*: Vm = nil
