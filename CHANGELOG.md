@@ -1,3 +1,42 @@
+# v0.2.0 - 2026-07-08
+
+- **NEW:** `tyProc`/`ProcRef`/`ttyProc` — proc reference type system. New `opcPushProc`
+  opcode pushes a proc reference onto the stack, `opcCallI` calls a proc by reference
+  from the stack. Proc references carry `(procId, procScript)` for cross-module dispatch.
+- **NEW:** `callCallback`/`execCallback` bridge functions for calling dfkup callbacks
+  from Nim foreign procs. `callCallback` sets `vm.pendingCallback` for the main interpret
+  loop; `execCallback` executes callbacks synchronously (falls back to `interpret` for
+  native procs).
+- **NEW:** `jitCallbackResult` global GC root prevents premature collection of callback
+  result Values when passed as `cast[int64]` across the C ABI boundary.
+- **NEW:** `jitReturnString` field on `Proc`, set during codegen when return type is
+  `string`; the JIT wrapper returns `tyString` (cast from `int64`) instead of `tyInt`
+  for string-returning functions.
+- **NEW:** `jitBridgeConcatStr` bridge for JIT-compiled string concatenation via
+  `opcConcatStr`, without needing an interpreter round-trip.
+- **NEW:** `jitBridgeGetField`/`jitBridgeSetField`/`jitBridgeGetItem`/`jitBridgeSetItem`
+  bridges for JIT-compiled field and array access.
+- **NEW:** `jitBridgeConstrObj` bridge for JIT-compiled object construction (supports
+  both key-value and positional modes).
+- **NEW:** `jitBridgePushProc`/`jitBridgeCallI` bridges for JIT-compiled proc reference
+  operations.
+- **NEW:** `genPtr(module, typeId, name)` helper in `sym.nim` for registering named
+  pointer types (e.g. `genPtr(tyPointer, "WebServer")`).
+- **NEW:** JIT compiler now supports `opcNegI`, `opcNegF`, `opcEqB`, `opcEqF`,
+  `opcLessF`, `opcGreaterF`, `opcConcatStr`, `opcConstrObj`, `opcGetF`, `opcSetF`,
+  `opcGetI`, `opcSetI`, `opcPushProc`, `opcCallI` opcodes.
+- **FIX:** `opcReturnVal`/`opcReturnVoid` now handle top-level return (empty
+  `callStack`) without requiring an active coroutine. Previously, returning from
+  a nested `interpret()` call crashed with `IndexDefect` when `restoreFrame()` tried
+  to pop from an empty call stack.
+- **FIX:** `sameType` now handles `ttyProc` — a `skProc` (function value) is compatible
+  with a `ttyProc` type parameter. `ttyPointer` removed from identity comparison group
+  so named pointer types (e.g. `WebServer`) match the generic `pointer` type.
+- **FIX:** `execCallback` skips JIT path for native procs (avoids `tyInt` instead of
+  `tyString` from broken JIT string returns). Uses `interpret` directly.
+- **CHANGE:** `ForeignData.libpath` renamed to `ForeignData.tag` for clarity (stores
+  an arbitrary string descriptor, not necessarily a library path).
+
 # v0.1.95 - 2026-07-07
 
 - **FIX:** Reverted the `opcI2F` approach from v0.1.9 — emitting two sequential
