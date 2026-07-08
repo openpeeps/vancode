@@ -629,6 +629,10 @@
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc genProc(gen: CodeGen; node: Node; isInstantiation = false): Sym" href="vancode/interpreter/codegen.html#genProc%2CCodeGen%2CNode">codegen: proc genProc(gen: CodeGen; node: Node; isInstantiation = false): Sym</a></li>
           </ul></dd>
+<dt><a name="genPtr" href="#genPtr"><span>genPtr:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="sym: proc genPtr(module: Module; typeId: TypeId; name: string): Sym" href="vancode/interpreter/sym.html#genPtr%2CModule%2CTypeId%2Cstring">sym: proc genPtr(module: Module; typeId: TypeId; name: string): Sym</a></li>
+          </ul></dd>
 <dt><a name="genReturn" href="#genReturn"><span>genReturn:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc genReturn(gen: CodeGen; node: Node)" href="vancode/interpreter/codegen.html#genReturn%2CCodeGen%2CNode">codegen: proc genReturn(gen: CodeGen; node: Node)</a></li>
@@ -867,11 +871,13 @@
           <li><a class="reference external"
           data-doc-search-tag="value: proc initValue(v: float64): Value" href="vancode/interpreter/value.html#initValue%2Cfloat64">value: proc initValue(v: float64): Value</a></li>
           <li><a class="reference external"
+          data-doc-search-tag="value: proc initValue(procId: int; procScript: string): Value" href="vancode/interpreter/value.html#initValue%2Cint%2Cstring">value: proc initValue(procId: int; procScript: string): Value</a></li>
+          <li><a class="reference external"
           data-doc-search-tag="value: proc initValue(v: int64): Value" href="vancode/interpreter/value.html#initValue%2Cint64">value: proc initValue(v: int64): Value</a></li>
           <li><a class="reference external"
           data-doc-search-tag="value: proc initValue(v: JsonNode): Value" href="vancode/interpreter/value.html#initValue%2CJsonNode">value: proc initValue(v: JsonNode): Value</a></li>
           <li><a class="reference external"
-          data-doc-search-tag="value: proc initValue(nptr: pointer; libpath: string): Value" href="vancode/interpreter/value.html#initValue%2Cpointer%2Cstring">value: proc initValue(nptr: pointer; libpath: string): Value</a></li>
+          data-doc-search-tag="value: proc initValue(nptr: pointer; tag: string): Value" href="vancode/interpreter/value.html#initValue%2Cpointer%2Cstring">value: proc initValue(nptr: pointer; tag: string): Value</a></li>
           <li><a class="reference external"
           data-doc-search-tag="value: proc initValue(v: string): Value" href="vancode/interpreter/value.html#initValue%2Cstring">value: proc initValue(v: string): Value</a></li>
           <li><a class="reference external"
@@ -880,9 +886,11 @@
 <dt><a name="interpret" href="#interpret"><span>interpret:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="vm: proc interpret(vm: Vm; script: Script; startChunk: Chunk;
+          args: openArray[Value] = [];
           staticString: Option[string] = none(string);
           globaldata = newJObject(); localData = newJObject();
-          stepping: Coroutine = nil): Value" href="vancode/interpreter/vm.html#interpret%2CVm%2CScript%2CChunk%2COption%5Bstring%5D%2CCoroutine">vm: proc interpret(vm: Vm; script: Script; startChunk: Chunk;
+          stepping: Coroutine = nil): Value" href="vancode/interpreter/vm.html#interpret%2CVm%2CScript%2CChunk%2CopenArray%5BValue%5D%2COption%5Bstring%5D%2CCoroutine">vm: proc interpret(vm: Vm; script: Script; startChunk: Chunk;
+          args: openArray[Value] = [];
           staticString: Option[string] = none(string);
           globaldata = newJObject(); localData = newJObject();
           stepping: Coroutine = nil): Value</a></li>
@@ -1189,6 +1197,10 @@
 <li><a class="reference external"
           data-doc-search-tag="sym: tuple ProcParam" href="vancode/interpreter/sym.html#ProcParam">sym: tuple ProcParam</a></li>
           </ul></dd>
+<dt><a name="ProcRef" href="#ProcRef"><span>ProcRef:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="value: object ProcRef" href="vancode/interpreter/value.html#ProcRef">value: object ProcRef</a></li>
+          </ul></dd>
 <dt><a name="ProcType" href="#ProcType"><span>ProcType:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="sym: enum ProcType" href="vancode/interpreter/sym.html#ProcType">sym: enum ProcType</a></li>
@@ -1443,6 +1455,10 @@
 <li><a class="reference external"
           data-doc-search-tag="sym: const tyPrimitives" href="vancode/interpreter/sym.html#tyPrimitives">sym: const tyPrimitives</a></li>
           </ul></dd>
+<dt><a name="tyProc" href="#tyProc"><span>tyProc:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="value: const tyProc" href="vancode/interpreter/value.html#tyProc">value: const tyProc</a></li>
+          </ul></dd>
 <dt><a name="tyString" href="#tyString"><span>tyString:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="value: const tyString" href="vancode/interpreter/value.html#tyString">value: const tyString</a></li>
@@ -1507,7 +1523,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-07 17:44:33 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-08 12:00:45 UTC</small>
       </div>
     </div>
   </div>

@@ -118,6 +118,7 @@
   opcJumpBack = &quot;jumpBack&quot;, ## jump backward
   opcCallD = &quot;callD&quot;,       ## call direct
   opcCallI = &quot;callI&quot;,       ## call indirect
+  opcPushProc = &quot;pushProc&quot;, ## push a proc reference
   opcReturnVal = &quot;returnVal&quot;, ## return value from proc
   opcReturnVoid = &quot;returnVoid&quot;, ## return void from proc
   opcImportModule = &quot;importModule&quot;, ## import a module
@@ -133,6 +134,7 @@
   jitCodePtr*: pointer       ## JIT-compiled function pointer, set atomically
   jitMaxLocal*: int          ## Max local slots used by JIT code
   jitReturnBool*: bool       ## Whether the JIT-compiled proc returns bool
+  jitReturnString*: bool     ## Whether the JIT-compiled proc returns string
   case kind*: ProcKind
   of pkNative:
     chunk*: Chunk            ## the chunk of bytecode of this procedure
@@ -352,6 +354,7 @@
   <span class="Identifier">opcJumpBack</span> <span class="Other">=</span> <span class="StringLit">&quot;jumpBack&quot;</span><span class="Other">,</span> <span class="Comment">## jump backward</span>
   <span class="Identifier">opcCallD</span> <span class="Other">=</span> <span class="StringLit">&quot;callD&quot;</span><span class="Other">,</span>       <span class="Comment">## call direct</span>
   <span class="Identifier">opcCallI</span> <span class="Other">=</span> <span class="StringLit">&quot;callI&quot;</span><span class="Other">,</span>       <span class="Comment">## call indirect</span>
+  <span class="Identifier">opcPushProc</span> <span class="Other">=</span> <span class="StringLit">&quot;pushProc&quot;</span><span class="Other">,</span> <span class="Comment">## push a proc reference</span>
   <span class="Identifier">opcReturnVal</span> <span class="Other">=</span> <span class="StringLit">&quot;returnVal&quot;</span><span class="Other">,</span> <span class="Comment">## return value from proc</span>
   <span class="Identifier">opcReturnVoid</span> <span class="Other">=</span> <span class="StringLit">&quot;returnVoid&quot;</span><span class="Other">,</span> <span class="Comment">## return void from proc</span>
   <span class="Identifier">opcImportModule</span> <span class="Other">=</span> <span class="StringLit">&quot;importModule&quot;</span><span class="Other">,</span> <span class="Comment">## import a module</span>
@@ -374,6 +377,7 @@
   <span class="Identifier">jitCodePtr</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">pointer</span>       <span class="Comment">## JIT-compiled function pointer, set atomically</span>
   <span class="Identifier">jitMaxLocal</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>          <span class="Comment">## Max local slots used by JIT code</span>
   <span class="Identifier">jitReturnBool</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>       <span class="Comment">## Whether the JIT-compiled proc returns bool</span>
+  <span class="Identifier">jitReturnString</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>     <span class="Comment">## Whether the JIT-compiled proc returns string</span>
   <span class="Keyword">case</span> <span class="Identifier">kind</span><span class="Operator">*</span><span class="Other">:</span> <a href="#ProcKind"><span class="Identifier">ProcKind</span></a>
   <span class="Keyword">of</span> <span class="Identifier">pkNative</span><span class="Other">:</span>
     <span class="Identifier">chunk</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Chunk"><span class="Identifier">Chunk</span></a>            <span class="Comment">## the chunk of bytecode of this procedure</span>
@@ -742,7 +746,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-07 17:44:32 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-08 12:00:44 UTC</small>
       </div>
     </div>
   </div>

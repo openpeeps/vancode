@@ -133,6 +133,7 @@
     isVoidElement*: bool     ## whether this HTML element is a void element or not (e.g., &quot;img&quot;, &quot;br&quot;, etc.)
   of skProc:
     procId*: uint16          ## the unique number of the proc
+    sourcePath*: string      ## the source path of the proc
     procParams*: seq[ProcParam] ## the proc's parameters
     procReturnTy*: Sym       ## the return type of the proc
     procType*: ProcType      ## whether the proc is a normal function or a macro
@@ -158,8 +159,9 @@
 <li><a class="reference" href="#TypeKind" title="TypeKind {..} = enum
   ttyVoid = &quot;void&quot;, ttyAny = &quot;any&quot;, ttyBool = &quot;bool&quot;, ttyInt = &quot;int&quot;,
   ttyFloat = &quot;float&quot;, ttyString = &quot;string&quot;, ttyPointer = &quot;pointer&quot;,
-  ttyJson = &quot;json&quot;, ttyArray = &quot;array&quot;, ttyNil = &quot;nil&quot;, ttyObject = &quot;object&quot;,
-  ttyAlias = &quot;alias&quot;, ttyCustom = &quot;custom&quot;, ttyHtmlElement = &quot;HtmlElement&quot;">TypeKind</a></li>
+  ttyProc = &quot;proc&quot;, ttyJson = &quot;json&quot;, ttyArray = &quot;array&quot;, ttyNil = &quot;nil&quot;,
+  ttyObject = &quot;object&quot;, ttyAlias = &quot;alias&quot;, ttyCustom = &quot;custom&quot;,
+  ttyHtmlElement = &quot;HtmlElement&quot;">TypeKind</a></li>
 
     </ul>
   </details>
@@ -223,6 +225,10 @@
 </ul>
 <ul class="simple nested-toc-section">clone
   <li><a class="reference" href="#clone%2CSym" title="clone(sym: Sym): Sym">clone(sym: Sym): Sym</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">genPtr
+  <li><a class="reference" href="#genPtr%2CModule%2CTypeId%2Cstring" title="genPtr(module: Module; typeId: TypeId; name: string): Sym">genPtr(module: Module; typeId: TypeId; name: string): Sym</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">genType
@@ -443,6 +449,7 @@
     <span class="Identifier">isVoidElement</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>     <span class="Comment">## whether this HTML element is a void element or not (e.g., &quot;img&quot;, &quot;br&quot;, etc.)</span>
   <span class="Keyword">of</span> <span class="Identifier">skProc</span><span class="Other">:</span>
     <span class="Identifier">procId</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">uint16</span>          <span class="Comment">## the unique number of the proc</span>
+    <span class="Identifier">sourcePath</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>      <span class="Comment">## the source path of the proc</span>
     <span class="Identifier">procParams</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#ProcParam"><span class="Identifier">ProcParam</span></a><span class="Other">]</span> <span class="Comment">## the proc's parameters</span>
     <span class="Identifier">procReturnTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>       <span class="Comment">## the return type of the proc</span>
     <span class="Identifier">procType</span><span class="Operator">*</span><span class="Other">:</span> <a href="#ProcType"><span class="Identifier">ProcType</span></a>      <span class="Comment">## whether the proc is a normal function or a macro</span>
@@ -482,8 +489,9 @@
   <dt><pre><a href="#TypeKind"><span class="Identifier">TypeKind</span></a> {..} <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">ttyVoid</span> <span class="Other">=</span> <span class="StringLit">&quot;void&quot;</span><span class="Other">,</span> <span class="Identifier">ttyAny</span> <span class="Other">=</span> <span class="StringLit">&quot;any&quot;</span><span class="Other">,</span> <span class="Identifier">ttyBool</span> <span class="Other">=</span> <span class="StringLit">&quot;bool&quot;</span><span class="Other">,</span> <span class="Identifier">ttyInt</span> <span class="Other">=</span> <span class="StringLit">&quot;int&quot;</span><span class="Other">,</span>
   <span class="Identifier">ttyFloat</span> <span class="Other">=</span> <span class="StringLit">&quot;float&quot;</span><span class="Other">,</span> <span class="Identifier">ttyString</span> <span class="Other">=</span> <span class="StringLit">&quot;string&quot;</span><span class="Other">,</span> <span class="Identifier">ttyPointer</span> <span class="Other">=</span> <span class="StringLit">&quot;pointer&quot;</span><span class="Other">,</span>
-  <span class="Identifier">ttyJson</span> <span class="Other">=</span> <span class="StringLit">&quot;json&quot;</span><span class="Other">,</span> <span class="Identifier">ttyArray</span> <span class="Other">=</span> <span class="StringLit">&quot;array&quot;</span><span class="Other">,</span> <span class="Identifier">ttyNil</span> <span class="Other">=</span> <span class="StringLit">&quot;nil&quot;</span><span class="Other">,</span> <span class="Identifier">ttyObject</span> <span class="Other">=</span> <span class="StringLit">&quot;object&quot;</span><span class="Other">,</span>
-  <span class="Identifier">ttyAlias</span> <span class="Other">=</span> <span class="StringLit">&quot;alias&quot;</span><span class="Other">,</span> <span class="Identifier">ttyCustom</span> <span class="Other">=</span> <span class="StringLit">&quot;custom&quot;</span><span class="Other">,</span> <span class="Identifier">ttyHtmlElement</span> <span class="Other">=</span> <span class="StringLit">&quot;HtmlElement&quot;</span></pre></dt>
+  <span class="Identifier">ttyProc</span> <span class="Other">=</span> <span class="StringLit">&quot;proc&quot;</span><span class="Other">,</span> <span class="Identifier">ttyJson</span> <span class="Other">=</span> <span class="StringLit">&quot;json&quot;</span><span class="Other">,</span> <span class="Identifier">ttyArray</span> <span class="Other">=</span> <span class="StringLit">&quot;array&quot;</span><span class="Other">,</span> <span class="Identifier">ttyNil</span> <span class="Other">=</span> <span class="StringLit">&quot;nil&quot;</span><span class="Other">,</span>
+  <span class="Identifier">ttyObject</span> <span class="Other">=</span> <span class="StringLit">&quot;object&quot;</span><span class="Other">,</span> <span class="Identifier">ttyAlias</span> <span class="Other">=</span> <span class="StringLit">&quot;alias&quot;</span><span class="Other">,</span> <span class="Identifier">ttyCustom</span> <span class="Other">=</span> <span class="StringLit">&quot;custom&quot;</span><span class="Other">,</span>
+  <span class="Identifier">ttyHtmlElement</span> <span class="Other">=</span> <span class="StringLit">&quot;HtmlElement&quot;</span></pre></dt>
   <dd>
     
     The kind of a type.
@@ -668,6 +676,18 @@
   <dd>
     
     Clones a symbol, returning a newly allocated instance with the same fields.
+    
+  </dd>
+</div>
+
+</div>
+<div id="genPtr-procs-all">
+  <div id="genPtr,Module,TypeId,string">
+  <dt><pre><span class="Keyword">proc</span> <a href="#genPtr%2CModule%2CTypeId%2Cstring"><span class="Identifier">genPtr</span></a><span class="Other">(</span><span class="Identifier">module</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">typeId</span><span class="Other">:</span> <a href="value.html#TypeId"><span class="Identifier">TypeId</span></a><span class="Other">;</span> <span class="Identifier">name</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
     
   </dd>
 </div>
@@ -875,7 +895,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-07 17:44:32 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-08 12:00:44 UTC</small>
       </div>
     </div>
   </div>

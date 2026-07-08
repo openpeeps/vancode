@@ -60,7 +60,7 @@
     <ul class="simple simple-toc-section">
       <li><a class="reference" href="#ForeignData" title="ForeignData {.acyclic.} = object
   data*: pointer
-  libpath*: string
+  tag*: string
   destructor*: proc (data: pointer) {.nimcall.}">ForeignData</a></li>
 <li><a class="reference" href="#ForeignProc" title="ForeignProc = proc (args: StackView; argc: int): Value">ForeignProc</a></li>
 <li><a class="reference" href="#JitHooks" title="JitHooks = object
@@ -77,6 +77,9 @@
                              ## stored in the same order as `fields`
     fields*: seq[ValueStorage] ## the fields of this object, stored
                                ## in the same order as `keys`">Object</a></li>
+<li><a class="reference" href="#ProcRef" title="ProcRef = object
+  procId*: int
+  procScript*: string">ProcRef</a></li>
 <li><a class="reference" href="#Stack" title="Stack = seq[Value]">Stack</a></li>
 <li><a class="reference" href="#StackView" title="StackView = ptr UncheckedArray[Value]">StackView</a></li>
 <li><a class="reference" href="#TypeId" title="TypeId = range[0 .. 32766]">TypeId</a></li>
@@ -92,6 +95,8 @@
     stringVal*: ref string
   of tyJsonStorage:
     jsonVal*: JsonNode
+  of tyProc:
+    procVal*: ProcRef
   else:
     objectVal*: Object">Value</a></li>
 <li><a class="reference" href="#ValueStorage" title="ValueStorage = object
@@ -125,6 +130,7 @@
 <li><a class="reference" href="#tyJsonStorage" title="tyJsonStorage = 11">tyJsonStorage</a></li>
 <li><a class="reference" href="#tyNil" title="tyNil = 0">tyNil</a></li>
 <li><a class="reference" href="#tyPointer" title="tyPointer = 15">tyPointer</a></li>
+<li><a class="reference" href="#tyProc" title="tyProc = 18">tyProc</a></li>
 <li><a class="reference" href="#tyString" title="tyString = 4">tyString</a></li>
 <li><a class="reference" href="#ValueSize" title="ValueSize = 16">ValueSize</a></li>
 
@@ -160,7 +166,8 @@
 
 </ul>
 <ul class="simple nested-toc-section">initValue
-  <li><a class="reference" href="#initValue%2Cpointer%2Cstring" title="initValue(nptr: pointer; libpath: string): Value">initValue(nptr: pointer; libpath: string): Value</a></li>
+  <li><a class="reference" href="#initValue%2Cpointer%2Cstring" title="initValue(nptr: pointer; tag: string): Value">initValue(nptr: pointer; tag: string): Value</a></li>
+<li><a class="reference" href="#initValue%2Cint%2Cstring" title="initValue(procId: int; procScript: string): Value">initValue(procId: int; procScript: string): Value</a></li>
 <li><a class="reference" href="#initValue%2Cbool" title="initValue(v: bool): Value">initValue(v: bool): Value</a></li>
 <li><a class="reference" href="#initValue%2Cfloat64" title="initValue(v: float64): Value">initValue(v: float64): Value</a></li>
 <li><a class="reference" href="#initValue%2Cint64" title="initValue(v: int64): Value">initValue(v: int64): Value</a></li>
@@ -202,7 +209,7 @@
     <div id="ForeignData">
   <dt><pre><a href="#ForeignData"><span class="Identifier">ForeignData</span></a> {.<span class="Identifier">acyclic</span>.} <span class="Other">=</span> <span class="Keyword">object</span>
   <span class="Identifier">data</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">pointer</span>
-  <span class="Identifier">libpath</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>
+  <span class="Identifier">tag</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>
   <span class="Identifier">destructor</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">data</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span> {.<span class="Identifier">nimcall</span>.}</pre></dt>
   <dd>
     
@@ -246,6 +253,16 @@
     
   </dd>
 </div>
+<div id="ProcRef">
+  <dt><pre><a href="#ProcRef"><span class="Identifier">ProcRef</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">procId</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">procScript</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span></pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
 <div id="Stack">
   <dt><pre><a href="#Stack"><span class="Identifier">Stack</span></a> <span class="Other">=</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#Value"><span class="Identifier">Value</span></a><span class="Other">]</span></pre></dt>
   <dd>
@@ -283,6 +300,8 @@
     <span class="Identifier">stringVal</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">ref</span> <span class="Identifier">string</span>
   <span class="Keyword">of</span> <span class="Identifier">tyJsonStorage</span><span class="Other">:</span>
     <span class="Identifier">jsonVal</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">JsonNode</span>
+  <span class="Keyword">of</span> <span class="Identifier">tyProc</span><span class="Other">:</span>
+    <span class="Identifier">procVal</span><span class="Operator">*</span><span class="Other">:</span> <a href="#ProcRef"><span class="Identifier">ProcRef</span></a>
   <span class="Keyword">else</span><span class="Other">:</span>
     <span class="Identifier">objectVal</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Object"><span class="Identifier">Object</span></a></pre></dt>
   <dd>
@@ -404,6 +423,14 @@
     
   </dd>
 </div>
+<div id="tyProc">
+  <dt><pre><a href="#tyProc"><span class="Identifier">tyProc</span></a> <span class="Other">=</span> <span class="DecNumber">18</span></pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
 <div id="tyString">
   <dt><pre><a href="#tyString"><span class="Identifier">tyString</span></a> <span class="Other">=</span> <span class="DecNumber">4</span></pre></dt>
   <dd>
@@ -496,11 +523,20 @@
 </div>
 <div id="initValue-procs-all">
   <div id="initValue,pointer,string">
-  <dt><pre><span class="Keyword">proc</span> <a href="#initValue%2Cpointer%2Cstring"><span class="Identifier">initValue</span></a><span class="Other">(</span><span class="Identifier">nptr</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">;</span> <span class="Identifier">libpath</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="#Value"><span class="Identifier">Value</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#initValue%2Cpointer%2Cstring"><span class="Identifier">initValue</span></a><span class="Other">(</span><span class="Identifier">nptr</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">;</span> <span class="Identifier">tag</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="#Value"><span class="Identifier">Value</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Initializes a pointer value.
+    
+  </dd>
+</div>
+<div id="initValue,int,string">
+  <dt><pre><span class="Keyword">proc</span> <a href="#initValue%2Cint%2Cstring"><span class="Identifier">initValue</span></a><span class="Other">(</span><span class="Identifier">procId</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span> <span class="Identifier">procScript</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="#Value"><span class="Identifier">Value</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    Initializes a proc reference value.
     
   </dd>
 </div>
@@ -600,7 +636,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-07 17:44:32 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-08 12:00:44 UTC</small>
       </div>
     </div>
   </div>
