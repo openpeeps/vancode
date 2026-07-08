@@ -325,7 +325,8 @@ proc newProc*(script: Script, name, impl: Node,
         name: identName.ident, kind: kind,
         paramCount: params.len,
         hasResult: hasReturnType,
-        jitReturnBool: returnTy.kind == skType and returnTy.tyKind == ttyBool
+        jitReturnBool: returnTy.kind == skType and returnTy.tyKind == ttyBool,
+        jitReturnString: returnTy.kind == skType and returnTy.tyKind == ttyString
       )
     sym = newSym(skProc, identName, impl)
   sym.procId = id
@@ -644,7 +645,9 @@ proc pushVar(gen: CodeGen, sym: Sym) =
       gen.chunk.emit(opcPushG)
       gen.chunk.emit(gen.chunk.getString(sym.name.ident))
   of skProc:
-    debugEcho sym
+    gen.chunk.emit(opcPushProc)
+    gen.chunk.emit(gen.chunk.getString(gen.chunk.file))
+    gen.chunk.emit(sym.procId.uint16)
   else: discard
 
 proc pushDefault(gen: CodeGen, ty: Sym) =
@@ -1673,6 +1676,8 @@ proc genExpr*(node: Node, varUnwrap = true): Sym {.codegen.} =
         else: discard
       # push the variable's value onto the stack
       gen.pushVar(symNode)
+      if symNode.kind == skProc:
+        return symNode
       return (
         if varUnwrap: symNode.varTy
         else: symNode

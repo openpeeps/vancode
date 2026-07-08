@@ -28,14 +28,19 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
       if oc notin {opcPushI, opcPushF, opcPushTrue, opcPushFalse,
                     opcPushL, opcPopL, opcIncL, opcDecL, opcPushNil, opcPushS,
                    opcPushG, opcPopG,
-                   opcConstrArray,
-                   opcAddI, opcSubI, opcMultI, opcDivI,
-                   opcAddF, opcSubF, opcMultF, opcDivF,
+                   opcConstrArray, opcConstrObj,
+                   opcAddI, opcSubI, opcMultI, opcDivI, opcNegI,
+                   opcAddF, opcSubF, opcMultF, opcDivF, opcNegF,
                    opcEqI, opcLessI, opcGreaterI,
+                   opcEqB, opcEqF, opcLessF, opcGreaterF,
                    opcInvB, opcDiscard,
                    opcJumpFwd, opcJumpFwdF, opcJumpFwdT, opcJumpBack,
-                   opcReturnVal, opcReturnVoid, opcHalt,
-                    opcNoop, opcCallD}:
+                    opcReturnVal, opcReturnVoid, opcHalt,
+                     opcNoop, opcCallD,
+                     opcPushProc, opcCallI,
+                     opcGetF, opcSetF,
+                     opcGetI, opcSetI,
+                     opcConcatStr}:
         return nil
 
     let ctx = gcc_jit_context_acquire()
@@ -155,20 +160,51 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
         else:
           if simStack.len >= 2: simStack.setLen(simStack.len - 2)
         simStack.add(tyInt)
-      of opcAddF, opcSubF, opcMultF, opcDivF:
+      of opcAddF, opcSubF, opcMultF, opcDivF, opcNegF:
         if oc == opcDivF and simStack.len >= 2:
           divFTypes[pc] = (simStack[^2], simStack[^1])
-        if simStack.len >= 2: simStack.setLen(simStack.len - 2)
+        if oc == opcNegF:
+          if simStack.len >= 1: simStack.setLen(simStack.len - 1)
+        elif simStack.len >= 2:
+          simStack.setLen(simStack.len - 2)
         simStack.add(tyFloat)
       of opcEqI, opcLessI, opcGreaterI, opcInvB:
+        if oc == opcInvB:
+          if simStack.len >= 1: simStack.setLen(simStack.len - 1)
+        elif simStack.len >= 2: simStack.setLen(simStack.len - 2)
+        simStack.add(tyBool)
+      of opcEqB, opcEqF, opcLessF, opcGreaterF:
         if simStack.len >= 2: simStack.setLen(simStack.len - 2)
-        elif oc == opcInvB and simStack.len >= 1: simStack.setLen(simStack.len - 1)
         simStack.add(tyBool)
       of opcDiscard:
         let n = cached.getArg1Int(pc)
         if simStack.len >= n: simStack.setLen(simStack.len - n)
       of opcJumpFwdT, opcJumpFwdF:
         if simStack.len >= 1: simStack.setLen(simStack.len - 1)
+      of opcConcatStr:
+        if simStack.len >= 2: simStack.setLen(simStack.len - 2)
+        simStack.add(tyString)
+      of opcPushProc:
+        simStack.add(tyInt)
+      of opcCallI:
+        let nArgs = cached.getArg1Int(pc).int
+        if nArgs >= 0 and simStack.len >= nArgs + 1:
+          simStack.setLen(simStack.len - nArgs - 1)
+        simStack.add(tyInt)
+      of opcGetF:
+        if simStack.len >= 1: simStack.setLen(simStack.len - 1)
+        simStack.add(tyInt)
+      of opcSetF:
+        if simStack.len >= 2: simStack.setLen(simStack.len - 2)
+      of opcGetI:
+        if simStack.len >= 2: simStack.setLen(simStack.len - 2)
+        simStack.add(tyInt)
+      of opcSetI:
+        if simStack.len >= 3: simStack.setLen(simStack.len - 3)
+      of opcConstrObj:
+        let n = cached.getArg1Int(pc).int
+        if simStack.len >= n: simStack.setLen(simStack.len - n)
+        simStack.add(tyArrayObject)
       else: discard
       if oc == opcCallD:
         let targetProcId2 = cached.arg2[pc].int
@@ -192,10 +228,9 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
         if nArgs > 0 and simStack.len >= nArgs:
           var argTypes = newSeq[TypeId](nArgs)
           for i in 0..<nArgs:
-            argTypes[nArgs - 1 - i] = simStack[simStack.len - 1 - i]
+           argTypes[nArgs - 1 - i] = simStack[simStack.len - 1 - i]
           callArgTypes[pc] = argTypes
           simStack.setLen(simStack.len - nArgs)
-
     proc callThroughPtr(ctxt: ptr gcc_jit_context; loc: ptr gcc_jit_location;
         fn_ptr: ptr gcc_jit_rvalue; numargs: cint; args: ptr ptr gcc_jit_rvalue): ptr gcc_jit_rvalue
         {.cdecl, importc: "gcc_jit_context_new_call_through_ptr".}
@@ -571,6 +606,165 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
       of opcReturnVoid, opcHalt:
         gcc_jit_block_end_with_return(blk, nil,
           gcc_jit_context_zero(ctx, i64Type))
+      of opcNegI:
+        let a = popInt(stackI, spRval)
+        let negI = gcc_jit_context_new_unary_op(ctx, nil,
+          GCC_JIT_UNARY_OP_MINUS, i64Type, a)
+        pushInt(stackI, negI, spRval)
+        term()
+      of opcNegF:
+        let a = popInt(stackF, spRval)
+        let negF = gcc_jit_context_new_unary_op(ctx, nil,
+          GCC_JIT_UNARY_OP_MINUS, jt.f64Type, a)
+        let ap = gcc_jit_context_new_array_access(ctx, nil,
+          gcc_jit_lvalue_as_rvalue(stackF), spRval)
+        gcc_jit_block_add_assignment(blk, nil, ap, negF)
+        gcc_jit_block_add_assignment(blk, nil, spLocal,
+          gcc_jit_context_new_binary_op(ctx, nil, GCC_JIT_BINARY_OP_PLUS,
+            i64Type, spRval, gcc_jit_context_one(ctx, i64Type)))
+        term()
+      of opcEqB:
+        let b = popInt(stackI, spRval)
+        let a = popInt(stackI, spRval)
+        let eqBVal = gcc_jit_context_new_comparison(ctx, nil, GCC_JIT_COMPARISON_EQ, a, b)
+        pushInt(stackI, gcc_jit_context_new_cast(ctx, nil, eqBVal, i64Type), spRval)
+        term()
+      of opcEqF, opcLessF, opcGreaterF:
+        let bF = popInt(stackF, spRval)
+        let aF = popInt(stackF, spRval)
+        let cmpF = case oc
+          of opcEqF:      GCC_JIT_COMPARISON_EQ
+          of opcLessF:    GCC_JIT_COMPARISON_LT
+          of opcGreaterF: GCC_JIT_COMPARISON_GT
+          else:           GCC_JIT_COMPARISON_EQ
+        let boolF = gcc_jit_context_new_comparison(ctx, nil, cmpF, aF, bF)
+        pushInt(stackI, gcc_jit_context_new_cast(ctx, nil, boolF, i64Type), spRval)
+        term()
+      of opcConcatStr:
+        let bStr = popInt(stackI, spRval)
+        let aStr = popInt(stackI, spRval)
+        let concatParamTypes = [i64Type, i64Type]
+        let concatFnType = gcc_jit_context_new_function_ptr_type(ctx, nil, i64Type, 2, addr concatParamTypes[0], 0)
+        let concatAddr = gcc_jit_context_new_rvalue_from_ptr(ctx, voidPtrType, jitBridgeConcatStr)
+        let concatFnRval = gcc_jit_context_new_cast(ctx, nil, concatAddr, concatFnType)
+        var concatArgs: array[2, ptr gcc_jit_rvalue] = [aStr, bStr]
+        let concatResult = callThroughPtr(ctx, nil, concatFnRval, 2.cint, addr concatArgs[0])
+        pushInt(stackI, concatResult, spRval)
+        term()
+      of opcPushProc:
+        let sid = cached.getArg1Int(pc)
+        let pid = cached.arg2[pc].int
+        let srcPath = theProc.chunk.strings[sid]
+        let srcPathLit = gcc_jit_context_new_string_literal(ctx, srcPath)
+        let srcPathPtr = gcc_jit_context_new_cast(ctx, nil, srcPathLit, voidPtrType)
+        let pushProcParamTypes = [voidPtrType, int32Type]
+        let pushProcFnType = gcc_jit_context_new_function_ptr_type(ctx, nil, i64Type, 2, addr pushProcParamTypes[0], 0)
+        let pushProcAddr = gcc_jit_context_new_rvalue_from_ptr(ctx, voidPtrType, jitBridgePushProc)
+        let pushProcFnRval = gcc_jit_context_new_cast(ctx, nil, pushProcAddr, pushProcFnType)
+        var pushProcArgs: array[2, ptr gcc_jit_rvalue] = [
+          srcPathPtr,
+          gcc_jit_context_new_rvalue_from_long(ctx, int32Type, pid.int32)
+        ]
+        let pushProcResult = callThroughPtr(ctx, nil, pushProcFnRval, 2.cint, addr pushProcArgs[0])
+        pushInt(stackI, pushProcResult, spRval)
+        term()
+      of opcCallI:
+        let nArgs = cached.getArg1Int(pc).int
+        let callIArrTy = gcc_jit_context_new_array_type(ctx, nil, i64Type, nArgs.int32.max(1))
+        let callIArrL = gcc_jit_function_new_local(jitFn, nil, callIArrTy, "_cia")
+        for i in countdown(nArgs - 1, 0):
+          let argVal = popInt(stackI, spRval)
+          let slot = gcc_jit_context_new_array_access(ctx, nil,
+            gcc_jit_lvalue_as_rvalue(callIArrL),
+            gcc_jit_context_new_rvalue_from_long(ctx, i64Type, i))
+          gcc_jit_block_add_assignment(blk, nil, slot, argVal)
+        let procRefVal = popInt(stackI, spRval)
+        let callIArrAddr = gcc_jit_context_new_cast(ctx, nil,
+          gcc_jit_lvalue_get_address(callIArrL, nil), i64PtrType)
+        let callIParamTypes = [i64Type, i64PtrType, int32Type, int32PtrType]
+        let callIFnType = gcc_jit_context_new_function_ptr_type(ctx, nil, i64Type, 4, addr callIParamTypes[0], 0)
+        let callIAddr = gcc_jit_context_new_rvalue_from_ptr(ctx, voidPtrType, jitBridgeCallI)
+        let callIFnRval = gcc_jit_context_new_cast(ctx, nil, callIAddr, callIFnType)
+        var callIArgs: array[4, ptr gcc_jit_rvalue] = [
+          procRefVal,
+          callIArrAddr,
+          gcc_jit_context_new_rvalue_from_long(ctx, int32Type, nArgs.int32),
+          gcc_jit_context_null(ctx, int32PtrType)
+        ]
+        let callIResult = callThroughPtr(ctx, nil, callIFnRval, 4.cint, addr callIArgs[0])
+        pushInt(stackI, callIResult, spRval)
+        term()
+      of opcGetF:
+        let gfId = cached.getArg1Int(pc).int32
+        let gfObjVal = popInt(stackI, spRval)
+        let getFieldParamTypesArr = [i64Type, int32Type]
+        let getFieldFnType = gcc_jit_context_new_function_ptr_type(ctx, nil, i64Type, 2, addr getFieldParamTypesArr[0], 0)
+        let getFieldAddr = gcc_jit_context_new_rvalue_from_ptr(ctx, voidPtrType, jitBridgeGetField)
+        let getFieldFnRval = gcc_jit_context_new_cast(ctx, nil, getFieldAddr, getFieldFnType)
+        var getFieldArgs: array[2, ptr gcc_jit_rvalue] = [gfObjVal,
+          gcc_jit_context_new_rvalue_from_long(ctx, int32Type, gfId)]
+        let getFieldResult = callThroughPtr(ctx, nil, getFieldFnRval, 2.cint, addr getFieldArgs[0])
+        pushInt(stackI, getFieldResult, spRval)
+        term()
+      of opcSetF:
+        let sfVal = popInt(stackI, spRval)
+        let sfObjVal = popInt(stackI, spRval)
+        let sfId = cached.getArg1Int(pc).int32
+        let setFieldVoidType = gcc_jit_context_get_type(ctx, GCC_JIT_TYPE_VOID)
+        let setFieldParamTypesArr = [i64Type, int32Type, i64Type]
+        let setFieldFnType = gcc_jit_context_new_function_ptr_type(ctx, nil, setFieldVoidType, 3, addr setFieldParamTypesArr[0], 0)
+        let setFieldAddr = gcc_jit_context_new_rvalue_from_ptr(ctx, voidPtrType, jitBridgeSetField)
+        let setFieldFnRval = gcc_jit_context_new_cast(ctx, nil, setFieldAddr, setFieldFnType)
+        var setFieldArgs: array[3, ptr gcc_jit_rvalue] = [sfObjVal,
+          gcc_jit_context_new_rvalue_from_long(ctx, int32Type, sfId), sfVal]
+        discard callThroughPtr(ctx, nil, setFieldFnRval, 3.cint, addr setFieldArgs[0])
+        term()
+      of opcGetI:
+        let giIdx = popInt(stackI, spRval)
+        let giArrVal = popInt(stackI, spRval)
+        let getItemParamTypesArr = [i64Type, i64Type]
+        let getItemFnType = gcc_jit_context_new_function_ptr_type(ctx, nil, i64Type, 2, addr getItemParamTypesArr[0], 0)
+        let getItemAddr = gcc_jit_context_new_rvalue_from_ptr(ctx, voidPtrType, jitBridgeGetItem)
+        let getItemFnRval = gcc_jit_context_new_cast(ctx, nil, getItemAddr, getItemFnType)
+        var getItemArgs: array[2, ptr gcc_jit_rvalue] = [giArrVal, giIdx]
+        let getItemResult = callThroughPtr(ctx, nil, getItemFnRval, 2.cint, addr getItemArgs[0])
+        pushInt(stackI, getItemResult, spRval)
+        term()
+      of opcSetI:
+        let siValPtr = popInt(stackI, spRval)
+        let siIdx = popInt(stackI, spRval)
+        let siArrVal = popInt(stackI, spRval)
+        let setItemVoidType = gcc_jit_context_get_type(ctx, GCC_JIT_TYPE_VOID)
+        let setItemParamTypesArr = [i64Type, i64Type, i64Type]
+        let setItemFnType = gcc_jit_context_new_function_ptr_type(ctx, nil, setItemVoidType, 3, addr setItemParamTypesArr[0], 0)
+        let setItemAddr = gcc_jit_context_new_rvalue_from_ptr(ctx, voidPtrType, jitBridgeSetItem)
+        let setItemFnRval = gcc_jit_context_new_cast(ctx, nil, setItemAddr, setItemFnType)
+        var setItemArgs: array[3, ptr gcc_jit_rvalue] = [siArrVal, siIdx, siValPtr]
+        discard callThroughPtr(ctx, nil, setItemFnRval, 3.cint, addr setItemArgs[0])
+        term()
+      of opcConstrObj:
+        let coCount = cached.getArg1Int(pc).int
+        let coArrTy = gcc_jit_context_new_array_type(ctx, nil, i64Type, coCount.int32.max(1))
+        let coArrL = gcc_jit_function_new_local(jitFn, nil, coArrTy, "_coa")
+        for i in countdown(coCount - 1, 0):
+          let argVal = popInt(stackI, spRval)
+          let slot = gcc_jit_context_new_array_access(ctx, nil,
+            gcc_jit_lvalue_as_rvalue(coArrL),
+            gcc_jit_context_new_rvalue_from_long(ctx, i64Type, i))
+          gcc_jit_block_add_assignment(blk, nil, slot, argVal)
+        let coArrAddr = gcc_jit_context_new_cast(ctx, nil,
+          gcc_jit_lvalue_get_address(coArrL, nil), i64PtrType)
+        let constrObjParamTypesArr = [int32Type, i64PtrType]
+        let constrObjFnType = gcc_jit_context_new_function_ptr_type(ctx, nil, i64Type, 2, addr constrObjParamTypesArr[0], 0)
+        let constrObjAddr = gcc_jit_context_new_rvalue_from_ptr(ctx, voidPtrType, jitBridgeConstrObj)
+        let constrObjFnRval = gcc_jit_context_new_cast(ctx, nil, constrObjAddr, constrObjFnType)
+        var constrObjArgs: array[2, ptr gcc_jit_rvalue] = [
+          gcc_jit_context_new_rvalue_from_long(ctx, int32Type, coCount.int32),
+          coArrAddr
+        ]
+        let constrObjResult = callThroughPtr(ctx, nil, constrObjFnRval, 2.cint, addr constrObjArgs[0])
+        pushInt(stackI, constrObjResult, spRval)
+        term()
       else:
         if nextBlk != nil: gcc_jit_block_end_with_jump(blk, nil, nextBlk)
         else: gcc_jit_block_end_with_return(blk, nil,
@@ -607,7 +801,10 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
       let localMaxLocal = theProc.jitMaxLocal
       var flatLocals = newSeq[int64](max(localMaxLocal, 1))
       for i in 0..<min(argc, localMaxLocal):
-        flatLocals[i] = args[i].intVal
+        if args[i].typeId == tyInt:
+          flatLocals[i] = args[i].intVal
+        else:
+          flatLocals[i] = cast[int64](args[i])
       if localMaxLocal == 0 and argc > 0:
         flatLocals[0] = args[0].intVal
       type JitFn = proc (flatArgs: ptr int64, argc: int): int64 {.cdecl.}
@@ -616,8 +813,11 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
       if theProc.jitCallCount >= hotRecompileThreshold:
         jitRecompileAtO3(theProc)
       for i in 0..<min(argc, localMaxLocal):
-        args[i].intVal = flatLocals[i]
-      if theProc.jitReturnBool:
+        if args[i].typeId == tyInt:
+          args[i].intVal = flatLocals[i]
+      if theProc.jitReturnString:
+        result = cast[Value](resultI)
+      elif theProc.jitReturnBool:
         result = Value(typeId: tyBool, boolVal: resultI != 0)
       else:
         result = initValue(resultI)

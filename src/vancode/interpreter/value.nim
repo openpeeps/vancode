@@ -41,14 +41,19 @@ const
   tyPointer* = 15
   tyAny* = 16
   tyCoroutine* = 17
+  tyProc* = 18
 
 type
   TypeId* = range[0..32766]  # max amount of case object branches
 
   ForeignData* {.acyclic.} = object
     data*: pointer
-    libpath*: string
+    tag*: string
     destructor*: proc (data: pointer) {.nimcall.}
+
+  ProcRef* = object
+    procId*: int
+    procScript*: string
 
   Object* {.acyclic.} = ref object
     ## Represents an object value, which can be either a native
@@ -76,8 +81,8 @@ type
       stringVal*: ref string
     of tyJsonStorage:
       jsonVal*: JsonNode
-    # of tyAny:
-      # anyVal*: Value
+    of tyProc:
+      procVal*: ProcRef
     else:
       objectVal*: Object
 
@@ -150,7 +155,7 @@ proc dumpHook*(s: var string, val: Value) =
       if val.objectVal == nil or val.objectVal.foreign.data == nil:
         s.add("pointer<nil>")
       else:
-        s.add("pointer<0x" & $cast[uint](val.objectVal.foreign.data) & " at " & val.objectVal.foreign.libpath & ">")
+        s.add("pointer<0x" & $cast[uint](val.objectVal.foreign.data) & " at " & val.objectVal.foreign.tag & ">")
     else: s.add("")
   else: s.add("<object>")
 
@@ -176,6 +181,8 @@ proc `$`*(value: Value): string =
         else:
           "pointer<0x" & $cast[uint](value.objectVal.foreign.data) & ">"
       else: ""
+    of tyProc:
+      "proc<" & $value.procVal.procId & ":" & value.procVal.procScript & ">"
     else: "<object>"
 
 proc toString*(value: JsonNode): string =
@@ -212,11 +219,15 @@ proc initValue*(v: JsonNode): Value =
   result = Value(typeId: tyJsonStorage)
   result.jsonVal = v
 
-proc initValue*(nptr: pointer, libpath: string): Value =
+proc initValue*(nptr: pointer, tag: string): Value =
   ## Initializes a pointer value.
   result = Value(typeId: tyPointer)
   result.objectVal = Object(isForeign: true,
-    foreign: ForeignData(data: nptr, libpath: libpath))
+    foreign: ForeignData(data: nptr, tag: tag))
+
+proc initValue*(procId: int, procScript: string): Value =
+  ## Initializes a proc reference value.
+  result = Value(typeId: tyProc, procVal: ProcRef(procId: procId, procScript: procScript))
 
 proc initValue*[T: tuple | object | ref](id: TypeId, value: T): Value =
   ## Safely initializes a foreign object value.

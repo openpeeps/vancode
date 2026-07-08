@@ -95,6 +95,7 @@ type
     opcJumpBack = "jumpBack"      ## jump backward
     opcCallD = "callD"            ## call direct
     opcCallI = "callI"            ## call indirect
+    opcPushProc = "pushProc"      ## push a proc reference
     opcReturnVal = "returnVal"    ## return value from proc
     opcReturnVoid = "returnVoid"  ## return void from proc
 
@@ -167,6 +168,7 @@ type
     jitCodePtr*: pointer  ## JIT-compiled function pointer, set atomically
     jitMaxLocal*: int     ## Max local slots used by JIT code
     jitReturnBool*: bool   ## Whether the JIT-compiled proc returns bool
+    jitReturnString*: bool ## Whether the JIT-compiled proc returns string
     case kind*: ProcKind
     of pkNative:
       chunk*: Chunk          ## the chunk of bytecode of this procedure

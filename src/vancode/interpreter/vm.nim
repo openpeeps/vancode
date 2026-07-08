@@ -109,6 +109,7 @@ type
     savedStackBottom: int
     savedScript: Script
     jit*: JitHooks
+    pendingCallback*: Value
 
 const
   VMInitialPreallocatedStackSize* {.intdefine.} = 64
@@ -271,6 +272,13 @@ proc parseChunk(currentChunk: Chunk): CachedOps =
         let filePathIdx = readArg[uint16](pc)
         let pid = readArg[uint16](pc).int
         addOp(oc, filePathIdx.int64, pid.int64, akString, akInt)
+      of opcPushProc:
+        let filePathIdx = readArg[uint16](pc)
+        let pid = readArg[uint16](pc).int
+        addOp(oc, filePathIdx.int64, pid.int64, akString, akInt)
+      of opcCallI:
+        let argc = readArg[uint8](pc).int
+        addOp(oc, argc.int64, 0, akInt)
       of opcConstrArray, opcConstrObj:
         let cnt = readArg[uint16](pc).int
         addOp(oc, cnt.int64, 0, akInt)
@@ -405,6 +413,7 @@ proc prewarmScriptOps*(vm: Vm, s: Script) =
   vm.prewarmScriptOpsRec(s, seen)
 
 proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
+        args: openArray[Value] = [],
         staticString: Option[string] = none(string),
         globaldata = newJObject(),
         localData = newJObject(),
@@ -423,6 +432,8 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
     pcIdx  = 0
     stackBottom = 0
     frameChanged = false
+  for a in args:
+    stack.add(a)
 
   # If stepping a coroutine, override state from the coroutine
   if stepping != nil:
@@ -595,6 +606,10 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         stack.push(initValue(true))
       of opcPushFalse:
         stack.push(initValue(false))
+      of opcPushProc:
+        let procScript = co.getArg1Str(pcIdx, currentChunk)
+        let pid = co.arg2[pcIdx].int
+        stack.push(initValue(pid, procScript))
       #
       # Variables
       #
@@ -955,27 +970,89 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
               echo "Foreign call result: ", callResult
             else:
               echo "Foreign call result: nil"
+      of opcCallI:
+        let argc = co.getArg1Int(pcIdx)
+        let procBase = stack.len - argc - 1
+        let procVal = stack[procBase]
+        if procVal.typeId != tyProc:
+          raise newException(ValueError, "opcCallI: expected a proc value")
+        let pId = procVal.procVal.procId
+        let pScript = procVal.procVal.procScript
+        stack.delete(procBase)
+        var targetScript: Script = nil
+        if pScript == currentChunk.file: targetScript = script
+        elif pScript in script.scripts: targetScript = script.scripts[pScript]
+        elif pScript in vm.importedModules: targetScript = vm.importedModules[pScript]
+        if targetScript == nil or pId < 0 or pId >= targetScript.procs.len:
+          raise newException(ValueError, "opcCallI: target proc not found")
+        let p = targetScript.procs[pId]
+        vm.markHotProc(p)
+        storeFrame()
+        if stack.len < p.paramCount:
+          raise newException(ValueError,
+            "Not enough arguments on stack for call to " & p.name)
+        stackBottom = stack.len - p.paramCount
+        case p.kind
+        of pkNative:
+          currentChunk = p.chunk
+          cached = vm.getCachedOps(currentChunk)
+          co = cached
+          pcIdx = 0
+          continue
+        of pkForeign:
+          let callResult =
+            if p.paramCount > 0:
+              p.foreign(stack{^p.paramCount}, p.paramCount)
+            else:
+              p.foreign(nil, 0)
+          restoreFrame()
+          if vm.pendingCallback != nil:
+            let cb = vm.pendingCallback
+            vm.pendingCallback = nil
+            if p.hasResult:
+              stack.push(callResult)
+            let cbId = cb.procVal.procId
+            let cbScriptStr = cb.procVal.procScript
+            var cbScript: Script = nil
+            if cbScriptStr == currentChunk.file: cbScript = script
+            elif cbScriptStr in script.scripts: cbScript = script.scripts[cbScriptStr]
+            elif cbScriptStr in vm.importedModules: cbScript = vm.importedModules[cbScriptStr]
+            if cbScript != nil and cbId >= 0 and cbId < cbScript.procs.len:
+              let cbProc = cbScript.procs[cbId]
+              if cbProc.kind == pkNative:
+                storeFrame()
+                stackBottom = stack.len - cbProc.paramCount
+                currentChunk = cbProc.chunk
+                cached = vm.getCachedOps(currentChunk)
+                co = cached
+                pcIdx = 0
+                continue
+          if p.hasResult:
+            stack.push(callResult)
       of opcReturnVal:
         let rv = stack.pop()
         if stepping != nil:
           stepping.state = csCompleted
           stepping.result = rv
           return rv
-        if callStack.len == 0 and vm.activeCoroutine != nil:
-          let coro = vm.activeCoroutine
-          coro.state = csCompleted
-          coro.result = rv
-          stack = vm.savedStack
-          callStack = vm.savedCallStack
-          pcIdx = vm.savedPcIdx
-          currentChunk = vm.savedChunk
-          co = vm.savedCo
-          cached = co
-          opcodes = co.opcodes
-          stackBottom = vm.savedStackBottom
-          script = vm.savedScript
-          vm.activeCoroutine = nil
-          stack.push(rv)
+        if callStack.len == 0:
+          if vm.activeCoroutine != nil:
+            let coro = vm.activeCoroutine
+            coro.state = csCompleted
+            coro.result = rv
+            stack = vm.savedStack
+            callStack = vm.savedCallStack
+            pcIdx = vm.savedPcIdx
+            currentChunk = vm.savedChunk
+            co = vm.savedCo
+            cached = co
+            opcodes = co.opcodes
+            stackBottom = vm.savedStackBottom
+            script = vm.savedScript
+            vm.activeCoroutine = nil
+            stack.push(rv)
+          else:
+            return rv
         else:
           restoreFrame()
           stack.push(rv)

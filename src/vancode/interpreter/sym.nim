@@ -79,6 +79,7 @@ type
     ttyFloat = "float"    # float64
     ttyString = "string"  # ref string
     ttyPointer = "pointer" # a raw pointer type
+    ttyProc = "proc"       # a callable proc reference
     ttyJson = "json"
     ttyArray = "array"
     
@@ -143,6 +144,7 @@ type
       isVoidElement*: bool        ## whether this HTML element is a void element or not (e.g., "img", "br", etc.)
     of skProc:
       procId*: uint16             ## the unique number of the proc
+      sourcePath*: string         ## the source path of the proc
       procParams*: seq[ProcParam] ## the proc's parameters
       procReturnTy*: Sym          ## the return type of the proc
       procType*: ProcType         ## whether the proc is a normal function or a macro
@@ -399,7 +401,7 @@ proc sameType*(a, b: Sym): bool =
       of ttyObject:
         # Compare object type ids (structural comparison could be added)
         return a.objectId == b.objectId
-      of ttyAlias, ttyPointer, ttyCustom:
+      of ttyAlias, ttyCustom:
         return a == b
       else:
         return true
@@ -425,7 +427,13 @@ proc sameType*(a, b: Sym): bool =
     if b.genericBase.isSome:
       return a.sameType(b.genericBase.get)
 
+  # skProc (function value) is compatible with ttyProc type
+  if (a.kind == skProc and b.kind == skType and b.tyKind == ttyProc) or
+     (b.kind == skProc and a.kind == skType and a.tyKind == ttyProc):
+    return true
+
   # Fallback: compare by identity
+  if a.kind != b.kind: return false
   return a == b
 
 proc sameParams*(sym: Sym, args: seq[Sym]): bool =
@@ -640,6 +648,14 @@ proc initSystemTypes*(module: Module) =
   module.add(genType(ttyObject, "object", true))
   # module.add(genType(ttyObject, "tuple", true))
   module.add(genType(ttyPointer, "pointer", true))
+  module.add(genType(ttyProc, "proc", true))
+
+proc genPtr*(module: Module, typeId: TypeId, name: string): Sym =
+  let kind = case typeId
+    of tyPointer: ttyPointer
+    else: ttyPointer
+  result = genType(kind, name, true)
+  module.add(result)
 
 proc getModuleName*(module: Module): string =
   ## Get the module name for the JS export
