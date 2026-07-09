@@ -4,10 +4,7 @@
   in `parseChunk`. JIT compiler dispatches via `jitBridgeEqStr` bridge call.
 - **NEW:** `not` prefix operator now registered as a stdlib foreign proc `not(x: bool) -> bool`.
   Previously was only handled as a built-in opcode (`opcInvB`) in the codegen prefix proc.
-- **NEW:** `is` / `isnot` infix operators — language-level value comparison. Lexer gains
-  `tkIs`/`tkIsNot` token kinds; parser recognizes them as infix operators (precedence 5,
-  equal to `==`). Registered as stdlib foreign procs with Nim implementations that
-  compare values at runtime by `TypeId`.
+- **NEW:** `is` / `isnot` infix operators — language-level value comparison.
 - **FIX:** `opcConstrObj` no longer reads field keys from the eval stack. Keys are now
   encoded as `uint16` string-table IDs in the bytecode after the count argument, stored
   in `CachedOps.strKeys` (`seq[seq[uint16]]`). The VM reads them directly from this
