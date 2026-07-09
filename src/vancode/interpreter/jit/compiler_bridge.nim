@@ -134,6 +134,13 @@ proc jitBridgeConcatStr*(a: int64, b: int64): int64 {.cdecl, exportc.} =
   resultVal.stringVal[] = av.stringVal[] & bv.stringVal[]
   result = cast[int64](resultVal)
 
+proc jitBridgeEqStr*(a: int64, b: int64): int64 {.cdecl, exportc.} =
+  ## JIT bridge: compare two string Values for equality, returns 0/1
+  let av = cast[Value](a)
+  let bv = cast[Value](b)
+  if av == nil or bv == nil: return int64(av == bv)
+  result = int64(av.stringVal[] == bv.stringVal[])
+
 proc jitBridgeGetField*(objVal: int64, fieldId: int32): int64 {.cdecl, exportc.} =
   ## JIT bridge: get field by index from an object Value
   let obj = cast[Value](objVal)
@@ -168,30 +175,16 @@ proc jitBridgeSetItem*(arrVal: int64, index: int64, valPtr: int64) {.cdecl, expo
     arr.objectVal.fields[index.int] = vs.toStorage
 
 proc jitBridgeConstrObj*(count: int32, flatArgs: ptr int64): int64 {.cdecl, exportc.} =
-  ## JIT bridge: construct an object from flat arg array (key-value or positional)
+  ## JIT bridge: construct an object from flat arg array (positional values, no keys).
   let arr = cast[ptr UncheckedArray[int64]](flatArgs)
   if count > 0:
-    let first = cast[Value](arr[0])
-    if first != nil and first.typeId == tyString:
-      var obj = Object(isForeign: false)
-      for i in 0..<(count div 2):
-        let keyPtr = cast[Value](arr[i * 2])
-        let valPtr = cast[Value](arr[i * 2 + 1])
-        if keyPtr != nil:
-          obj.keys.add(keyPtr.stringVal[])
-          if valPtr != nil:
-            obj.fields.add(valPtr.toStorage)
-          else:
-            obj.fields.add(ValueStorage(typeId: tyNil))
-      result = cast[int64](Value(typeId: tyArrayObject, objectVal: obj))
-    else:
-      var fields = newSeq[ValueStorage](count)
-      for i in 0..<count:
-        let valPtr = cast[Value](arr[i])
-        if valPtr != nil:
-          fields[i] = valPtr.toStorage
-      result = cast[int64](Value(typeId: tyArrayObject, objectVal:
-        Object(isForeign: false, fields: fields)))
+    var fields = newSeq[ValueStorage](count)
+    for i in 0..<count:
+      let valPtr = cast[Value](arr[i])
+      if valPtr != nil:
+        fields[i] = valPtr.toStorage
+    result = cast[int64](Value(typeId: tyArrayObject, objectVal:
+      Object(isForeign: false, fields: fields)))
   else:
     result = cast[int64](Value(typeId: tyArrayObject, objectVal:
       Object(isForeign: false)))

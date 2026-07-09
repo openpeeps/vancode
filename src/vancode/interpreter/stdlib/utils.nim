@@ -107,3 +107,9 @@ proc paramDef*(name: string, kind: TypeKind, val: Value = nil,
               isOpt: bool = false, kindStr = ""): TempParamDef {.inline.} =
   ## Create a new parameter definition.
   result = (name, kind, kindStr, sym, mut, (isOpt or val != nil), val)
+
+proc p*(name: string, kind: TypeKind, val: Value = nil,
+              sym: Sym = nil; mut: bool = false,
+              isOpt: bool = false, kindStr = ""): TempParamDef {.inline.} =
+  ## Create a new parameter definition
+  result = (name, kind, kindStr, sym, mut, (isOpt or val != nil), val)

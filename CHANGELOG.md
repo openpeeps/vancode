@@ -1,5 +1,28 @@
 # v0.2.0 - 2026-07-08
 
+- **NEW:** `opcEqS` opcode for string equality (`==`/`!=`). Falls through to `addOp(oc)`
+  in `parseChunk`. JIT compiler dispatches via `jitBridgeEqStr` bridge call.
+- **NEW:** `not` prefix operator now registered as a stdlib foreign proc `not(x: bool) -> bool`.
+  Previously was only handled as a built-in opcode (`opcInvB`) in the codegen prefix proc.
+- **NEW:** `is` / `isnot` infix operators — language-level value comparison. Lexer gains
+  `tkIs`/`tkIsNot` token kinds; parser recognizes them as infix operators (precedence 5,
+  equal to `==`). Registered as stdlib foreign procs with Nim implementations that
+  compare values at runtime by `TypeId`.
+- **FIX:** `opcConstrObj` no longer reads field keys from the eval stack. Keys are now
+  encoded as `uint16` string-table IDs in the bytecode after the count argument, stored
+  in `CachedOps.strKeys` (`seq[seq[uint16]]`). The VM reads them directly from this
+  cached array. This fixes typed object constructors (`User(name: "X")`) where
+  `objectVal.keys` was always empty because `objConstr` only emitted values, not keys.
+- **CHANGE:** `CachedOps` gains a `strKeys: seq[seq[uint16]]` field parallel to the
+  other opcode arrays. Each entry holds the field-key string IDs for `opcConstrObj`
+  (empty for all other opcodes).
+- **CHANGE:** `genObjectStorage` no longer emits `opcPushS` for each field key; keys
+  are emitted inline after `opcConstrObj`'s count argument.
+- **CHANGE:** `objConstr` now emits field-key string IDs after the `opcConstrObj` count.
+- **CHANGE:** `jitBridgeConstrObj` bridge function simplified to positional-only (no
+  key-value pair detection), matching the JIT path that never pushed keys.
+- **FIX:** `parseChunk` sanity check now includes `strKeys` length in the assertion.
+
 - **NEW:** `tyProc`/`ProcRef`/`ttyProc` — proc reference type system. New `opcPushProc`
   opcode pushes a proc reference onto the stack, `opcCallI` calls a proc by reference
   from the stack. Proc references carry `(procId, procScript)` for cross-module dispatch.

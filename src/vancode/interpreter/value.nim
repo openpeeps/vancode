@@ -10,7 +10,7 @@
 #          Made by Humans from OpenPeeps
 #          https://github.com/openpeeps/vancode
 
-import std/[strutils, json]
+import std/[strutils]
 import pkg/openparser/json
 
 ## This module defines the Value type, which represents a value in the
@@ -135,7 +135,8 @@ proc dumpHook*(s: var string, val: Value) =
   of tyBool: s.add($val.boolVal)
   of tyInt: s.add($val.intVal)
   of tyFloat: s.add($val.floatVal)
-  of tyString: s.add(val.stringVal[])
+  of tyString:
+    s.add("\"" & val.stringVal[] & "\"")
   of tyJsonStorage: 
     dumpHook(s, val.jsonVal)
   of tyArrayObject:
@@ -156,8 +157,23 @@ proc dumpHook*(s: var string, val: Value) =
         s.add("pointer<nil>")
       else:
         s.add("pointer<0x" & $cast[uint](val.objectVal.foreign.data) & " at " & val.objectVal.foreign.tag & ">")
-    else: s.add("")
+    else:
+      s.add("{")
+      for i, f in val.objectVal.fields:
+        if i > 0: s.add(", ")
+        s.add(val.objectVal.keys[i])
+        s.add(": ")
+        case f.typeId
+        of tyInt: s.add($f.intVal)
+        of tyBool: s.add($f.boolVal)
+        of tyFloat: s.add($f.floatVal)
+        of tyNil: s.add("null")
+        else: s.dumpHook(f.refVal)
+      s.add("}")
   else: s.add("<object>")
+
+proc toJsonStr*(v: Value): string =
+  toJson(v)
 
 proc `$`*(value: Value): string =
   ## Returns a value's string representation.

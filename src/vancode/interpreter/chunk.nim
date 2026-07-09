@@ -85,6 +85,7 @@ type
     opcLessI = "lessI"            ## int less than
     opcGreaterI = "greaterI"      ## int greater than
     opcEqF = "eqF"                ## equal floats
+    opcEqS = "eqS"                ## string equality
     opcLessF = "lessF"            ## float less than
     opcGreaterF = "greaterF"      ## float greater than
 
@@ -100,8 +101,6 @@ type
     opcReturnVoid = "returnVoid"  ## return void from proc
 
     opcImportModule = "importModule"  ## import a module
-    opcImportModuleAlias = "importModuleAlias"  ## import a module with an alias
-    opcImportFromModule = "importFromModule"  ## import a symbol from a module
 
     opcHalt = "halt"              ## halt the VM
 

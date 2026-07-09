@@ -1065,6 +1065,13 @@ proc infix*(node: Node): Sym {.codegen.} =
       of "&":
         gen.chunk.emit(opcConcatStr)
         result = gen.module.sym"string"
+      of "==":
+        gen.chunk.emit(opcEqS)
+        result = gen.module.sym"bool"
+      of "!=":
+        gen.chunk.emit(opcEqS)
+        gen.chunk.emit(opcInvB)
+        result = gen.module.sym"bool"
       else: noBuiltin = true
     else: noBuiltin = true # no optimized operators for given type
     if noBuiltin:
@@ -1206,8 +1213,11 @@ proc objConstr*(node: Node, ty: Sym, constructFromIdent = false): Sym {.codegen.
       explicitFields[fname] = f[1]
 
   # OrderedTable preserves declaration order, so this is deterministic.
-  var emittedCount = 0
+  var
+    emittedCount = 0
+    keyIds: seq[uint16]
   for k, field in result.objectFields:
+    keyIds.add(gen.chunk.getString(k))
     if explicitFields.hasKey(k):
       let valTy = gen.genExpr(explicitFields[k])
       if not unwrapType(valTy).sameType(field.ty):
@@ -1220,6 +1230,8 @@ proc objConstr*(node: Node, ty: Sym, constructFromIdent = false): Sym {.codegen.
 
   gen.chunk.emit(opcConstrObj)
   gen.chunk.emit(uint16(emittedCount))
+  for kid in keyIds:
+    gen.chunk.emit(kid)
 
 proc call*(node: Node): Sym {.codegen.} =
   ## Generates code for an nkCall (proc call or object constructor).
@@ -2204,15 +2216,14 @@ proc genObjectStorage*(node: Node, isInstantiation = false): Sym {.codegen.} =
   # Generate code for an object storage. This creates an anonymous object type
   # with the given fields, and emits code to construct it.
   result = newType(ttyObject, name = nil, impl = node)
+  var keyIds: seq[uint16]
   for n in node.children:
     let key =
       if n[0].kind == nkIdent: n[0].ident
       elif n[0].kind == nkString: n[0].stringVal
       else: n[0].error("Invalid object field key: " & $n[0].kind); ""
 
-    # push the key
-    gen.chunk.emit(opcPushS)
-    gen.chunk.emit(gen.chunk.getString(key))
+    keyIds.add(gen.chunk.getString(key))
     
     # push the field's value
     let valTy = gen.genExpr(n[1])
@@ -2226,6 +2237,8 @@ proc genObjectStorage*(node: Node, isInstantiation = false): Sym {.codegen.} =
 
   gen.chunk.emit(opcConstrObj)
   gen.chunk.emit(uint16(result.objectFields.len))
+  for kid in keyIds:
+    gen.chunk.emit(kid)
 
 proc genObject*(node: Node, isInstantiation = false): Sym {.codegen.} =
   # Process an object declaration, and add the new type into the current

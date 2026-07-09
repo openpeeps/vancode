@@ -32,7 +32,7 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
                    opcAddI, opcSubI, opcMultI, opcDivI, opcNegI,
                    opcAddF, opcSubF, opcMultF, opcDivF, opcNegF,
                    opcEqI, opcLessI, opcGreaterI,
-                   opcEqB, opcEqF, opcLessF, opcGreaterF,
+                   opcEqB, opcEqF, opcEqS, opcLessF, opcGreaterF,
                    opcInvB, opcDiscard,
                    opcJumpFwd, opcJumpFwdF, opcJumpFwdT, opcJumpBack,
                     opcReturnVal, opcReturnVoid, opcHalt,
@@ -170,7 +170,7 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
           if simStack.len >= 1: simStack.setLen(simStack.len - 1)
         elif simStack.len >= 2: simStack.setLen(simStack.len - 2)
         simStack.add(tyBool)
-      of opcEqB, opcEqF, opcLessF, opcGreaterF:
+      of opcEqB, opcEqF, opcEqS, opcLessF, opcGreaterF:
         if simStack.len >= 2: simStack.setLen(simStack.len - 2)
         simStack.add(tyBool)
       of opcDiscard:
@@ -655,6 +655,17 @@ when defined(vancodeJit) or defined(vancodeJitGcc):
         var concatArgs: array[2, ptr gcc_jit_rvalue] = [aStr, bStr]
         let concatResult = callThroughPtr(ctx, nil, concatFnRval, 2.cint, addr concatArgs[0])
         pushInt(stackI, concatResult, spRval)
+        term()
+      of opcEqS:
+        let bStr = popInt(stackI, spRval)
+        let aStr = popInt(stackI, spRval)
+        let eqStrParamTypes = [i64Type, i64Type]
+        let eqStrFnType = gcc_jit_context_new_function_ptr_type(ctx, nil, i64Type, 2, addr eqStrParamTypes[0], 0)
+        let eqStrAddr = gcc_jit_context_new_rvalue_from_ptr(ctx, voidPtrType, jitBridgeEqStr)
+        let eqStrFnRval = gcc_jit_context_new_cast(ctx, nil, eqStrAddr, eqStrFnType)
+        var eqStrArgs: array[2, ptr gcc_jit_rvalue] = [aStr, bStr]
+        let eqStrResult = callThroughPtr(ctx, nil, eqStrFnRval, 2.cint, addr eqStrArgs[0])
+        pushInt(stackI, eqStrResult, spRval)
         term()
       of opcPushProc:
         let sid = cached.getArg1Int(pc)

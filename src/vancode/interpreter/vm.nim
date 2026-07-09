@@ -90,6 +90,7 @@ type
     flags*: seq[int16]
     byteOffsets*: seq[int]
     jumpTargets*: seq[int]
+    strKeys*: seq[seq[uint16]]
 
   Vm* {.acyclic.} = ref object
     ## The main VM object that holds the execution state and caches
@@ -226,6 +227,7 @@ proc parseChunk(currentChunk: Chunk): CachedOps =
     flags: seq[int16]
     byteOffsets: seq[int]
     jumpTargets: seq[int]
+    strKeys: seq[seq[uint16]]
 
   template addOp(oc: Opcode, a1: int64 = 0'i64, a2: int64 = 0'i64,
               k1: ArgKind = akNone, k2: ArgKind = akNone) =
@@ -235,6 +237,7 @@ proc parseChunk(currentChunk: Chunk): CachedOps =
     flags.add(packFlags(k1, k2))
     byteOffsets.add(opByteOffset)
     jumpTargets.add(-1)
+    strKeys.add(@[])
 
   while cast[int](pc) - base < codeLen:
     let opByteOffset = cast[int](pc) - base
@@ -279,9 +282,16 @@ proc parseChunk(currentChunk: Chunk): CachedOps =
       of opcCallI:
         let argc = readArg[uint8](pc).int
         addOp(oc, argc.int64, 0, akInt)
-      of opcConstrArray, opcConstrObj:
+      of opcConstrArray:
         let cnt = readArg[uint16](pc).int
         addOp(oc, cnt.int64, 0, akInt)
+      of opcConstrObj:
+        let cnt = readArg[uint16](pc).int
+        addOp(oc, cnt.int64, 0, akInt)
+        var keys: seq[uint16]
+        for i in 0..<cnt:
+          keys.add(readArg[uint16](pc))
+        strKeys[^1] = keys
       of opcDiscard:
         let n = readArg[uint8](pc).int
         addOp(oc, n.int64, 0, akInt)
@@ -328,9 +338,9 @@ proc parseChunk(currentChunk: Chunk): CachedOps =
     else: discard # no jump target
 
   # sanity check — ensure all arrays are same length
-  if opcodes.len != arg1.len or opcodes.len != arg2.len or opcodes.len != flags.len or opcodes.len != byteOffsets.len or opcodes.len != jumpTargets.len:
+  if opcodes.len != arg1.len or opcodes.len != arg2.len or opcodes.len != flags.len or opcodes.len != byteOffsets.len or opcodes.len != jumpTargets.len or opcodes.len != strKeys.len:
     raise newException(IndexDefect, "parseChunk: cached ops arrays out-of-sync: opcodes=" & $opcodes.len &
-            " arg1=" & $arg1.len & " arg2=" & $arg2.len & " flags=" & $flags.len & " off=" & $byteOffsets.len & " jmp=" & $jumpTargets.len)
+            " arg1=" & $arg1.len & " arg2=" & $arg2.len & " flags=" & $flags.len & " off=" & $byteOffsets.len & " jmp=" & $jumpTargets.len & " keys=" & $strKeys.len)
 
   result = CachedOps(
     opcodes: opcodes,
@@ -338,7 +348,8 @@ proc parseChunk(currentChunk: Chunk): CachedOps =
     arg2: arg2,
     flags: flags,
     byteOffsets: byteOffsets,
-    jumpTargets: jumpTargets
+    jumpTargets: jumpTargets,
+    strKeys: strKeys
   )
 
 #
@@ -663,32 +674,16 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         let count = co.getArg1Int(pcIdx)
         var obj = initObject(15, count)
         if count > 0:
-          let needPairs = count * 2
-          # dynamic object storage => stack has (key, value) pairs
-          var canUsePairs = stack.len >= needPairs
-          if canUsePairs:
-            let vals = stack{^needPairs}
-            for i in 0 ..< count:
-              if vals[2 * i].typeId != tyString:
-                canUsePairs = false
-                break
-            if canUsePairs:
-              for i in 0 ..< count:
-                let fieldKey = vals[2 * i]
-                let fieldValue = vals[2 * i + 1]
-                obj.objectVal.keys.add(fieldKey.stringVal[])
-                obj.objectVal.fields[i] = fieldValue.toStorage
-              stack.setLen(stack.len - needPairs)
-          # typed object constructor => stack has values only
-          if not canUsePairs:
-            if stack.len < count:
-              raise newException(IndexDefect,
-                "opcConstrObj stack underflow: need " & $count &
-                " values (or " & $needPairs & " key/value items), have " & $stack.len)
-            let vals = stack{^count}
-            for i in 0 ..< count:
-              obj.objectVal.fields[i] = vals[i].toStorage
-            stack.setLen(stack.len - count)
+          if stack.len < count:
+            raise newException(IndexDefect,
+              "opcConstrObj stack underflow: need " & $count & " values, have " & $stack.len)
+          let keys = co.strKeys[pcIdx]
+          let vals = stack{^count}
+          for i in 0 ..< count:
+            if i < keys.len:
+              obj.objectVal.keys.add(currentChunk.strings[keys[i]])
+            obj.objectVal.fields[i] = vals[i].toStorage
+          stack.setLen(stack.len - count)
         stack.push(obj)
       
       of opcGetF:
@@ -799,6 +794,10 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           of opcGreaterF:
             stack.push(initValue(av > bv))
           else: discard
+      of opcEqS:
+        let b = stack.pop()
+        let a = stack.pop()
+        stack.push(initValue(a.stringVal[] == b.stringVal[]))
       #
       # Modules
       #
@@ -817,7 +816,6 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           display(span("import:", fgGreen), span(chunkPath), span($currentChunk))
         
         continue # jump to new chunk
-      of opcImportModuleAlias, opcImportFromModule: discard # todo
       #
       # Control Flow
       #
