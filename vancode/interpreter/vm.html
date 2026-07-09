@@ -67,7 +67,8 @@
   arg2*: seq[int64]
   flags*: seq[int16]
   byteOffsets*: seq[int]
-  jumpTargets*: seq[int]">CachedOps</a></li>
+  jumpTargets*: seq[int]
+  strKeys*: seq[seq[uint16]]">CachedOps</a></li>
 <li><a class="reference" href="#CallFrame" title="CallFrame = tuple[currentChunk: Chunk, cachedOps: CachedOps, pcIdx: int,
                   stackBottom: int, script: Script]">CallFrame</a></li>
 <li><a class="reference" href="#Coroutine" title="Coroutine {.acyclic.} = ref object
@@ -104,7 +105,7 @@
   enableHotCodeDetection*: bool
   hotProcThreshold*: int = 10
   hotChunkThreshold*: int = 100
-  hotLoopThreshold*: int = 10000">VMPreferences</a></li>
+  hotLoopThreshold*: int = 500">VMPreferences</a></li>
 
     </ul>
   </details>
@@ -208,7 +209,8 @@
   <span class="Identifier">arg2</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">int64</span><span class="Other">]</span>
   <span class="Identifier">flags</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">int16</span><span class="Other">]</span>
   <span class="Identifier">byteOffsets</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">int</span><span class="Other">]</span>
-  <span class="Identifier">jumpTargets</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">int</span><span class="Other">]</span></pre></dt>
+  <span class="Identifier">jumpTargets</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">int</span><span class="Other">]</span>
+  <span class="Identifier">strKeys</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">uint16</span><span class="Other">]</span><span class="Other">]</span></pre></dt>
   <dd>
     
     
@@ -294,7 +296,7 @@
   <span class="Identifier">enableHotCodeDetection</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>
   <span class="Identifier">hotProcThreshold</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">10</span>
   <span class="Identifier">hotChunkThreshold</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">100</span>
-  <span class="Identifier">hotLoopThreshold</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">10000</span></pre></dt>
+  <span class="Identifier">hotLoopThreshold</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">500</span></pre></dt>
   <dd>
     
     Preferences for configuring the VM's behavior. These can be set when creating a new VM instance
@@ -466,7 +468,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-08 12:00:45 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-09 14:54:31 UTC</small>
       </div>
     </div>
   </div>

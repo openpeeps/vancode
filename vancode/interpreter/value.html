@@ -96,7 +96,7 @@
   of tyJsonStorage:
     jsonVal*: JsonNode
   of tyProc:
-    procVal*: ProcRef
+    procVal*: ref ProcRef
   else:
     objectVal*: Object">Value</a></li>
 <li><a class="reference" href="#ValueStorage" title="ValueStorage = object
@@ -174,6 +174,10 @@
 <li><a class="reference" href="#initValue%2CJsonNode" title="initValue(v: JsonNode): Value">initValue(v: JsonNode): Value</a></li>
 <li><a class="reference" href="#initValue%2Cstring" title="initValue(v: string): Value">initValue(v: string): Value</a></li>
 <li><a class="reference" href="#initValue%2CTypeId%2CT" title="initValue[T: tuple | object | ref](id: TypeId; value: T): Value">initValue[T: tuple | object | ref](id: TypeId; value: T): Value</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">toJsonStr
+  <li><a class="reference" href="#toJsonStr%2CValue" title="toJsonStr(v: Value): string">toJsonStr(v: Value): string</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">toStorage
@@ -301,7 +305,7 @@
   <span class="Keyword">of</span> <span class="Identifier">tyJsonStorage</span><span class="Other">:</span>
     <span class="Identifier">jsonVal</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">JsonNode</span>
   <span class="Keyword">of</span> <span class="Identifier">tyProc</span><span class="Other">:</span>
-    <span class="Identifier">procVal</span><span class="Operator">*</span><span class="Other">:</span> <a href="#ProcRef"><span class="Identifier">ProcRef</span></a>
+    <span class="Identifier">procVal</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">ref</span> <a href="#ProcRef"><span class="Identifier">ProcRef</span></a>
   <span class="Keyword">else</span><span class="Other">:</span>
     <span class="Identifier">objectVal</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Object"><span class="Identifier">Object</span></a></pre></dt>
   <dd>
@@ -590,6 +594,17 @@
 </div>
 
 </div>
+<div id="toJsonStr-procs-all">
+  <div id="toJsonStr,Value">
+  <dt><pre><span class="Keyword">proc</span> <a href="#toJsonStr%2CValue"><span class="Identifier">toJsonStr</span></a><span class="Other">(</span><span class="Identifier">v</span><span class="Other">:</span> <a href="#Value"><span class="Identifier">Value</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
 <div id="toStorage-procs-all">
   <div id="toStorage,Value">
   <dt><pre><span class="Keyword">proc</span> <a href="#toStorage%2CValue"><span class="Identifier">toStorage</span></a><span class="Other">(</span><span class="Identifier">v</span><span class="Other">:</span> <a href="#Value"><span class="Identifier">Value</span></a><span class="Other">)</span><span class="Other">:</span> <a href="#ValueStorage"><span class="Identifier">ValueStorage</span></a> {.<span class="Identifier">inline</span><span class="Other">,</span> <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
@@ -636,7 +651,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-08 12:00:44 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-09 14:54:30 UTC</small>
       </div>
     </div>
   </div>

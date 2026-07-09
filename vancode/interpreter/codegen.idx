@@ -34,21 +34,21 @@ nim	resolveGenerics	vancode/interpreter/codegen.html#resolveGenerics,CodeGen,Sym
 nim	callProc	vancode/interpreter/codegen.html#callProc,CodeGen,Sym,seq[Sym],Node	proc callProc(gen: CodeGen; procSym: Sym; argTypes: seq[Sym]; errorNode: Node = nil): Sym		907
 nim	prefix	vancode/interpreter/codegen.html#prefix,CodeGen,Node	proc prefix(gen: CodeGen; node: Node): Sym		966
 nim	infix	vancode/interpreter/codegen.html#infix,CodeGen,Node	proc infix(gen: CodeGen; node: Node): Sym		995
-nim	objConstr	vancode/interpreter/codegen.html#objConstr,CodeGen,Node,Sym	proc objConstr(gen: CodeGen; node: Node; ty: Sym; constructFromIdent = false): Sym		1183
-nim	call	vancode/interpreter/codegen.html#call,CodeGen,Node	proc call(gen: CodeGen; node: Node): Sym		1224
-nim	genArrayAccess	vancode/interpreter/codegen.html#genArrayAccess,CodeGen,Node	proc genArrayAccess(gen: CodeGen; node: Node): Sym		1333
-nim	genIf	vancode/interpreter/codegen.html#genIf,CodeGen,Node,bool	proc genIf(gen: CodeGen; node: Node; isStmt: bool): Sym		1378
-nim	collectParams	vancode/interpreter/codegen.html#collectParams,CodeGen,Node,Option[seq[Sym]]	proc collectParams(gen: CodeGen; formalParams: Node;\n              genericParams: Option[seq[Sym]] = none(seq[Sym])): seq[ProcParam]		1467
-nim	collectGenericParams	vancode/interpreter/codegen.html#collectGenericParams,CodeGen,Node	proc collectGenericParams(gen: CodeGen; genericParams: Node): Option[seq[Sym]]		1531
-nim	tryElideWhile	vancode/interpreter/codegen.html#tryElideWhile,CodeGen,Node	proc tryElideWhile(gen: CodeGen; node: Node): bool		1723
-nim	genWhile	vancode/interpreter/codegen.html#genWhile,CodeGen,Node	proc genWhile(gen: CodeGen; node: Node)		1876
-nim	genBreak	vancode/interpreter/codegen.html#genBreak,CodeGen,Node	proc genBreak(gen: CodeGen; node: Node)		2076
-nim	genDiscard	vancode/interpreter/codegen.html#genDiscard,CodeGen,Node	proc genDiscard(gen: CodeGen; node: Node)		2085
-nim	genContinue	vancode/interpreter/codegen.html#genContinue,CodeGen,Node	proc genContinue(gen: CodeGen; node: Node)		2093
-nim	genReturn	vancode/interpreter/codegen.html#genReturn,CodeGen,Node	proc genReturn(gen: CodeGen; node: Node)		2102
-nim	genYield	vancode/interpreter/codegen.html#genYield,CodeGen,Node	proc genYield(gen: CodeGen; node: Node)		2130
-nim	genVar	vancode/interpreter/codegen.html#genVar,CodeGen,Node	proc genVar(gen: CodeGen; node: Node)		2337
-nim	genImport	vancode/interpreter/codegen.html#genImport,CodeGen,Node	proc genImport(gen: CodeGen; node: Node)		2399
-nim	genComment	vancode/interpreter/codegen.html#genComment,CodeGen,Node	proc genComment(gen: CodeGen; node: Node)		2522
-nim	addIterator	vancode/interpreter/codegen.html#addIterator,Script,Module,string	proc addIterator(script: Script; module: Module; name: string)		2597
-nim	initCompiler	vancode/interpreter/codegen.html#initCompiler,Script,Module,Chunk,Packager,StandardLibrary,ParserCallback,Option[string],CompilationPolicy	proc initCompiler(script: Script; module: Module; chunk: Chunk; pkgr: Packager;\n             stdlibs: StandardLibrary; parserCallback: ParserCallback = nil;\n             triggerFromPath: Option[string] = none(string);\n             policy: CompilationPolicy = CompilationPolicy()): CodeGen		2603
+nim	objConstr	vancode/interpreter/codegen.html#objConstr,CodeGen,Node,Sym	proc objConstr(gen: CodeGen; node: Node; ty: Sym; constructFromIdent = false): Sym		1190
+nim	call	vancode/interpreter/codegen.html#call,CodeGen,Node	proc call(gen: CodeGen; node: Node): Sym		1236
+nim	genArrayAccess	vancode/interpreter/codegen.html#genArrayAccess,CodeGen,Node	proc genArrayAccess(gen: CodeGen; node: Node): Sym		1345
+nim	genIf	vancode/interpreter/codegen.html#genIf,CodeGen,Node,bool	proc genIf(gen: CodeGen; node: Node; isStmt: bool): Sym		1390
+nim	collectParams	vancode/interpreter/codegen.html#collectParams,CodeGen,Node,Option[seq[Sym]]	proc collectParams(gen: CodeGen; formalParams: Node;\n              genericParams: Option[seq[Sym]] = none(seq[Sym])): seq[ProcParam]		1479
+nim	collectGenericParams	vancode/interpreter/codegen.html#collectGenericParams,CodeGen,Node	proc collectGenericParams(gen: CodeGen; genericParams: Node): Option[seq[Sym]]		1543
+nim	tryElideWhile	vancode/interpreter/codegen.html#tryElideWhile,CodeGen,Node	proc tryElideWhile(gen: CodeGen; node: Node): bool		1735
+nim	genWhile	vancode/interpreter/codegen.html#genWhile,CodeGen,Node	proc genWhile(gen: CodeGen; node: Node)		1888
+nim	genBreak	vancode/interpreter/codegen.html#genBreak,CodeGen,Node	proc genBreak(gen: CodeGen; node: Node)		2088
+nim	genDiscard	vancode/interpreter/codegen.html#genDiscard,CodeGen,Node	proc genDiscard(gen: CodeGen; node: Node)		2097
+nim	genContinue	vancode/interpreter/codegen.html#genContinue,CodeGen,Node	proc genContinue(gen: CodeGen; node: Node)		2105
+nim	genReturn	vancode/interpreter/codegen.html#genReturn,CodeGen,Node	proc genReturn(gen: CodeGen; node: Node)		2114
+nim	genYield	vancode/interpreter/codegen.html#genYield,CodeGen,Node	proc genYield(gen: CodeGen; node: Node)		2142
+nim	genVar	vancode/interpreter/codegen.html#genVar,CodeGen,Node	proc genVar(gen: CodeGen; node: Node)		2350
+nim	genImport	vancode/interpreter/codegen.html#genImport,CodeGen,Node	proc genImport(gen: CodeGen; node: Node)		2412
+nim	genComment	vancode/interpreter/codegen.html#genComment,CodeGen,Node	proc genComment(gen: CodeGen; node: Node)		2535
+nim	addIterator	vancode/interpreter/codegen.html#addIterator,Script,Module,string	proc addIterator(script: Script; module: Module; name: string)		2610
+nim	initCompiler	vancode/interpreter/codegen.html#initCompiler,Script,Module,Chunk,Packager,StandardLibrary,ParserCallback,Option[string],CompilationPolicy	proc initCompiler(script: Script; module: Module; chunk: Chunk; pkgr: Packager;\n             stdlibs: StandardLibrary; parserCallback: ParserCallback = nil;\n             triggerFromPath: Option[string] = none(string);\n             policy: CompilationPolicy = CompilationPolicy()): CodeGen		2616

@@ -69,6 +69,8 @@
   col*: int                  ## the current column number, used when emitting bytecode
   hotLoopCount*: int         ## backward jump counter for hot loop detection
   hotLoopCompiled*: bool     ## whether this chunk has been attempted for JIT compilation
+  hotLoopQueued*: bool       ## whether JIT compilation has been queued for this chunk
+  hotLoopOwner*: Proc        ## cached owning Proc for this chunk (used by async JIT)
   strings*: seq[string] = [] ## seq of strings used in this chunk (for string literals, global names, etc.)">Chunk</a></li>
 <li><a class="reference" href="#LineInfo" title="LineInfo = tuple[file: string, ln, col: int, runLength: int]">LineInfo</a></li>
 <li><a class="reference" href="#Opcode" title="Opcode {..} = enum
@@ -110,6 +112,7 @@
   opcLessI = &quot;lessI&quot;,       ## int less than
   opcGreaterI = &quot;greaterI&quot;, ## int greater than
   opcEqF = &quot;eqF&quot;,           ## equal floats
+  opcEqS = &quot;eqS&quot;,           ## string equality
   opcLessF = &quot;lessF&quot;,       ## float less than
   opcGreaterF = &quot;greaterF&quot;, ## float greater than
   opcJumpFwd = &quot;jumpFwd&quot;,   ## jump forward
@@ -122,8 +125,6 @@
   opcReturnVal = &quot;returnVal&quot;, ## return value from proc
   opcReturnVoid = &quot;returnVoid&quot;, ## return void from proc
   opcImportModule = &quot;importModule&quot;, ## import a module
-  opcImportModuleAlias = &quot;importModuleAlias&quot;, ## import a module with an alias
-  opcImportFromModule = &quot;importFromModule&quot;, ## import a symbol from a module
   opcHalt = &quot;halt&quot;,         ## halt the VM
   opcCreateCoro = &quot;createCoro&quot;, ## create a coroutine from a proc
   opcCoroResume = &quot;coroResume&quot;, ## resume a coroutine
@@ -291,6 +292,8 @@
   <span class="Identifier">col</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>                  <span class="Comment">## the current column number, used when emitting bytecode</span>
   <span class="Identifier">hotLoopCount</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>         <span class="Comment">## backward jump counter for hot loop detection</span>
   <span class="Identifier">hotLoopCompiled</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>     <span class="Comment">## whether this chunk has been attempted for JIT compilation</span>
+  <span class="Identifier">hotLoopQueued</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>       <span class="Comment">## whether JIT compilation has been queued for this chunk</span>
+  <span class="Identifier">hotLoopOwner</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Proc"><span class="Identifier">Proc</span></a>        <span class="Comment">## cached owning Proc for this chunk (used by async JIT)</span>
   <span class="Identifier">strings</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span> <span class="Other">=</span> <span class="Other">[</span><span class="Other">]</span> <span class="Comment">## seq of strings used in this chunk (for string literals, global names, etc.)</span></pre></dt>
   <dd>
     
@@ -346,6 +349,7 @@
   <span class="Identifier">opcLessI</span> <span class="Other">=</span> <span class="StringLit">&quot;lessI&quot;</span><span class="Other">,</span>       <span class="Comment">## int less than</span>
   <span class="Identifier">opcGreaterI</span> <span class="Other">=</span> <span class="StringLit">&quot;greaterI&quot;</span><span class="Other">,</span> <span class="Comment">## int greater than</span>
   <span class="Identifier">opcEqF</span> <span class="Other">=</span> <span class="StringLit">&quot;eqF&quot;</span><span class="Other">,</span>           <span class="Comment">## equal floats</span>
+  <span class="Identifier">opcEqS</span> <span class="Other">=</span> <span class="StringLit">&quot;eqS&quot;</span><span class="Other">,</span>           <span class="Comment">## string equality</span>
   <span class="Identifier">opcLessF</span> <span class="Other">=</span> <span class="StringLit">&quot;lessF&quot;</span><span class="Other">,</span>       <span class="Comment">## float less than</span>
   <span class="Identifier">opcGreaterF</span> <span class="Other">=</span> <span class="StringLit">&quot;greaterF&quot;</span><span class="Other">,</span> <span class="Comment">## float greater than</span>
   <span class="Identifier">opcJumpFwd</span> <span class="Other">=</span> <span class="StringLit">&quot;jumpFwd&quot;</span><span class="Other">,</span>   <span class="Comment">## jump forward</span>
@@ -358,8 +362,6 @@
   <span class="Identifier">opcReturnVal</span> <span class="Other">=</span> <span class="StringLit">&quot;returnVal&quot;</span><span class="Other">,</span> <span class="Comment">## return value from proc</span>
   <span class="Identifier">opcReturnVoid</span> <span class="Other">=</span> <span class="StringLit">&quot;returnVoid&quot;</span><span class="Other">,</span> <span class="Comment">## return void from proc</span>
   <span class="Identifier">opcImportModule</span> <span class="Other">=</span> <span class="StringLit">&quot;importModule&quot;</span><span class="Other">,</span> <span class="Comment">## import a module</span>
-  <span class="Identifier">opcImportModuleAlias</span> <span class="Other">=</span> <span class="StringLit">&quot;importModuleAlias&quot;</span><span class="Other">,</span> <span class="Comment">## import a module with an alias</span>
-  <span class="Identifier">opcImportFromModule</span> <span class="Other">=</span> <span class="StringLit">&quot;importFromModule&quot;</span><span class="Other">,</span> <span class="Comment">## import a symbol from a module</span>
   <span class="Identifier">opcHalt</span> <span class="Other">=</span> <span class="StringLit">&quot;halt&quot;</span><span class="Other">,</span>         <span class="Comment">## halt the VM</span>
   <span class="Identifier">opcCreateCoro</span> <span class="Other">=</span> <span class="StringLit">&quot;createCoro&quot;</span><span class="Other">,</span> <span class="Comment">## create a coroutine from a proc</span>
   <span class="Identifier">opcCoroResume</span> <span class="Other">=</span> <span class="StringLit">&quot;coroResume&quot;</span><span class="Other">,</span> <span class="Comment">## resume a coroutine</span>
@@ -746,7 +748,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-08 12:00:44 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-09 14:54:30 UTC</small>
       </div>
     </div>
   </div>
