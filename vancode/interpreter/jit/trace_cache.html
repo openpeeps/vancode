@@ -62,12 +62,13 @@
     <summary><a class="reference reference-toplevel" href="#7" id="57">Types</a></summary>
     <ul class="simple simple-toc-section">
       <li><a class="reference" href="#TraceCache" title="TraceCache = ref object
-  entries*: Table[int, TraceEntry]">TraceCache</a></li>
+  entries*: Table[(int, pointer), TraceEntry]">TraceCache</a></li>
 <li><a class="reference" href="#TraceEntry" title="TraceEntry = object
   code*: pointer
   codeSize*: int
   anchorPc*: int
-  numLocals*: int">TraceEntry</a></li>
+  numLocals*: int
+  chunk*: pointer">TraceEntry</a></li>
 
     </ul>
   </details>
@@ -81,11 +82,11 @@
 
 </ul>
 <ul class="simple nested-toc-section">get
-  <li><a class="reference" href="#get%2CTraceCache%2Cint" title="get(cache: TraceCache; pc: int): TraceEntry">get(cache: TraceCache; pc: int): TraceEntry</a></li>
+  <li><a class="reference" href="#get%2CTraceCache%2Cint%2Cpointer" title="get(cache: TraceCache; pc: int; chunk: pointer): TraceEntry">get(cache: TraceCache; pc: int; chunk: pointer): TraceEntry</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">have
-  <li><a class="reference" href="#have%2CTraceCache%2Cint" title="have(cache: TraceCache; pc: int): bool">have(cache: TraceCache; pc: int): bool</a></li>
+  <li><a class="reference" href="#have%2CTraceCache%2Cint%2Cpointer" title="have(cache: TraceCache; pc: int; chunk: pointer): bool">have(cache: TraceCache; pc: int; chunk: pointer): bool</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">newTraceCache
@@ -116,7 +117,7 @@
   <dl class="item">
     <div id="TraceCache">
   <dt><pre><a href="#TraceCache"><span class="Identifier">TraceCache</span></a> <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span>
-  <span class="Identifier">entries</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">int</span><span class="Other">,</span> <a href="#TraceEntry"><span class="Identifier">TraceEntry</span></a><span class="Other">]</span></pre></dt>
+  <span class="Identifier">entries</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Other">(</span><span class="Identifier">int</span><span class="Other">,</span> <span class="Identifier">pointer</span><span class="Other">)</span><span class="Other">,</span> <a href="#TraceEntry"><span class="Identifier">TraceEntry</span></a><span class="Other">]</span></pre></dt>
   <dd>
     
     
@@ -128,7 +129,8 @@
   <span class="Identifier">code</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">pointer</span>
   <span class="Identifier">codeSize</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">anchorPc</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
-  <span class="Identifier">numLocals</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
+  <span class="Identifier">numLocals</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">chunk</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">pointer</span></pre></dt>
   <dd>
     
     
@@ -154,9 +156,9 @@
 
 </div>
 <div id="get-procs-all">
-  <div id="get,TraceCache,int">
-  <dt><pre><span class="Keyword">proc</span> <a href="#get%2CTraceCache%2Cint"><span class="Identifier">get</span></a><span class="Other">(</span><span class="Identifier">cache</span><span class="Other">:</span> <a href="#TraceCache"><span class="Identifier">TraceCache</span></a><span class="Other">;</span> <span class="Identifier">pc</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <a href="#TraceEntry"><span class="Identifier">TraceEntry</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
-    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <div id="get,TraceCache,int,pointer">
+  <dt><pre><span class="Keyword">proc</span> <a href="#get%2CTraceCache%2Cint%2Cpointer"><span class="Identifier">get</span></a><span class="Other">(</span><span class="Identifier">cache</span><span class="Other">:</span> <a href="#TraceCache"><span class="Identifier">TraceCache</span></a><span class="Other">;</span> <span class="Identifier">pc</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span> <span class="Identifier">chunk</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span><span class="Other">:</span> <a href="#TraceEntry"><span class="Identifier">TraceEntry</span></a> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     
@@ -166,8 +168,9 @@
 
 </div>
 <div id="have-procs-all">
-  <div id="have,TraceCache,int">
-  <dt><pre><span class="Keyword">proc</span> <a href="#have%2CTraceCache%2Cint"><span class="Identifier">have</span></a><span class="Other">(</span><span class="Identifier">cache</span><span class="Other">:</span> <a href="#TraceCache"><span class="Identifier">TraceCache</span></a><span class="Other">;</span> <span class="Identifier">pc</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <div id="have,TraceCache,int,pointer">
+  <dt><pre><span class="Keyword">proc</span> <a href="#have%2CTraceCache%2Cint%2Cpointer"><span class="Identifier">have</span></a><span class="Other">(</span><span class="Identifier">cache</span><span class="Other">:</span> <a href="#TraceCache"><span class="Identifier">TraceCache</span></a><span class="Other">;</span> <span class="Identifier">pc</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span> <span class="Identifier">chunk</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     
@@ -197,7 +200,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-11 08:55:13 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-11 09:33:21 UTC</small>
       </div>
     </div>
   </div>
