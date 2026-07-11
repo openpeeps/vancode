@@ -1,3 +1,8 @@
+## C FFI bindings to the DynASM assembler library. Exposes `dasm_init`,
+## `dasm_free`, `dasm_setupglobal`, `dasm_setup`, `dasm_growpc`, `dasm_link`,
+## and `dasm_encode`, plus all VanCode-specific emit actions (prologue, push,
+## pop, arithmetic, jumps, calls, etc.). Can be linked statically or via a
+## dynamic library controlled by `vancodeDynasmDynlib`.
 when defined(vancodeDynasmDynlib):
   const dynasmLib* {.strdefine.} = "libvancodejit.dylib"
   {.pragma: dynasm, importc, cdecl, dynlib: dynasmLib.}

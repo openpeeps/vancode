@@ -6,8 +6,8 @@
 # (c) 2025 George Lemon | MIT License
 #          Made by Humans from OpenPeeps
 #          https://github.com/openpeeps/vancode
-#
-# This module dispatches compileProc to the active JIT backend.
+## Dispatches `compileProc` to the active JIT backend. Currently routes to
+## `compiler_dynasm` for DynASM-based native code generation.
 
 import ../[chunk, vm, value]
 import ./compiler_dynasm

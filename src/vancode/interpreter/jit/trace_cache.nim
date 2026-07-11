@@ -1,4 +1,17 @@
+# VanCode - A fast, extensible bytecode generator and VM for building
+# Domain-Specific Languages (DSLs), or general-purpose programming language
+#
+# Powered by Nim.
+#
+# (c) 2025 George Lemon | MIT License
+#          Made by Humans from OpenPeeps
+#          https://github.com/openpeeps/vancode
+
+## Cache for compiled trace entries. Maps `(anchorPc, chunk)` pairs to their
+## native code buffer, enabling fast lookup and reuse of previously compiled
+## hot loop traces.
 import std/tables
+
 import ../chunk
 import ./trace_types
 

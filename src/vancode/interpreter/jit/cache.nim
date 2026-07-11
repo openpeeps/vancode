@@ -7,6 +7,9 @@
 #          Made by Humans from OpenPeeps
 #          https://github.com/openpeeps/vancode
 
+## Cache for compiled JIT procedures. Maps procedure names to their native code
+## entry points (`ForeignProc`), with a `getOrCompile` helper that lazily
+## compiles on first use.
 import std/tables
 import ../[chunk, vm, value]
 import ./compiler

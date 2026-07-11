@@ -7,8 +7,11 @@
 #          Made by Humans from OpenPeeps
 #          https://github.com/openpeeps/vancode
 
-import std/[locks, sysatomics, dynlib, tables]
+## Top-level JIT orchestration for VanCode. Provides automatic detection of
+## procedures with recursive-arithmetic patterns and compiles them iteratively
+## to native code. Coordinates the compiler, cache, and bridge subsystems.
 import pkg/threading/channels
+import std/tables
 import ../[chunk, vm, value]
 import ./compiler, ./cache, ./compiler_bridge, ./compiler_trace, ./trace_types, ./jit_mem, ./dynasm/wrapper
 

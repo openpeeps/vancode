@@ -1,7 +1,21 @@
-import ../[chunk, vm, value]
+# VanCode - A fast, extensible bytecode generator and VM for building
+# Domain-Specific Languages (DSLs), or general-purpose programming language
+#
+# Powered by Nim.
+#
+# (c) 2025 George Lemon | MIT License
+#          Made by Humans from OpenPeeps
+#          https://github.com/openpeeps/vancode
+
+## Trace-based JIT compiler for hot loops. Records instruction sequences during
+## execution and compiles them into native code via DynASM when a loop exceeds
+## the hotness threshold. Compiled traces are cached in the `TraceCache` for
+## reuse on subsequent iterations.
+import std/[tables, sysatomics]
+
 import ./trace_types, ./trace_cache, ./jit_mem
 import ./dynasm/wrapper
-import std/[tables, sysatomics]
+import ../[vm, value, chunk]
 
 const DASM_MAXSECTION = 1
 const maxCodeSize = 128 * 1024

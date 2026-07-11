@@ -10,12 +10,15 @@
 #          Made by Humans from OpenPeeps
 #          https://github.com/openpeeps/vancode
 
-## This module contains the code generation logic for VanCode. It takes the AST
-## produced by your parser and generates bytecode for it, which can then be executed
-## by the VM.
-## 
-## The code generator is designed to be modular and extensible, allowing you to easily
-## hook into the code generation process to add support for new language features.
+## Bytecode code generator for VanCode. Takes an AST produced by the parser and
+## emits bytecode for the VM. Supports global and local variables, procedures
+## (with parameters, return types, and exports), iterators, generic instantiation
+## with type inference, object/array constructors, infix and prefix operators
+## (built-in and proc-call fallback), control flow (for/while/if/block) with
+## break/continue flow blocks, overload resolution, module imports, field access
+## (get/set), compilation policy enforcement, and a standard library hook system.
+## The codegen is modular and extensible via parser callbacks and the `codegen`
+## macro for injecting line-information guards.
 
 import std/[macros, options, os, hashes,
             sequtils, strutils, tables, json]
@@ -117,10 +120,10 @@ type
       ## Compilation policy controlling which features are allowed
     # instantiationCache: Table[Hash, Sym]
 
-  ModuleLibrary = proc(script: Script, systemModule: Module): Module
+  ModuleLibrary* = proc(script: Script, systemModule: Module): Module
     # a procedure where we can add FFI procs and types to a module
-  
-  StandardLibrary = TableRef[string, ModuleLibrary]
+   
+  StandardLibrary* = TableRef[string, ModuleLibrary]
     # a table of standard library modules
 
 var codegenCache* = CodeGenCache()
@@ -2613,7 +2616,7 @@ proc addIterator*(script: Script, module: Module, name: string) =
   discard # todo
 
 proc initCompiler*(script: Script, module: Module,
-          chunk: Chunk, pkgr: Packager,
+          chunk: Chunk, pkgr: Packager = nil,
           stdlibs: StandardLibrary,
           parserCallback: ParserCallback = nil,
           triggerFromPath: Option[string] = none(string),

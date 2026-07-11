@@ -7,8 +7,12 @@
 #          Made by Humans from OpenPeeps
 #          https://github.com/openpeeps/vancode
 
-import ../[chunk, vm, value]
+## Bridge layer between the VM and JIT-compiled code. Maintains global tables
+## for fast proc/function pointer lookup (jitFnTable, jitProcTable), provides
+## the recompilation hook infrastructure, and exposes helper routines for the
+## DynASM-generated code to interact with the VM (globals, callbacks, etc.).
 import std/[tables, sysatomics, critbits, hashes]
+import ../[vm, value, chunk]
 
 var jitFnTable*: array[65536, pointer]
 var jitProcTable*: array[65536, pointer]

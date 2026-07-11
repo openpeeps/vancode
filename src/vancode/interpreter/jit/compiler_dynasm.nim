@@ -1,7 +1,21 @@
-import ../[chunk, vm, value]
+# VanCode - A fast, extensible bytecode generator and VM for building
+# Domain-Specific Languages (DSLs), or general-purpose programming language
+#
+# Powered by Nim.
+#
+# (c) 2025 George Lemon | MIT License
+#          Made by Humans from OpenPeeps
+#          https://github.com/openpeeps/vancode
+
+## DynASM-based JIT compiler for VanCode. Compiles individual procedures that
+## use a restricted subset of opcodes (arithmetic, locals, jumps, calls) into
+## native machine code via the DynASM assembler. Falls back to the interpreter
+## for unsupported opcodes.
+import std/[tables, sysatomics, critbits, os]
+
 import ./compiler_bridge, ./jit_mem
 import ./dynasm/wrapper
-import std/[tables, sysatomics, critbits, os]
+import ../[vm, value, chunk]
 
 const DASM_MAXSECTION = 1
 

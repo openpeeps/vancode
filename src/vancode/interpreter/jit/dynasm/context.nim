@@ -1,4 +1,6 @@
-import std/[sysatomics, os]
+## DynASM compilation context. Wraps a `dasm_State` pointer with label
+## management, global symbol table, and code buffer allocation for incremental
+## native code generation.
 import ../[vm, chunk, value, proc_ops]
 import ../jit/[compiler_bridge]
 import ./wrapper
