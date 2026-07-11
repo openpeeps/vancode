@@ -67,7 +67,8 @@
   getForeign*: proc (procPtr: pointer): ForeignProc ## Given a Proc pointer, returns its JIT-compiled ForeignProc if available.
   queueCompile*: proc (theProc: pointer) ## Queue a proc for async JIT compilation.
                                          ## Called from markHotProc. theProc is cast(pointer, Proc).
-  setGlobalsPtr*: proc (p: pointer) ## Set the pointer to the VM's globals CritBitTree for JIT bridge access.">JitHooks</a></li>
+  setGlobalsPtr*: proc (p: pointer) ## Set the pointer to the VM's globals CritBitTree for JIT bridge access.
+  compileTrace*: proc (trace: pointer): pointer ## Compile a TraceBuffer into machine code. Returns code pointer or nil.">JitHooks</a></li>
 <li><a class="reference" href="#Object" title="Object {.acyclic.} = ref object
   case isForeign*: bool
   of true:
@@ -234,7 +235,8 @@
   <span class="Identifier">getForeign</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">procPtr</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span><span class="Other">:</span> <a href="#ForeignProc"><span class="Identifier">ForeignProc</span></a> <span class="Comment">## Given a Proc pointer, returns its JIT-compiled ForeignProc if available.</span>
   <span class="Identifier">queueCompile</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">theProc</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span> <span class="Comment">## Queue a proc for async JIT compilation.</span>
                                          <span class="Comment">## Called from markHotProc. theProc is cast(pointer, Proc).</span>
-  <span class="Identifier">setGlobalsPtr</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">p</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span> <span class="Comment">## Set the pointer to the VM's globals CritBitTree for JIT bridge access.</span></pre></dt>
+  <span class="Identifier">setGlobalsPtr</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">p</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span> <span class="Comment">## Set the pointer to the VM's globals CritBitTree for JIT bridge access.</span>
+  <span class="Identifier">compileTrace</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">trace</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">pointer</span> <span class="Comment">## Compile a TraceBuffer into machine code. Returns code pointer or nil.</span></pre></dt>
   <dd>
     
     JIT hooks installed into the VM. Uses raw pointer to avoid circular deps between vm and jit modules.
@@ -651,7 +653,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-09 15:00:05 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-11 08:54:44 UTC</small>
       </div>
     </div>
   </div>

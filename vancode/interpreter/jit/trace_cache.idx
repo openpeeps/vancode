@@ -1,0 +1,7 @@
+nimTitle	trace_cache	vancode/interpreter/jit/trace_cache.html	module vancode/interpreter/jit/trace_cache		0
+nim	TraceEntry	vancode/interpreter/jit/trace_cache.html#TraceEntry	object TraceEntry		6
+nim	TraceCache	vancode/interpreter/jit/trace_cache.html#TraceCache	type TraceCache		12
+nim	newTraceCache	vancode/interpreter/jit/trace_cache.html#newTraceCache	proc newTraceCache(): TraceCache		15
+nim	have	vancode/interpreter/jit/trace_cache.html#have,TraceCache,int	proc have(cache: TraceCache; pc: int): bool		18
+nim	get	vancode/interpreter/jit/trace_cache.html#get,TraceCache,int	proc get(cache: TraceCache; pc: int): TraceEntry		21
+nim	add	vancode/interpreter/jit/trace_cache.html#add,TraceCache,TraceEntry	proc add(cache: TraceCache; entry: TraceEntry)		24

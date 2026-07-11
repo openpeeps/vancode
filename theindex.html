@@ -28,7 +28,7 @@
     <label for="nav-toggle" id="nav-overlay"></label>
     <div class="container">
       <h1 class="title">Index</h1>
-      Modules: <a href="index.html">vancode</a>, <a href="vancode/interpreter/ast.html">vancode/interpreter/ast</a>, <a href="vancode/interpreter/chunk.html">vancode/interpreter/chunk</a>, <a href="vancode/interpreter/codegen.html">vancode/interpreter/codegen</a>, <a href="vancode/interpreter/errors.html">vancode/interpreter/errors</a>, <a href="vancode/interpreter/resolver.html">vancode/interpreter/resolver</a>, <a href="vancode/interpreter/stdlib/syslib.html">vancode/interpreter/stdlib/syslib</a>, <a href="vancode/interpreter/stdlib/utils.html">vancode/interpreter/stdlib/utils</a>, <a href="vancode/interpreter/sym.html">vancode/interpreter/sym</a>, <a href="vancode/interpreter/value.html">vancode/interpreter/value</a>, <a href="vancode/interpreter/vm.html">vancode/interpreter/vm</a>, <a href="vancode/manager/configurator.html">vancode/manager/configurator</a>, <a href="vancode/manager/packager.html">vancode/manager/packager</a>, <a href="vancode/manager/remote.html">vancode/manager/remote</a>.<br/><p /><h2>API symbols</h2>
+      Modules: <a href="index.html">vancode</a>, <a href="vancode/interpreter/ast.html">vancode/interpreter/ast</a>, <a href="vancode/interpreter/chunk.html">vancode/interpreter/chunk</a>, <a href="vancode/interpreter/codegen.html">vancode/interpreter/codegen</a>, <a href="vancode/interpreter/errors.html">vancode/interpreter/errors</a>, <a href="vancode/interpreter/jit/trace_cache.html">vancode/interpreter/jit/trace_cache</a>, <a href="vancode/interpreter/jit/trace_types.html">vancode/interpreter/jit/trace_types</a>, <a href="vancode/interpreter/resolver.html">vancode/interpreter/resolver</a>, <a href="vancode/interpreter/stdlib/syslib.html">vancode/interpreter/stdlib/syslib</a>, <a href="vancode/interpreter/stdlib/utils.html">vancode/interpreter/stdlib/utils</a>, <a href="vancode/interpreter/sym.html">vancode/interpreter/sym</a>, <a href="vancode/interpreter/value.html">vancode/interpreter/value</a>, <a href="vancode/interpreter/vm.html">vancode/interpreter/vm</a>, <a href="vancode/manager/configurator.html">vancode/manager/configurator</a>, <a href="vancode/manager/packager.html">vancode/manager/packager</a>, <a href="vancode/manager/remote.html">vancode/manager/remote</a>.<br/><p /><h2>API symbols</h2>
 <dl><dt><a name="%60%24%60" href="#%60%24%60"><span>`$`:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="ast: proc `$`(node: Node): string" href="vancode/interpreter/ast.html#%24%2CNode">ast: proc `$`(node: Node): string</a></li>
@@ -76,6 +76,8 @@
           data-doc-search-tag="ast: proc add(node, child: Node): Node" href="vancode/interpreter/ast.html#add%2CNode%2CNode">ast: proc add(node, child: Node): Node</a></li>
           <li><a class="reference external"
           data-doc-search-tag="ast: proc add(node: Node; children: openArray[Node]): Node" href="vancode/interpreter/ast.html#add%2CNode%2CopenArray%5BNode%5D">ast: proc add(node: Node; children: openArray[Node]): Node</a></li>
+          <li><a class="reference external"
+          data-doc-search-tag="trace_cache: proc add(cache: TraceCache; entry: TraceEntry)" href="vancode/interpreter/jit/trace_cache.html#add%2CTraceCache%2CTraceEntry">trace_cache: proc add(cache: TraceCache; entry: TraceEntry)</a></li>
           <li><a class="reference external"
           data-doc-search-tag="sym: proc add(scope: Scope; sym: Sym; lookupName: Node = nil;
     fromOtherModule: static bool = false): bool" href="vancode/interpreter/sym.html#add%2CScope%2CSym%2CNode%2Cstaticbool">sym: proc add(scope: Scope; sym: Sym; lookupName: Node = nil;
@@ -669,6 +671,10 @@
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc genYield(gen: CodeGen; node: Node)" href="vancode/interpreter/codegen.html#genYield%2CCodeGen%2CNode">codegen: proc genYield(gen: CodeGen; node: Node)</a></li>
           </ul></dd>
+<dt><a name="get" href="#get"><span>get:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="trace_cache: proc get(cache: TraceCache; pc: int): TraceEntry" href="vancode/interpreter/jit/trace_cache.html#get%2CTraceCache%2Cint">trace_cache: proc get(cache: TraceCache; pc: int): TraceEntry</a></li>
+          </ul></dd>
 <dt><a name="getArg1Float" href="#getArg1Float"><span>getArg1Float:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="vm: template getArg1Float(co: CachedOps; i: int): float64" href="vancode/interpreter/vm.html#getArg1Float.t%2CCachedOps%2Cint">vm: template getArg1Float(co: CachedOps; i: int): float64</a></li>
@@ -784,6 +790,10 @@
 <dt><a name="hasPackage" href="#hasPackage"><span>hasPackage:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="packager: proc hasPackage(pkgr: Packager; pkgName: string): bool" href="vancode/manager/packager.html#hasPackage%2CPackager%2Cstring">packager: proc hasPackage(pkgr: Packager; pkgName: string): bool</a></li>
+          </ul></dd>
+<dt><a name="have" href="#have"><span>have:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="trace_cache: proc have(cache: TraceCache; pc: int): bool" href="vancode/interpreter/jit/trace_cache.html#have%2CTraceCache%2Cint">trace_cache: proc have(cache: TraceCache; pc: int): bool</a></li>
           </ul></dd>
 <dt><a name="htmlAttr" href="#htmlAttr"><span>htmlAttr:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1018,6 +1028,10 @@
 <dt><a name="newSym" href="#newSym"><span>newSym:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="sym: proc newSym(kind: SymKind; name: Node; impl: Node = nil): Sym" href="vancode/interpreter/sym.html#newSym%2CSymKind%2CNode%2CNode">sym: proc newSym(kind: SymKind; name: Node; impl: Node = nil): Sym</a></li>
+          </ul></dd>
+<dt><a name="newTraceCache" href="#newTraceCache"><span>newTraceCache:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="trace_cache: proc newTraceCache(): TraceCache" href="vancode/interpreter/jit/trace_cache.html#newTraceCache">trace_cache: proc newTraceCache(): TraceCache</a></li>
           </ul></dd>
 <dt><a name="newTree" href="#newTree"><span>newTree:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1341,6 +1355,10 @@
 <li><a class="reference external"
           data-doc-search-tag="sym: const skVars" href="vancode/interpreter/sym.html#skVars">sym: const skVars</a></li>
           </ul></dd>
+<dt><a name="Snapshot" href="#Snapshot"><span>Snapshot:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="trace_types: object Snapshot" href="vancode/interpreter/jit/trace_types.html#Snapshot">trace_types: object Snapshot</a></li>
+          </ul></dd>
 <dt><a name="SourceType" href="#SourceType"><span>SourceType:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="remote: enum SourceType" href="vancode/manager/remote.html#SourceType">remote: enum SourceType</a></li>
@@ -1377,6 +1395,14 @@
 <li><a class="reference external"
           data-doc-search-tag="utils: tuple TempParamDef" href="vancode/interpreter/stdlib/utils.html#TempParamDef">utils: tuple TempParamDef</a></li>
           </ul></dd>
+<dt><a name="terGuardFail" href="#terGuardFail"><span>terGuardFail:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="trace_types: TraceExitReason.terGuardFail" href="vancode/interpreter/jit/trace_types.html#terGuardFail">trace_types: TraceExitReason.terGuardFail</a></li>
+          </ul></dd>
+<dt><a name="terNormal" href="#terNormal"><span>terNormal:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="trace_types: TraceExitReason.terNormal" href="vancode/interpreter/jit/trace_types.html#terNormal">trace_types: TraceExitReason.terNormal</a></li>
+          </ul></dd>
 <dt><a name="toJsonStr" href="#toJsonStr"><span>toJsonStr:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="value: proc toJsonStr(v: Value): string" href="vancode/interpreter/value.html#toJsonStr%2CValue">value: proc toJsonStr(v: Value): string</a></li>
@@ -1393,6 +1419,26 @@
 <li><a class="reference external"
           data-doc-search-tag="value: proc toValue(vs: ValueStorage): Value" href="vancode/interpreter/value.html#toValue%2CValueStorage">value: proc toValue(vs: ValueStorage): Value</a></li>
           </ul></dd>
+<dt><a name="TraceBuffer" href="#TraceBuffer"><span>TraceBuffer:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="trace_types: type TraceBuffer" href="vancode/interpreter/jit/trace_types.html#TraceBuffer">trace_types: type TraceBuffer</a></li>
+          </ul></dd>
+<dt><a name="TraceCache" href="#TraceCache"><span>TraceCache:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="trace_cache: type TraceCache" href="vancode/interpreter/jit/trace_cache.html#TraceCache">trace_cache: type TraceCache</a></li>
+          </ul></dd>
+<dt><a name="TraceEntry" href="#TraceEntry"><span>TraceEntry:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="trace_cache: object TraceEntry" href="vancode/interpreter/jit/trace_cache.html#TraceEntry">trace_cache: object TraceEntry</a></li>
+          </ul></dd>
+<dt><a name="TraceExitReason" href="#TraceExitReason"><span>TraceExitReason:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="trace_types: enum TraceExitReason" href="vancode/interpreter/jit/trace_types.html#TraceExitReason">trace_types: enum TraceExitReason</a></li>
+          </ul></dd>
+<dt><a name="TraceState" href="#TraceState"><span>TraceState:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="trace_types: enum TraceState" href="vancode/interpreter/jit/trace_types.html#TraceState">trace_types: enum TraceState</a></li>
+          </ul></dd>
 <dt><a name="treeRepr" href="#treeRepr"><span>treeRepr:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="ast: proc treeRepr(node: Node): string" href="vancode/interpreter/ast.html#treeRepr%2CNode">ast: proc treeRepr(node: Node): string</a></li>
@@ -1400,6 +1446,26 @@
 <dt><a name="tryElideWhile" href="#tryElideWhile"><span>tryElideWhile:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc tryElideWhile(gen: CodeGen; node: Node): bool" href="vancode/interpreter/codegen.html#tryElideWhile%2CCodeGen%2CNode">codegen: proc tryElideWhile(gen: CodeGen; node: Node): bool</a></li>
+          </ul></dd>
+<dt><a name="tsCompiled" href="#tsCompiled"><span>tsCompiled:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="trace_types: TraceState.tsCompiled" href="vancode/interpreter/jit/trace_types.html#tsCompiled">trace_types: TraceState.tsCompiled</a></li>
+          </ul></dd>
+<dt><a name="tsIdle" href="#tsIdle"><span>tsIdle:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="trace_types: TraceState.tsIdle" href="vancode/interpreter/jit/trace_types.html#tsIdle">trace_types: TraceState.tsIdle</a></li>
+          </ul></dd>
+<dt><a name="tsPaused" href="#tsPaused"><span>tsPaused:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="trace_types: TraceState.tsPaused" href="vancode/interpreter/jit/trace_types.html#tsPaused">trace_types: TraceState.tsPaused</a></li>
+          </ul></dd>
+<dt><a name="tsPending" href="#tsPending"><span>tsPending:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="trace_types: TraceState.tsPending" href="vancode/interpreter/jit/trace_types.html#tsPending">trace_types: TraceState.tsPending</a></li>
+          </ul></dd>
+<dt><a name="tsRecording" href="#tsRecording"><span>tsRecording:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="trace_types: TraceState.tsRecording" href="vancode/interpreter/jit/trace_types.html#tsRecording">trace_types: TraceState.tsRecording</a></li>
           </ul></dd>
 <dt><a name="tyAny" href="#tyAny"><span>tyAny:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1533,7 +1599,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-09 15:00:06 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-11 08:54:45 UTC</small>
       </div>
     </div>
   </div>
