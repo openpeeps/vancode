@@ -839,10 +839,10 @@
           </ul></dd>
 <dt><a name="initCompiler" href="#initCompiler"><span>initCompiler:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="codegen: proc initCompiler(script: Script; module: Module; chunk: Chunk; pkgr: Packager;
+          data-doc-search-tag="codegen: proc initCompiler(script: Script; module: Module; chunk: Chunk; pkgr: Packager = nil;
              stdlibs: StandardLibrary; parserCallback: ParserCallback = nil;
              triggerFromPath: Option[string] = none(string);
-             policy: CompilationPolicy = CompilationPolicy()): CodeGen" href="vancode/interpreter/codegen.html#initCompiler%2CScript%2CModule%2CChunk%2CPackager%2CStandardLibrary%2CParserCallback%2COption%5Bstring%5D%2CCompilationPolicy">codegen: proc initCompiler(script: Script; module: Module; chunk: Chunk; pkgr: Packager;
+             policy: CompilationPolicy = CompilationPolicy()): CodeGen" href="vancode/interpreter/codegen.html#initCompiler%2CScript%2CModule%2CChunk%2CPackager%2CStandardLibrary%2CParserCallback%2COption%5Bstring%5D%2CCompilationPolicy">codegen: proc initCompiler(script: Script; module: Module; chunk: Chunk; pkgr: Packager = nil;
              stdlibs: StandardLibrary; parserCallback: ParserCallback = nil;
              triggerFromPath: Option[string] = none(string);
              policy: CompilationPolicy = CompilationPolicy()): CodeGen</a></li>
@@ -948,6 +948,10 @@
 <dt><a name="Module" href="#Module"><span>Module:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="sym: type Module" href="vancode/interpreter/sym.html#Module">sym: type Module</a></li>
+          </ul></dd>
+<dt><a name="ModuleLibrary" href="#ModuleLibrary"><span>ModuleLibrary:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="codegen: type ModuleLibrary" href="vancode/interpreter/codegen.html#ModuleLibrary">codegen: type ModuleLibrary</a></li>
           </ul></dd>
 <dt><a name="newBoolLit" href="#newBoolLit"><span>newBoolLit:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1375,6 +1379,10 @@
 <li><a class="reference external"
           data-doc-search-tag="value: type StackView" href="vancode/interpreter/value.html#StackView">value: type StackView</a></li>
           </ul></dd>
+<dt><a name="StandardLibrary" href="#StandardLibrary"><span>StandardLibrary:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="codegen: type StandardLibrary" href="vancode/interpreter/codegen.html#StandardLibrary">codegen: type StandardLibrary</a></li>
+          </ul></dd>
 <dt><a name="stepCoroutine" href="#stepCoroutine"><span>stepCoroutine:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="vm: proc stepCoroutine(vm: Vm; coro: Coroutine): CoroutineResult" href="vancode/interpreter/vm.html#stepCoroutine%2CVm%2CCoroutine">vm: proc stepCoroutine(vm: Vm; coro: Coroutine): CoroutineResult</a></li>
@@ -1599,7 +1607,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-11 09:33:22 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-11 17:54:28 UTC</small>
       </div>
     </div>
   </div>

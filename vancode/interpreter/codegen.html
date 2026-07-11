@@ -76,7 +76,9 @@
   policy*: CompilationPolicy ## Compilation policy controlling which features are allowed">CodeGen</a></li>
 <li><a class="reference" href="#CodeGenCache" title="CodeGenCache = object
   cachedAst*: Table[string, Ast]">CodeGenCache</a></li>
+<li><a class="reference" href="#ModuleLibrary" title="ModuleLibrary = proc (script: Script; systemModule: Module): Module">ModuleLibrary</a></li>
 <li><a class="reference" href="#ParserCallback" title="ParserCallback = proc (astProgram: var Ast; path: string; resolver: FileResolver)">ParserCallback</a></li>
+<li><a class="reference" href="#StandardLibrary" title="StandardLibrary = TableRef[string, ModuleLibrary]">StandardLibrary</a></li>
 
     </ul>
   </details>
@@ -259,10 +261,10 @@
 
 </ul>
 <ul class="simple nested-toc-section">initCompiler
-  <li><a class="reference" href="#initCompiler%2CScript%2CModule%2CChunk%2CPackager%2CStandardLibrary%2CParserCallback%2COption%5Bstring%5D%2CCompilationPolicy" title="initCompiler(script: Script; module: Module; chunk: Chunk; pkgr: Packager;
+  <li><a class="reference" href="#initCompiler%2CScript%2CModule%2CChunk%2CPackager%2CStandardLibrary%2CParserCallback%2COption%5Bstring%5D%2CCompilationPolicy" title="initCompiler(script: Script; module: Module; chunk: Chunk; pkgr: Packager = nil;
              stdlibs: StandardLibrary; parserCallback: ParserCallback = nil;
              triggerFromPath: Option[string] = none(string);
-             policy: CompilationPolicy = CompilationPolicy()): CodeGen">initCompiler(script: Script; module: Module; chunk: Chunk; pkgr: Packager;
+             policy: CompilationPolicy = CompilationPolicy()): CodeGen">initCompiler(script: Script; module: Module; chunk: Chunk; pkgr: Packager = nil;
              stdlibs: StandardLibrary; parserCallback: ParserCallback = nil;
              triggerFromPath: Option[string] = none(string);
              policy: CompilationPolicy = CompilationPolicy()): CodeGen</a></li>
@@ -330,9 +332,7 @@
     
     <div id="tocRoot"></div>
     
-    <p class="module-desc"><p>This module contains the code generation logic for VanCode. It takes the AST produced by your parser and generates bytecode for it, which can then be executed by the VM.</p>
-<p>The code generator is designed to be modular and extensible, allowing you to easily hook into the code generation process to add support for new language features.</p>
-</p>
+    <p class="module-desc">Bytecode code generator for VanCode. Takes an AST produced by the parser and emits bytecode for the VM. Supports global and local variables, procedures (with parameters, return types, and exports), iterators, generic instantiation with type inference, object/array constructors, infix and prefix operators (built-in and proc-call fallback), control flow (for/while/if/block) with break/continue flow blocks, overload resolution, module imports, field access (get/set), compilation policy enforcement, and a standard library hook system. The codegen is modular and extensible via parser callbacks and the <tt class="docutils literal"><span class="pre"><span class="Identifier">codegen</span></span></tt> macro for injecting line-information guards.</p>
     <div class="section" id="6">
   <h1><a class="toc-backref" href="#6">Imports</a></h1>
   <dl class="item">
@@ -371,11 +371,27 @@
     
   </dd>
 </div>
+<div id="ModuleLibrary">
+  <dt><pre><a href="#ModuleLibrary"><span class="Identifier">ModuleLibrary</span></a> <span class="Other">=</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">script</span><span class="Other">:</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">;</span> <span class="Identifier">systemModule</span><span class="Other">:</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a></pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
 <div id="ParserCallback">
   <dt><pre><a href="#ParserCallback"><span class="Identifier">ParserCallback</span></a> <span class="Other">=</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">astProgram</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="ast.html#Ast"><span class="Identifier">Ast</span></a><span class="Other">;</span> <span class="Identifier">path</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span> <span class="Identifier">resolver</span><span class="Other">:</span> <a href="resolver.html#FileResolver"><span class="Identifier">FileResolver</span></a><span class="Other">)</span></pre></dt>
   <dd>
     
     Used to parse custom nodes during code generation.
+    
+  </dd>
+</div>
+<div id="StandardLibrary">
+  <dt><pre><a href="#StandardLibrary"><span class="Identifier">StandardLibrary</span></a> <span class="Other">=</span> <span class="Identifier">TableRef</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="#ModuleLibrary"><span class="Identifier">ModuleLibrary</span></a><span class="Other">]</span></pre></dt>
+  <dd>
+    
+    
     
   </dd>
 </div>
@@ -888,8 +904,8 @@
 </div>
 <div id="initCompiler-procs-all">
   <div id="initCompiler,Script,Module,Chunk,Packager,StandardLibrary,ParserCallback,Option[string],CompilationPolicy">
-  <dt><pre><span class="Keyword">proc</span> <a href="#initCompiler%2CScript%2CModule%2CChunk%2CPackager%2CStandardLibrary%2CParserCallback%2COption%5Bstring%5D%2CCompilationPolicy"><span class="Identifier">initCompiler</span></a><span class="Other">(</span><span class="Identifier">script</span><span class="Other">:</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">;</span> <span class="Identifier">module</span><span class="Other">:</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">chunk</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a><span class="Other">;</span> <span class="Identifier">pkgr</span><span class="Other">:</span> <a href="../manager/packager.html#Packager"><span class="Identifier">Packager</span></a><span class="Other">;</span>
-                  <span class="Identifier">stdlibs</span><span class="Other">:</span> <span class="Identifier">StandardLibrary</span><span class="Other">;</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#initCompiler%2CScript%2CModule%2CChunk%2CPackager%2CStandardLibrary%2CParserCallback%2COption%5Bstring%5D%2CCompilationPolicy"><span class="Identifier">initCompiler</span></a><span class="Other">(</span><span class="Identifier">script</span><span class="Other">:</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">;</span> <span class="Identifier">module</span><span class="Other">:</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">chunk</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a><span class="Other">;</span>
+                  <span class="Identifier">pkgr</span><span class="Other">:</span> <a href="../manager/packager.html#Packager"><span class="Identifier">Packager</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span> <span class="Identifier">stdlibs</span><span class="Other">:</span> <a href="#StandardLibrary"><span class="Identifier">StandardLibrary</span></a><span class="Other">;</span>
                   <span class="Identifier">parserCallback</span><span class="Other">:</span> <a href="#ParserCallback"><span class="Identifier">ParserCallback</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span>
                   <span class="Identifier">triggerFromPath</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span> <span class="Other">=</span> <span class="Identifier">none</span><span class="Other">(</span><span class="Identifier">string</span><span class="Other">)</span><span class="Other">;</span>
                   <span class="Identifier">policy</span><span class="Other">:</span> <a href="../manager/configurator.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a> <span class="Other">=</span> <a href="../manager/configurator.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a> {.
@@ -1035,7 +1051,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-11 09:33:21 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-11 17:54:28 UTC</small>
       </div>
     </div>
   </div>

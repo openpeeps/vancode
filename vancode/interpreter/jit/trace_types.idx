@@ -1,12 +1,12 @@
 nimTitle	trace_types	vancode/interpreter/jit/trace_types.html	module vancode/interpreter/jit/trace_types		0
-nim	tsIdle	vancode/interpreter/jit/trace_types.html#tsIdle	TraceState.tsIdle		4
-nim	tsPending	vancode/interpreter/jit/trace_types.html#tsPending	TraceState.tsPending		4
-nim	tsRecording	vancode/interpreter/jit/trace_types.html#tsRecording	TraceState.tsRecording		4
-nim	tsPaused	vancode/interpreter/jit/trace_types.html#tsPaused	TraceState.tsPaused		4
-nim	tsCompiled	vancode/interpreter/jit/trace_types.html#tsCompiled	TraceState.tsCompiled		4
-nim	TraceState	vancode/interpreter/jit/trace_types.html#TraceState	enum TraceState		4
-nim	Snapshot	vancode/interpreter/jit/trace_types.html#Snapshot	object Snapshot		11
-nim	TraceBuffer	vancode/interpreter/jit/trace_types.html#TraceBuffer	type TraceBuffer		16
-nim	terNormal	vancode/interpreter/jit/trace_types.html#terNormal	TraceExitReason.terNormal		26
-nim	terGuardFail	vancode/interpreter/jit/trace_types.html#terGuardFail	TraceExitReason.terGuardFail		26
-nim	TraceExitReason	vancode/interpreter/jit/trace_types.html#TraceExitReason	enum TraceExitReason		26
+nim	tsIdle	vancode/interpreter/jit/trace_types.html#tsIdle	TraceState.tsIdle		16
+nim	tsPending	vancode/interpreter/jit/trace_types.html#tsPending	TraceState.tsPending		16
+nim	tsRecording	vancode/interpreter/jit/trace_types.html#tsRecording	TraceState.tsRecording		16
+nim	tsPaused	vancode/interpreter/jit/trace_types.html#tsPaused	TraceState.tsPaused		16
+nim	tsCompiled	vancode/interpreter/jit/trace_types.html#tsCompiled	TraceState.tsCompiled		16
+nim	TraceState	vancode/interpreter/jit/trace_types.html#TraceState	enum TraceState		16
+nim	Snapshot	vancode/interpreter/jit/trace_types.html#Snapshot	object Snapshot		23
+nim	TraceBuffer	vancode/interpreter/jit/trace_types.html#TraceBuffer	type TraceBuffer		28
+nim	terNormal	vancode/interpreter/jit/trace_types.html#terNormal	TraceExitReason.terNormal		38
+nim	terGuardFail	vancode/interpreter/jit/trace_types.html#terGuardFail	TraceExitReason.terGuardFail		38
+nim	TraceExitReason	vancode/interpreter/jit/trace_types.html#TraceExitReason	enum TraceExitReason		38
