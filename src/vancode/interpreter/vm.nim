@@ -879,8 +879,8 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         let tgt = co.jumpTargets[pcIdx]
         if tgt >= 0:
           when defined(vancodeJitDynasm):
-            if traceState == tsIdle and vm.preferences.enableHotCodeDetection and vm.traceCache != nil and vm.traceCache.have(tgt):
-              let entry = vm.traceCache.get(tgt)
+            if traceState == tsIdle and vm.preferences.enableHotCodeDetection and vm.traceCache != nil and vm.traceCache.have(tgt, cast[pointer](currentChunk)):
+              let entry = vm.traceCache.get(tgt, cast[pointer](currentChunk))
               let numLocals = entry.numLocals
               if traceFlatLocals.len < numLocals:
                 traceFlatLocals = newSeq[int64](numLocals)
@@ -906,12 +906,8 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
               if scanPc > pcIdx + 1:
                 pcIdx = scanPc - 1  # will be inc'd by inc(pcIdx)
             elif traceState == tsRecording and tgt == traceStartPc:
-              # Finished recording a loop iteration
               traceBuf.anchorPc = tgt
               traceBuf.numLocals = traceNumLocals
-              var pcsStr = ""
-              for pi in traceBuf.pcs: pcsStr.add($pi & ",")
-              #stderr.writeLine "[trace] loop recorded pcs=" & pcsStr
               let code =
                 if vm.jit.compileTrace != nil:
                   vm.jit.compileTrace(cast[pointer](traceBuf))
@@ -921,15 +917,14 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
               if code != nil:
                 if vm.traceCache == nil:
                   vm.traceCache = newTraceCache()
-                vm.traceCache.add(TraceEntry(code: code, anchorPc: tgt, numLocals: traceNumLocals))
+                vm.traceCache.add(TraceEntry(code: code, anchorPc: tgt, numLocals: traceNumLocals, chunk: cast[pointer](currentChunk)))
               traceState = tsIdle
               pcIdx = tgt - 1
             elif traceState == tsIdle and vm.preferences.enableHotCodeDetection:
               loopHotCount += 1
               let hotThreshold = 50
               if loopHotCount >= hotThreshold and
-                 (vm.traceCache == nil or not vm.traceCache.have(tgt)):
-                discard
+                 (vm.traceCache == nil or not vm.traceCache.have(tgt, cast[pointer](currentChunk))):
                 traceState = tsRecording
                 traceStartPc = tgt
                 traceBuf = TraceBuffer(pcs: @[], anchorPc: tgt, cached: cast[pointer](co), chunk: cast[pointer](currentChunk), selfProcId: -1)
@@ -965,7 +960,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         when defined(vancodeJitDynasm):
           if p.kind == pkNative and p.jitForeign == nil and
              atomicLoadN(addr p.jitCodePtr, AtomicAcquire) == nil:
-            if traceState == tsRecording and p.chunk == currentChunk:
+            if traceState == tsRecording:
               traceState = tsPaused
             elif traceState == tsIdle and vm.preferences.enableHotCodeDetection:
               if p.jitCallCount >= 50:

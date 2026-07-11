@@ -173,6 +173,10 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
       if selfAddr != nil and targetProc == trace.selfProcId:
         if trace.selfParamCount > 0:
           vancode_call_self(addr d, trace.selfParamCount.cint, selfAddr)
+      else:
+        freeJitCode(codeBuf, maxCodeSize)
+        dasm_free(addr d)
+        return nil
     of opcReturnVal:
       vancode_return_val(addr d)
     of opcReturnVoid, opcHalt:

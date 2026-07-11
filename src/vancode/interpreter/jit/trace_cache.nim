@@ -8,18 +8,19 @@ type
     codeSize*: int
     anchorPc*: int
     numLocals*: int
+    chunk*: pointer
 
   TraceCache* = ref object
-    entries*: Table[int, TraceEntry]
+    entries*: Table[(int, pointer), TraceEntry]
 
 proc newTraceCache*(): TraceCache =
-  TraceCache(entries: initTable[int, TraceEntry]())
+  TraceCache(entries: initTable[(int, pointer), TraceEntry]())
 
-proc have*(cache: TraceCache, pc: int): bool =
-  cache.entries.hasKey(pc)
+proc have*(cache: TraceCache, pc: int, chunk: pointer): bool =
+  cache.entries.hasKey((pc, chunk))
 
-proc get*(cache: TraceCache, pc: int): TraceEntry =
-  cache.entries[pc]
+proc get*(cache: TraceCache, pc: int, chunk: pointer): TraceEntry =
+  cache.entries[(pc, chunk)]
 
 proc add*(cache: TraceCache, entry: TraceEntry) =
-  cache.entries[entry.anchorPc] = entry
+  cache.entries[(entry.anchorPc, entry.chunk)] = entry

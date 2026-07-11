@@ -1,5 +1,28 @@
+# v0.2.1 - 2026-07-11
+
 # v0.2.0 - 2026-07-08
 
+- **BREAKING:** Removed GCC libgccjit and LLVM MCJIT backends entirely. The `vancodeJit`,
+  `vancodeJitGcc`, and `vancodeJitLlvm` compile-time flags are gone; only `vancodeJitDynasm`
+  remains as the single JIT flag. All associated files (`compiler_gcc.nim`, `compiler_llvm.nim`,
+  `types.nim`, `llvm_types.nim`, async worker threads, `detectBackend()` logic) have been
+  deleted. The `requires "gccjit >= 0.1.0"` nimble dependency is removed.
+- **FIX:** `fib(80)` returning a negative 32-bit-truncated value — the function pointer types
+  used to call compiled JIT code returned `cint` (32-bit) instead of `int64`, truncating
+  results from the 64-bit DynASM registers. Fixed in `jit.nim`, `vm.nim`, and
+  `compiler_dynasm.nim` by changing `cint` → `int64` in `TraceFn`/`JitFn` proc types.
+- **FIX:** Trace recording no longer continues through cross-function calls (e.g., `sieve`
+  calling `isPrime`). The `opcCallD` handler now pauses recording for ALL function calls,
+  not only same-chunk calls (`traceState = tsPaused` unconditionally instead of
+  `p.chunk == currentChunk`). Previously, recording through a different chunk's bytecode
+  mixed PCs from multiple chunks into one trace, causing `IndexDefect` / `SIGSEGV`.
+- **FIX:** Trace compilation now aborts (returns nil) for non-self `opcCallD` instructions.
+  The trace compiler's `opcCallD` case only handles self-recursive calls; all other calls
+  are silently skipped, corrupting the operand stack. Added `else: return nil`.
+- **FIX:** Trace cache now keys by `(anchorPc, chunk)` pair instead of `anchorPc` alone.
+  Two loops in different chunks can have the same target PC (e.g., `sieve` and `isPrime`
+  both loop at PC 6). The old single-integer key caused `isPrime`'s compiled trace to be
+  retrieved for `sieve`'s loop execution, reading/writing locals beyond the allocation.
 - **BREAKING:** JIT backend changed from libgccjit to LuaJIT's DynASM. The two initial
   JIT backends (GCC `libgccjit` and LLVM `orcjit`) were replaced with a single, simpler
   DynASM-based implementation — a hand-written x86-64 assembler vendored from
