@@ -1,5 +1,24 @@
 # v0.2.0 - 2026-07-08
 
+- **BREAKING:** JIT backend changed from libgccjit to LuaJIT's DynASM. The two initial
+  JIT backends (GCC `libgccjit` and LLVM `orcjit`) were replaced with a single, simpler
+  DynASM-based implementation — a hand-written x86-64 assembler vendored from
+  `LuaJIT-2.1/dynasm/`. The `compiler_gcc.nim` and `compiler_llvm.nim` backends (and
+  their supporting opcode-dispatch infrastructure) have been removed, as has the
+  per-proc method-at-a-time compilation model. In its place: a tracing JIT that records
+  hot loops at runtime, compiles them to native code via DynASM, and executes them
+  directly — plus static pattern-based compilation for recursive functions like `fib`.
+  The `--nojit` flag disables all JIT compilation.
+- **FIX:** JIT compilation changed from async (worker threads) to synchronous.
+  Previously, `markHotProc` and hot-loop detection queued `pkNative` procs for
+  background compilation via worker threads. Workers then accessed GC-managed
+  `Proc`/`Chunk` memory concurrently with the interpreter, causing heap corruption
+  (`SIGSEGV` in `freeBigChunk`) whenever a proc's loops exceeded `hotLoopThreshold`
+  (500) or its call count exceeded `hotProcThreshold` (10).  Now `queueCompile`
+  compiles directly on the interpreter thread, eliminating the data race. Worker
+  threads are still started but receive no work (reserved for future use).
+  [PR#dfkup](https://github.com/dfkup/dfkup)
+
 - **NEW:** `opcEqS` opcode for string equality (`==`/`!=`). Falls through to `addOp(oc)`
   in `parseChunk`. JIT compiler dispatches via `jitBridgeEqStr` bridge call.
 - **NEW:** `not` prefix operator now registered as a stdlib foreign proc `not(x: bool) -> bool`.
@@ -19,6 +38,11 @@
 - **CHANGE:** `jitBridgeConstrObj` bridge function simplified to positional-only (no
   key-value pair detection), matching the JIT path that never pushed keys.
 - **FIX:** `parseChunk` sanity check now includes `strKeys` length in the assertion.
+- **FIX:** JIT compilation of string operations (`opcPushS`, `opcConcatStr`, `opcEqS`)
+  disabled — these opcodes are excluded from the GCC and LLVM JIT supported-opcode lists
+  so any chunk containing them falls back to the VM interpreter. String JIT handling had
+  stack-synchronization bugs (pushed to the wrong simulated stack) and GC-rooting issues
+  that caused `SIGSEGV` in release builds when the hot loop compiled string-heavy functions.
 
 - **NEW:** `tyProc`/`ProcRef`/`ttyProc` — proc reference type system. New `opcPushProc`
   opcode pushes a proc reference onto the stack, `opcCallI` calls a proc by reference

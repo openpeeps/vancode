@@ -10,7 +10,6 @@ srcDir        = "src"
 # Dependencies
 
 requires "nim >= 2.0.0"
-requires "gccjit >= 0.1.0"
 requires "voodoo >= 0.1.9"
 requires "openparser >= 0.1.0"
 requires "flatty >= 0.4.0"

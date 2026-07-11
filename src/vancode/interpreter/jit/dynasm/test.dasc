@@ -1,0 +1,17 @@
+|.if X64
+|.arch x64
+|.else
+|.arch x86
+|.endif
+|.section code
+
+|.actionlist test_actions
+dasm_init(&Dst, DASM_MAXSECTION);
+|.globals lbl_
+dasm_setupglobal(&Dst, NULL, lbl__MAX);
+dasm_setup(&Dst, test_actions);
+dasm_State** Dst = &d;
+|.code
+|->test_fn:
+| mov eax, 42
+| ret

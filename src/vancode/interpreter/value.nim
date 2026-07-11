@@ -301,3 +301,5 @@ type
       ## Called from markHotProc. theProc is cast(pointer, Proc).
     setGlobalsPtr*: proc (p: pointer)
       ## Set the pointer to the VM's globals CritBitTree for JIT bridge access.
+    compileTrace*: proc (trace: pointer): pointer
+      ## Compile a TraceBuffer into machine code. Returns code pointer or nil.

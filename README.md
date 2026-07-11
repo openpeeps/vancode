@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://github.com/openpeeps/vancode/blob/main/.github/vancode.png" width="200px"><br>
-  A flexible AST, Codegen and Virtual Machine library<br>
+  A flexible AST, Codegen and VM + JIT framework library<br>
   for building your own toy language, scripting engines and DSLs.
 </p>
 
@@ -25,10 +25,8 @@ It's also pretty flexible so you can easily extend it with your own custom nodes
 - [x] Built-in AST (Abstract Syntax Tree) representation
 - [x] Simple and efficient bytecode instruction definition and execution
 - [x] Support for multiple data types and operations
-- [ ] FFI for calling Nim code or external libraries
-- [ ] Generate self-contained executables
-- [ ] JIT (Just-In-Time) compilation for improved performance
-- [ ]  (Ahead-Of-Time) compilation for static binaries
+- [x] FFI for calling Nim code or external libraries
+- [x] JIT (Just-In-Time) compilation for improved performance
 - [ ] Built-in package manager for easy distribution and installation
 - [x] Written in Nim language
 
@@ -127,7 +125,7 @@ _todo example here_
 - [Tim Engine](https://github.com/openpeeps/tim) - A beautiful template engine and DSL for generating HTML templates
 
 ## Roadmap
-- [ ] AOT/JIT compilation using [gccjit](https://github.com/openpeeps/gccjit.nim) bindings
+- [x] JIT compilation using DynASM
 - [ ] Self-contained executable generation (Similar to how Node/Bun generate self-contained executables)
 - [ ] VM Hot code optimization
 - [ ] Add more Voodoo flexibility and extensibility features to the AST, Codegen and VM
@@ -135,6 +133,8 @@ _todo example here_
 Notes:
 - https://vivekn.dev/blog/bytecode-vm-scratch/
 - https://github.com/liquidev/hayago - VanCode contains work from hayago, a very interesting project that is no longer maintained but provides a good reference for Nim-based bytecode VMs. Cheers to the author! 😻
+- https://staff.fnwi.uva.nl/h.vandermeer/docs/lua/luajit/dynasm.html
+- https://blog.reverberate.org/2012/12/hello-jit-world-joy-of-simple-jits.html
 
 ### ❤ Contributions & Support
 - 🐛 Found a bug? [Create a new Issue](https://github.com/openpeeps/vancode/issues)

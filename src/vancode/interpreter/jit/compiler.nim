@@ -10,32 +10,8 @@
 # This module dispatches compileProc to the active JIT backend.
 
 import ../[chunk, vm, value]
-import ./compiler_bridge
-
-type JitBackendKind* = enum
-  jbkNone
-  jbkGcc
-  jbkLlvm
-
-var selectedBackend*: JitBackendKind = jbkNone
-
-when defined(vancodeJitGcc) or defined(vancodeJit):
-  from ./compiler_gcc import nil
-
-when defined(vancodeJitLlvm):
-  from ./compiler_llvm import nil
+import ./compiler_dynasm
 
 proc compileProc*(vm: Vm, theProc: Proc): ForeignProc =
-  case selectedBackend
-  of jbkGcc:
-    when defined(vancodeJitGcc) or defined(vancodeJit):
-      compiler_gcc.compileProc(vm, theProc)
-    else:
-      nil
-  of jbkLlvm:
-    when defined(vancodeJitLlvm):
-      compiler_llvm.compileProc(vm, theProc)
-    else:
-      nil
-  of jbkNone:
-    nil
+  if theProc.kind != pkNative or theProc.chunk == nil: return nil
+  compiler_dynasm.compileProc(vm, theProc)

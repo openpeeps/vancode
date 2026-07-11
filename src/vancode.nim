@@ -10,11 +10,6 @@
 import ./vancode/interpreter/[ast, codegen, chunk, value, vm, sym]
 import ./vancode/interpreter/stdlib/[syslib, utils]
 
-when defined(vancodeJit):
-  import ./vancode/interpreter/jit/jit
-
 when defined(nimdocs):
   export ast, codegen, chunk, value, vm, sym
   export syslib, utils
-  when defined(vancodeJit):
-    export jit

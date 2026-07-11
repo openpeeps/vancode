@@ -1,0 +1,327 @@
+|.arch x64
+
+|.section code
+
+|.actionlist vancode_actions
+
+|.globals lbl_
+
+// ---------------------------------------------------------------
+// Emitter functions. Each function emits one instruction sequence.
+// Called from Nim code during JIT compilation.
+// Register usage (x64 System V ABI):
+//   rdi = arg0: flatArgs (ptr int64)
+//   rsi = arg1: argc (int)
+//   rax = return value
+//   rbx = args pointer (saved from rdi)
+//   r12 = scratch
+//   Native stack = operand stack (push = pushI, pop = popI)
+// ---------------------------------------------------------------
+
+void vancode_prologue(dasm_State** Dst) {
+  |.code
+  | push rbp
+  | mov rbp, rsp
+  | push rbx
+  | push r12
+  | mov rbx, rdi
+}
+
+void vancode_load_param(dasm_State** Dst, int slot) {
+  | push qword [rbx + slot*8]
+}
+
+void vancode_push_i(dasm_State** Dst, int value) {
+  | mov rax, value
+  | push rax
+}
+
+void vancode_push_true(dasm_State** Dst) {
+  | push 1
+}
+
+void vancode_push_false(dasm_State** Dst) {
+  | push 0
+}
+
+void vancode_push_nil(dasm_State** Dst) {
+  | push 0
+}
+
+void vancode_push_l(dasm_State** Dst, int slot) {
+  | push qword [rbx + slot*8]
+}
+
+void vancode_pop_l(dasm_State** Dst, int slot) {
+  | pop rax
+  | mov [rbx + slot*8], rax
+}
+
+void vancode_inc_l(dasm_State** Dst, int slot) {
+  | inc qword [rbx + slot*8]
+}
+
+void vancode_dec_l(dasm_State** Dst, int slot) {
+  | dec qword [rbx + slot*8]
+}
+
+void vancode_add_i(dasm_State** Dst) {
+  | pop rax
+  | pop r12
+  | add rax, r12
+  | push rax
+}
+
+void vancode_sub_i(dasm_State** Dst) {
+  | pop r12
+  | pop rax
+  | sub rax, r12
+  | push rax
+}
+
+void vancode_mul_i(dasm_State** Dst) {
+  | pop rax
+  | pop r12
+  | imul rax, r12
+  | push rax
+}
+
+void vancode_div_i(dasm_State** Dst) {
+  | pop r12
+  | pop rax
+  | cqo
+  | idiv r12
+  | push rax
+}
+
+void vancode_neg_i(dasm_State** Dst) {
+  | pop rax
+  | neg rax
+  | push rax
+}
+
+void vancode_eq_i(dasm_State** Dst) {
+  | pop rax
+  | pop r12
+  | cmp rax, r12
+  | sete al
+  | movzx rax, al
+  | push rax
+}
+
+void vancode_less_i(dasm_State** Dst) {
+  | pop rax        // b (second push)
+  | pop r12        // a (first push)
+  | cmp r12, rax   // a - b
+  | setl al        // 1 if a < b
+  | movzx rax, al
+  | push rax
+}
+
+void vancode_greater_i(dasm_State** Dst) {
+  | pop rax        // b (second push)
+  | pop r12        // a (first push)
+  | cmp r12, rax   // a - b
+  | setg al        // 1 if a > b
+  | movzx rax, al
+  | push rax
+}
+
+void vancode_inv_b(dasm_State** Dst) {
+  | pop rax
+  | test rax, rax
+  | sete al
+  | movzx rax, al
+  | push rax
+}
+
+void vancode_discard(dasm_State** Dst, int n) {
+  | add rsp, n*8
+}
+
+void vancode_jump_fwd(dasm_State** Dst, int label) {
+  | jmp =>label
+}
+
+void vancode_jump_back(dasm_State** Dst, int label) {
+  | jmp =>label
+}
+
+void vancode_jump_fwd_f(dasm_State** Dst, int label) {
+  | pop rax
+  | test rax, rax
+  | jz =>label      // if false (condition failed), jump to target (bool consumed)
+  | push rax        // if true, put bool back for discard
+}
+
+void vancode_jump_fwd_t(dasm_State** Dst, int label) {
+  | pop rax
+  | test rax, rax
+  | jnz =>label     // if true, jump to target (bool consumed)
+  | push rax        // if false, put bool back for discard
+}
+
+void vancode_define_label(dasm_State** Dst, int label) {
+  |=>label:
+}
+
+void vancode_return_val(dasm_State** Dst) {
+  | pop rax
+  | pop r12
+  | pop rbx
+  | pop rbp
+  | ret
+}
+
+void vancode_return_void(dasm_State** Dst) {
+  | xor eax, eax
+  | pop r12
+  | pop rbx
+  | pop rbp
+  | ret
+}
+
+// guard_false/guard_true are no longer used — use jump_fwd_f/jump_fwd_t instead
+
+void vancode_trace_exit(dasm_State** Dst) {
+  | pop r12
+  | pop rbx
+  | pop rbp
+  | xor eax, eax
+  | ret
+}
+
+// Fib iterative: compute fib(n) where n = [locals_ptr], result in rax
+// Uses same calling convention as trace fn: rdi = flatLocals ptr, rsi = count
+void vancode_fib(dasm_State** Dst) {
+  |.code
+  | mov rax, [rdi]     // rax = n (read from flatLocals[0])
+  | test rax, rax
+  | jz >1              // if n == 0, return 0
+  | cmp rax, 1
+  | jle >1             // if n <= 1, return n
+  | xor r8d, r8d       // fib_n_2 = 0 (F(n-2))
+  | mov r9d, 1         // fib_n_1 = 1 (F(n-1))
+  | mov rcx, rax       // counter = n
+  | dec rcx            // adjust counter
+  |2:
+  | mov r10, r9
+  | add r9, r8         // fib_n_1 = fib_n_1 + fib_n_2
+  | mov r8, r10        // fib_n_2 = old fib_n_1
+  | dec rcx
+  | jnz <2
+  | mov rax, r9        // result
+  | ret
+  |1:
+  | ret                // n is already in rax (0 or 1)
+}
+
+void vancode_halt(dasm_State** Dst) {
+  | xor eax, eax
+  | pop r12
+  | pop rbx
+  | pop rbp
+  | ret
+}
+
+// PushG: push global value by name string pointer
+void vancode_pushg(dasm_State** Dst, void* namePtr, void* bridgeFn) {
+  | mov rdi, namePtr
+  | mov rax, bridgeFn
+  | call rax
+  | push rax
+}
+
+// PopG: pop int64 val from stack, store to global by name
+void vancode_popg(dasm_State** Dst, void* namePtr, void* bridgeFn) {
+  | pop rsi        // val (from operand stack)
+  | mov rdi, namePtr
+  | mov edx, 2     // typeId = tyInt
+  | mov rax, bridgeFn
+  | call rax
+}
+
+void vancode_bridge_2(dasm_State** Dst, void* fn) {
+  | pop rsi
+  | pop rdi
+  | mov rax, fn
+  | call rax
+  | push rax
+}
+
+void vancode_bridge_3_void(dasm_State** Dst, void* fn) {
+  | pop rcx
+  | pop rsi
+  | pop rdi
+  | mov rax, fn
+  | call rax
+}
+
+void vancode_bridge_3(dasm_State** Dst, void* fn) {
+  | pop rcx
+  | pop rsi
+  | pop rdi
+  | mov rax, fn
+  | call rax
+  | push rax
+}
+
+void vancode_bridge_4(dasm_State** Dst, void* fn) {
+  | pop rcx
+  | pop rdx
+  | pop rsi
+  | pop rdi
+  | mov rax, fn
+  | call rax
+  | push rax
+}
+
+// Allocate flatArgs array on stack: sub rsp, nArgs*8
+void vancode_call_alloc(dasm_State** Dst, int nArgs) {
+  | sub rsp, nArgs*8
+}
+
+// Pop rax, store at [rsp + slot*8] (for building flatArgs)
+void vancode_call_pop_slot(dasm_State** Dst, int slot) {
+  | pop rax
+  | mov [rsp + slot*8], rax
+}
+
+// Invoke bridge: jitCallProcBridgeFlat(procId, flatArgs, nArgs, null)
+// rdi=procId, rsi=flatArgs(rsp), rcx=nArgs, r8=null
+void vancode_call_invoke(dasm_State** Dst, int nArgs, int procId, void* bridgeFn) {
+  | mov rsi, rsp
+  | xor r8d, r8d
+  | mov ecx, nArgs
+  | mov edi, procId
+  | mov rax, bridgeFn
+  | call rax
+}
+
+// Cleanup flatArgs (add rsp, nArgs*8) and push result
+void vancode_call_finish(dasm_State** Dst, int nArgs) {
+  | add rsp, nArgs*8
+  | push rax
+}
+
+// Self-recursion: call the current function directly
+// nArgs = paramCount (known at compile time)
+// selfAddr = address of the JIT function buffer (known at emit time via pre-allocated buf)
+void vancode_call_self(dasm_State** Dst, int nArgs, void* selfAddr) {
+  | sub rsp, nArgs*8
+  | mov ecx, nArgs
+  | test ecx, ecx
+  | jz >2
+  |1:
+  | pop rax
+  | mov [rsp + rcx*8 - 8], rax
+  | dec ecx
+  | jnz <1
+  |2:
+  | mov rdi, rsp
+  | mov esi, nArgs
+  | mov rax, selfAddr
+  | call rax
+  | add rsp, nArgs*8
+  | push rax
+}

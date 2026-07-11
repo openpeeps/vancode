@@ -26,14 +26,7 @@ var compileProcHook*: proc(vm: Vm, theProc: Proc): ForeignProc {.nimcall.} = nil
 
 proc jitRecompileAtO3*(theProc: Proc) {.nimcall.} =
   ## JIT recompile `theProc` at -O3 optimization level if not already recompiled
-  if theProc.jitRecompiled: return
-  theProc.jitRecompiled = true
-  if jitOptLevel >= 3: return
-  let savedOpt = jitOptLevel
-  jitOptLevel = 3
-  if compileProcHook != nil:
-    discard compileProcHook(jitGlobalVm, theProc)
-  jitOptLevel = savedOpt
+  discard
 
 # JIT global cache using raw C arrays to avoid ARC/GC issues.
 # `jitGlobalsCount` is the number of globals. Each global is stored as a

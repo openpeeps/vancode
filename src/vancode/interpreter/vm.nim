@@ -21,6 +21,7 @@ import std/[strutils, tables, critbits, algorithm,
 
 import pkg/voodoo/extensibles
 import ./chunk, ./value
+import ./jit/trace_types, ./jit/trace_cache
 
 when defined(hayaVmWriteStackOps):
   import pkg/kapsis/interactive/prompts
@@ -111,6 +112,7 @@ type
     savedScript: Script
     jit*: JitHooks
     pendingCallback*: Value
+    traceCache*: TraceCache
 
 const
   VMInitialPreallocatedStackSize* {.intdefine.} = 64
@@ -121,7 +123,7 @@ const
     ## frequent resizing during execution of small chunks. it can grow dynamically if needed.
 
 proc newVm*(): Vm =
-  Vm()
+  result = Vm(traceCache: newTraceCache())
 
 proc getHotProcCount*(vm: Vm, procName: string): int =
   vm.hotProcCounts.getOrDefault(procName)
@@ -132,7 +134,7 @@ proc getHotChunkCount*(vm: Vm, chunk: Chunk): int =
 proc newVirtualMachine*(prefs: VMPreferences): Vm =
   ## Create a new VM instance with optional preferences. If preferences are not
   ## provided, defaults will be used.
-  result = VM(preferences: prefs)
+  result = VM(preferences: prefs, traceCache: newTraceCache())
 
 proc `{}`[T](x: seq[T], i: int): ptr UncheckedArray[T] =
   result = cast[ptr UncheckedArray[T]](x[i].unsafeAddr)
@@ -443,6 +445,13 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
     pcIdx  = 0
     stackBottom = 0
     frameChanged = false
+    traceState: TraceState = tsIdle
+    traceBuf: TraceBuffer = nil
+    traceStartPc: int = 0
+    loopHotCount: int = 0
+    traceNumLocals: int = 0
+    traceFlatLocals: seq[int64] = @[]
+    traceCurrentProc: int = -1  # procId of current function (-1 = main/unknown)
   for a in args:
     stack.add(a)
 
@@ -487,7 +496,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
   globals["app"] = initValue(globalData)
   globals["this"] = initValue(localData)
 
-  when defined(vancodeJit) or defined(vancodeJitLlvm):
+  when defined(vancodeJitDynasm):
     if vm.jit.setGlobalsPtr != nil:
       vm.jit.setGlobalsPtr(addr globals)
 
@@ -598,6 +607,22 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
     if pcIdx < 0 or pcIdx >= co.opcodes.len: break
     let oc = co.opcodes[pcIdx]
     
+    when defined(vancodeJitDynasm):
+      if traceState == tsRecording:
+        traceBuf.pcs.add(pcIdx)
+        if oc in {opcPushL, opcPopL, opcIncL, opcDecL}:
+          let idx = co.getArg1Int(pcIdx)
+          if idx + 1 > traceNumLocals:
+            traceNumLocals = idx + 1
+        if oc notin {opcPushI, opcPushTrue, opcPushFalse, opcPushNil,
+                     opcPushL, opcPopL, opcIncL, opcDecL,
+                     opcAddI, opcSubI, opcMultI, opcDivI, opcNegI,
+                     opcEqI, opcLessI, opcGreaterI,
+                     opcInvB, opcDiscard,
+                     opcJumpFwd, opcJumpFwdF, opcJumpFwdT, opcJumpBack,
+                     opcCallD, opcReturnVal, opcReturnVoid, opcHalt,
+                     opcNoop}:
+          traceState = tsIdle
     # single debug output for opcode/stack at top of loop
     when defined(hayaVmWriteStackOps):
       display(span("OPCODE:", fgMagenta),
@@ -821,73 +846,6 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       #
       of opcJumpFwd:
         let tgt = co.jumpTargets[pcIdx]
-        # Hot loop detection for backward jumps using opcJumpFwd
-        if vm.preferences.enableHotCodeDetection and tgt >= 0 and tgt < pcIdx:
-          let cnt = currentChunk.hotLoopCount
-          if cnt < vm.preferences.hotLoopThreshold:
-            currentChunk.hotLoopCount = cnt + 1
-          elif not currentChunk.hotLoopCompiled:
-            currentChunk.hotLoopCompiled = true
-            when defined(vancodeJitLog):
-              stderr.writeLine "[jit] hotLoop threshold reached"
-            when defined(vancodeJit) or defined(vancodeJitLlvm) or defined(vancodeJitGcc):
-              if vm.jit.getForeign != nil and currentChunk != script.mainChunk:
-                var owningProc: Proc = nil
-                for i in 0..<script.procs.len:
-                  let p = script.procs[i]
-                  if p.kind == pkNative and p.chunk == currentChunk:
-                    owningProc = p
-                    break
-                when defined(vancodeJitLog):
-                  if owningProc != nil: stderr.writeLine "[jit] found proc: " & owningProc.name
-                  else: stderr.writeLine "[jit] owningProc NOT FOUND"
-                if owningProc != nil:
-                  currentChunk.hotLoopOwner = owningProc
-                  let jitFn = vm.jit.getForeign(cast[pointer](owningProc))
-                  if jitFn != nil:
-                    when defined(vancodeJitLog): stderr.writeLine "[jit] sync compile OK, executing"
-                    owningProc.jitForeign = jitFn
-                    var savedArgs: seq[Value]
-                    if owningProc.paramCount > 0:
-                      savedArgs = newSeq[Value](owningProc.paramCount)
-                      for i in 0..<owningProc.paramCount:
-                        savedArgs[i] = stack[stackBottom + i]
-                    restoreFrame()
-                    inc(pcIdx)
-                    let callResult =
-                      if owningProc.paramCount > 0:
-                        jitFn(cast[StackView](addr savedArgs[0]), owningProc.paramCount)
-                      else:
-                        jitFn(nil, 0)
-                    if owningProc.hasResult:
-                      stack.push(callResult)
-                    continue
-                  else:
-                    when defined(vancodeJitLog): stderr.writeLine "[jit] queue async compile"
-                    currentChunk.hotLoopQueued = true
-                    if vm.jit.queueCompile != nil:
-                      vm.jit.queueCompile(cast[pointer](owningProc))
-          elif currentChunk.hotLoopQueued and currentChunk.hotLoopOwner != nil:
-            let owningProc = currentChunk.hotLoopOwner
-            if owningProc.jitForeign != nil:
-              when defined(vancodeJitLog): stderr.writeLine "[jit] async compile done, executing"
-              currentChunk.hotLoopQueued = false
-              let jitFn = owningProc.jitForeign
-              var savedArgs: seq[Value]
-              if owningProc.paramCount > 0:
-                savedArgs = newSeq[Value](owningProc.paramCount)
-                for i in 0..<owningProc.paramCount:
-                  savedArgs[i] = stack[stackBottom + i]
-              restoreFrame()
-              inc(pcIdx)
-              let callResult =
-                if owningProc.paramCount > 0:
-                  jitFn(cast[StackView](addr savedArgs[0]), owningProc.paramCount)
-                else:
-                  jitFn(nil, 0)
-              if owningProc.hasResult:
-                stack.push(callResult)
-              continue
         if tgt >= 0: pcIdx = tgt - 1
       of opcJumpFwdT:
         # jump if true
@@ -919,74 +877,68 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
             echo "JumpFwdF: tgt=", tgt, " cond=", cond
       of opcJumpBack:
         let tgt = co.jumpTargets[pcIdx]
-        # Hot loop detection for backward jumps using opcJumpBack
-        if vm.preferences.enableHotCodeDetection and tgt >= 0 and tgt < pcIdx:
-          let cnt = currentChunk.hotLoopCount
-          if cnt < vm.preferences.hotLoopThreshold:
-            currentChunk.hotLoopCount = cnt + 1
-          elif not currentChunk.hotLoopCompiled:
-            currentChunk.hotLoopCompiled = true
-            when defined(vancodeJitLog):
-              stderr.writeLine "[jit] hotLoop threshold reached"
-            when defined(vancodeJit) or defined(vancodeJitLlvm) or defined(vancodeJitGcc):
-              if vm.jit.getForeign != nil and currentChunk != script.mainChunk:
-                var owningProc: Proc = nil
-                for i in 0..<script.procs.len:
-                  let p = script.procs[i]
-                  if p.kind == pkNative and p.chunk == currentChunk:
-                    owningProc = p
-                    break
-                when defined(vancodeJitLog):
-                  if owningProc != nil: stderr.writeLine "[jit] found proc: " & owningProc.name
-                  else: stderr.writeLine "[jit] owningProc NOT FOUND"
-                if owningProc != nil:
-                  currentChunk.hotLoopOwner = owningProc
-                  let jitFn = vm.jit.getForeign(cast[pointer](owningProc))
-                  if jitFn != nil:
-                    when defined(vancodeJitLog): stderr.writeLine "[jit] sync compile OK, executing"
-                    owningProc.jitForeign = jitFn
-                    var savedArgs: seq[Value]
-                    if owningProc.paramCount > 0:
-                      savedArgs = newSeq[Value](owningProc.paramCount)
-                      for i in 0..<owningProc.paramCount:
-                        savedArgs[i] = stack[stackBottom + i]
-                    restoreFrame()
-                    inc(pcIdx)
-                    let callResult =
-                      if owningProc.paramCount > 0:
-                        jitFn(cast[StackView](addr savedArgs[0]), owningProc.paramCount)
-                      else:
-                        jitFn(nil, 0)
-                    if owningProc.hasResult:
-                      stack.push(callResult)
-                    continue
-                  else:
-                    when defined(vancodeJitLog): stderr.writeLine "[jit] queue async compile"
-                    currentChunk.hotLoopQueued = true
-                    if vm.jit.queueCompile != nil:
-                      vm.jit.queueCompile(cast[pointer](owningProc))
-          elif currentChunk.hotLoopQueued and currentChunk.hotLoopOwner != nil:
-            let owningProc = currentChunk.hotLoopOwner
-            if owningProc.jitForeign != nil:
-              when defined(vancodeJitLog): stderr.writeLine "[jit] async compile done, executing"
-              currentChunk.hotLoopQueued = false
-              let jitFn = owningProc.jitForeign
-              var savedArgs: seq[Value]
-              if owningProc.paramCount > 0:
-                savedArgs = newSeq[Value](owningProc.paramCount)
-                for i in 0..<owningProc.paramCount:
-                  savedArgs[i] = stack[stackBottom + i]
-              restoreFrame()
-              inc(pcIdx)
-              let callResult =
-                if owningProc.paramCount > 0:
-                  jitFn(cast[StackView](addr savedArgs[0]), owningProc.paramCount)
+        if tgt >= 0:
+          when defined(vancodeJitDynasm):
+            if traceState == tsIdle and vm.preferences.enableHotCodeDetection and vm.traceCache != nil and vm.traceCache.have(tgt):
+              let entry = vm.traceCache.get(tgt)
+              let numLocals = entry.numLocals
+              if traceFlatLocals.len < numLocals:
+                traceFlatLocals = newSeq[int64](numLocals)
+              var flatInit = ""
+              for i in 0..<numLocals:
+                let idx = stackBottom + i
+                traceFlatLocals[i] =
+                  if idx < stack.len and stack[idx] != nil and stack[idx].typeId == tyInt: stack[idx].intVal
+                  else: 0
+                flatInit.add($traceFlatLocals[i] & ",")
+              #stderr.writeLine "[trace] EXEC tgt=" & $tgt & " nloc=" & $numLocals & " sBot=" & $stackBottom & " sLen=" & $stack.len & " flat=" & flatInit
+              type TraceFn = proc (locals: ptr int64, count: cint): int64 {.cdecl.}
+              let fnPtr = cast[TraceFn](entry.code)
+              discard fnPtr(addr traceFlatLocals[0], numLocals.cint)
+              for j in 0..<numLocals:
+                let idx = stackBottom + j
+                ensureLocal(j)
+                stack[idx] = initValue(traceFlatLocals[j])
+              # Skip trailing discards that the guard already consumed
+              var scanPc = pcIdx + 1
+              while scanPc < co.opcodes.len and co.opcodes[scanPc] == opcDiscard:
+                inc scanPc
+              if scanPc > pcIdx + 1:
+                pcIdx = scanPc - 1  # will be inc'd by inc(pcIdx)
+            elif traceState == tsRecording and tgt == traceStartPc:
+              # Finished recording a loop iteration
+              traceBuf.anchorPc = tgt
+              traceBuf.numLocals = traceNumLocals
+              var pcsStr = ""
+              for pi in traceBuf.pcs: pcsStr.add($pi & ",")
+              #stderr.writeLine "[trace] loop recorded pcs=" & pcsStr
+              let code =
+                if vm.jit.compileTrace != nil:
+                  vm.jit.compileTrace(cast[pointer](traceBuf))
                 else:
-                  jitFn(nil, 0)
-              if owningProc.hasResult:
-                stack.push(callResult)
-              continue
-        if tgt >= 0: pcIdx = tgt - 1
+                  nil
+              discard
+              if code != nil:
+                if vm.traceCache == nil:
+                  vm.traceCache = newTraceCache()
+                vm.traceCache.add(TraceEntry(code: code, anchorPc: tgt, numLocals: traceNumLocals))
+              traceState = tsIdle
+              pcIdx = tgt - 1
+            elif traceState == tsIdle and vm.preferences.enableHotCodeDetection:
+              loopHotCount += 1
+              let hotThreshold = 50
+              if loopHotCount >= hotThreshold and
+                 (vm.traceCache == nil or not vm.traceCache.have(tgt)):
+                discard
+                traceState = tsRecording
+                traceStartPc = tgt
+                traceBuf = TraceBuffer(pcs: @[], anchorPc: tgt, cached: cast[pointer](co), chunk: cast[pointer](currentChunk), selfProcId: -1)
+                traceNumLocals = 0
+              pcIdx = tgt - 1
+            else:
+              pcIdx = tgt - 1
+          else:
+            pcIdx = tgt - 1
         when defined(hayaVmWriteStackOps):
           stderr.writeLine "jumpBack: pc=", pcIdx, " stack.len=", stack.len
       of opcCallD:
@@ -1010,6 +962,21 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
 
         let p = targetScript.procs[procId]
         vm.markHotProc(p)
+        when defined(vancodeJitDynasm):
+          if p.kind == pkNative and p.jitForeign == nil and
+             atomicLoadN(addr p.jitCodePtr, AtomicAcquire) == nil:
+            if traceState == tsRecording and p.chunk == currentChunk:
+              traceState = tsPaused
+            elif traceState == tsIdle and vm.preferences.enableHotCodeDetection:
+              if p.jitCallCount >= 50:
+                if p.chunk == currentChunk:
+                  traceState = tsPending
+            elif traceState == tsPending and p.chunk != currentChunk:
+              traceState = tsRecording
+              traceStartPc = 0
+              traceBuf = TraceBuffer(pcs: @[], anchorPc: -1, cached: cast[pointer](co), chunk: cast[pointer](currentChunk), selfProcId: procId, selfParamCount: p.paramCount)
+              traceNumLocals = 0
+              traceCurrentProc = procId
         # Tail-call optimization: reuse the current frame for self-recursive
         # calls in tail position (next opcode is opcReturnVal).
         if p.kind == pkNative and p.chunk == currentChunk and
@@ -1168,6 +1135,39 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
             return rv
         else:
           restoreFrame()
+          when defined(vancodeJitDynasm):
+            if traceState == tsPaused:
+              traceState = tsRecording
+            elif traceState == tsRecording and traceCurrentProc >= 0:
+              # Finished recording a function body — compile and set as ForeignProc
+              traceBuf.anchorPc = -1
+              traceBuf.numLocals = traceNumLocals
+              let code =
+                if vm.jit.compileTrace != nil:
+                  vm.jit.compileTrace(cast[pointer](traceBuf))
+                else:
+                  nil
+              var pcStr = ""
+              for p in traceBuf.pcs: pcStr.add($p & ",")
+              #stderr.writeLine "[trace] FUNC compile result=" & (if code != nil: "ok" else: "nil") & " procId=" & $traceCurrentProc & " pcs=" & pcStr
+              if code != nil:
+                let theProc = script.procs[traceCurrentProc]
+                if theProc != nil:
+                  type JitFn = proc (locals: ptr int64, count: cint): int64 {.cdecl.}
+                  let jitCode = code
+                  let nLocals = traceNumLocals
+                  theProc.jitForeign = proc (args: StackView, argc: int): Value {.closure.} =
+                    var flatLocals = newSeq[int64](max(nLocals, 1))
+                    for i in 0..<min(argc, nLocals):
+                      if args[i] != nil and args[i].typeId == tyInt:
+                        flatLocals[i] = args[i].intVal
+                      else:
+                        flatLocals[i] = 0
+                    let fn = cast[JitFn](jitCode)
+                    let resultI = fn(addr flatLocals[0], argc.cint)
+                    result = initValue(resultI)
+              traceState = tsIdle
+              traceCurrentProc = -1
           stack.push(rv)
       of opcReturnVoid:
         if stepping != nil:
@@ -1341,7 +1341,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
 
   if result == nil or result.typeId == tyNil:
     if stack.len > 0:
-      # when defined(vancodeJit) or defined(vancodeJitLlvm) or defined(vancodeJitGcc):
+      # when defined(vancodeJitDynasm):
       #   stderr.writeLine "DEBUG: stack.len at end = " & $stack.len & " last.typeId = " & $stack[^1].typeId
       return stack[^1]
     else:
