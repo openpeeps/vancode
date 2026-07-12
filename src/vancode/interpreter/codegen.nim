@@ -2665,11 +2665,25 @@ proc genBlock*(node: Node, isStmt: bool): Sym {.codegen.} =
     # all the time, but it should warn when node has no 
     # node.warn(WarnEmptyStmt)
 
+macro astSupportForwardDecl*(program: Ast): bool =
+  ## Compile-time check if the AST type supports forward declarations.
+  ## Needed because `Ast` is extensible via `extendObject` and `forwardDecl`
+  ## may or may not be present depending on which parser extensions are loaded.
+  ##
+  ## Usage:
+  ##   when astSupportForwardDecl(program):
+  ##     gen.fwdDecl = program.forwardDecl
+  when compiles(Ast().forwardDecl):
+    result = newLit(true)
+  else:
+    result = newLit(false)
+
 proc genScript*(program: Ast, includePath: Option[string],
                   emitHalt: static bool = true) {.codegen.} =
   ## Generates the code for a full script.
   gen.includeBasePath = includePath
-  gen.fwdDecl = program.forwardDecl
+  when astSupportForwardDecl(program):
+    gen.fwdDecl = program.forwardDecl
   for node in program.nodes:
     gen.genStmt(node)
   when emitHalt == true:
