@@ -10,5 +10,3 @@ testresults/
 /examples/*
 !/examples/*.nim
 !/examples/*.nims
-
-vancode_jit.c
