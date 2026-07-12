@@ -314,6 +314,18 @@
 </li>
 <li>
   <details open>
+    <summary><a class="reference reference-toplevel" href="#17" id="67">Macros</a></summary>
+    <ul class="simple simple-toc-section">
+      <ul class="simple nested-toc-section">astSupportForwardDecl
+  <li><a class="reference" href="#astSupportForwardDecl.m%2CAst" title="astSupportForwardDecl(program: Ast): bool">astSupportForwardDecl(program: Ast): bool</a></li>
+
+</ul>
+
+    </ul>
+  </details>
+</li>
+<li>
+  <details open>
     <summary><a class="reference reference-toplevel" href="#18" id="68">Templates</a></summary>
     <ul class="simple simple-toc-section">
       <ul class="simple nested-toc-section">withBlock
@@ -1027,6 +1039,25 @@
 
   </dl>
 </div>
+<div class="section" id="17">
+  <h1><a class="toc-backref" href="#17">Macros</a></h1>
+  <dl class="item">
+    <div id="astSupportForwardDecl-macros-all">
+  <div id="astSupportForwardDecl.m,Ast">
+  <dt><pre><span class="Keyword">macro</span> <a href="#astSupportForwardDecl.m%2CAst"><span class="Identifier">astSupportForwardDecl</span></a><span class="Other">(</span><span class="Identifier">program</span><span class="Other">:</span> <a href="ast.html#Ast"><span class="Identifier">Ast</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span></pre></dt>
+  <dd>
+    
+    <p>Compile-time check if the AST type supports forward declarations. Needed because <tt class="docutils literal"><span class="pre"><span class="Identifier">Ast</span></span></tt> is extensible via <tt class="docutils literal"><span class="pre"><span class="Identifier">extendObject</span></span></tt> and <tt class="docutils literal"><span class="pre"><span class="Identifier">forwardDecl</span></span></tt> may or may not be present depending on which parser extensions are loaded.</p>
+<p>Usage: when astSupportForwardDecl(program): gen.fwdDecl = program.forwardDecl</p>
+
+    
+  </dd>
+</div>
+
+</div>
+
+  </dl>
+</div>
 <div class="section" id="18">
   <h1><a class="toc-backref" href="#18">Templates</a></h1>
   <dl class="item">
@@ -1051,7 +1082,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-11 17:54:28 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-12 11:33:12 UTC</small>
       </div>
     </div>
   </div>
