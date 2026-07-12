@@ -123,7 +123,7 @@ type
         ## Child nodes used to build the AST tree
         ## Used for all other node kinds not listed above
 
-  Ast* {.acyclic.} = ref object
+  Ast* {.acyclic, extensible.} = ref object
     sourcePath*: string
       ## The source path of the AST (e.g., the file path of the template)
     otherPaths*: seq[string]

@@ -118,6 +118,7 @@ type
       # avoid name collisions when generating code for things like loops and if statements
     policy*: CompilationPolicy
       ## Compilation policy controlling which features are allowed
+    fwdDecl: seq[Node]
     # instantiationCache: Table[Hash, Sym]
 
   ModuleLibrary* = proc(script: Script, systemModule: Module): Module
@@ -1580,15 +1581,94 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
         gen.lookup(formalParams[0])
       else:
         gen.module.sym"void"
-  # create a new proc
+  
+  # forward declaration: register symbol but don't compile body
+  if body.kind == nkEmpty:
+    var (sym, theProc) =
+      newProc(gen.script, name, impl = node,
+                params, returnTy, kind = pkNative,
+                genKind = gen.kind)
+    sym.genericParams = genericParams
+    gen.addSym(sym, scopeOffset = ord(sym.genericParams.isSome))
+    theProc.procId = gen.script.procs.len
+    gen.script.procs.add(theProc)
+    if sym.procExport:
+      gen.script.procsExport.add(theProc)
+    if not isInstantiation and sym.isGeneric:
+      gen.popScope()
+    return sym
+
+  # check for matching forward declaration
+  let nameIdent =
+    if name.kind == nkPostfix: name[1]
+    else: name
+  let fwdMatchIdx = block:
+    var idx = -1
+    let lookupName = nameIdent.ident.toLowerAscii
+    for i, fwd in gen.fwdDecl:
+      let fwdName =
+        if fwd[0].kind == nkPostfix: fwd[0][1]
+        else: fwd[0]
+      if fwdName.ident.toLowerAscii == lookupName:
+        idx = i
+        break
+    idx
+
+  if fwdMatchIdx >= 0:
+    # Sync: compile body into the existing forward declaration's proc
+    # Use lowered name since newProc normalizes idents to lowercase
+    let fwdLookup = nameIdent.ident.toLowerAscii
+    let fwdSym = gen.funcLookup(fwdLookup)
+    if fwdSym == nil:
+      node.error("forward declaration registered but symbol not found")
+      return nil
+    var
+      chunk = newChunk(gen.chunk.file)
+      procGen = initCodeGen(gen.script, gen.module, chunk, gkProc,
+        ctxAllocator =
+          if gen.kind == gkToplevel: nil
+          else: gen.ctxAllocator
+      )
+    let theProc = gen.script.procs[fwdSym.procId]
+    theProc.chunk = chunk
+    chunk.file = gen.chunk.file
+    procGen.procReturnTy = returnTy
+
+    procGen.pushScope()
+    for (pname, ty, implSym, isMut, isOpt) in params:
+      var varType =
+        if isMut: skVar
+        else: skLet
+      let param = procGen.declareVar(pname, varType, ty)
+      param.varSet = true
+
+    if returnTy.tyKind != ttyVoid:
+      let res = newIdent("result")
+      procGen.declareVar(res, skVar, returnTy, isMagic = true)
+      procGen.pushDefault(returnTy)
+      procGen.popVar(res)
+
+    discard procGen.genBlock(body, isStmt = true)
+
+    if returnTy.tyKind != ttyVoid:
+      let resultSym = procGen.lookup(newIdent("result"))
+      procGen.chunk.emit(opcPushL)
+      procGen.chunk.emit(resultSym.varStackPos.uint8)
+      procGen.chunk.emit(opcReturnVal)
+    else:
+      procGen.chunk.emit(opcReturnVoid)
+    procGen.popScope()
+
+    if not isInstantiation and fwdSym.isGeneric:
+      gen.popScope()
+    return fwdSym
+
+  # normal function declaration (no forward decl)
   var (sym, theProc) =
     newProc(gen.script, name, impl = node,
               params, returnTy, kind = pkNative,
               genKind = gen.kind)
   sym.genericParams = genericParams
-  # add the proc into the declaration scope
-  # we need to do this here, otherwise recursive
-  # calls will be broken
   gen.addSym(sym, scopeOffset = ord(sym.genericParams.isSome))
 
   if not sym.isGeneric or isInstantiation:
@@ -1603,35 +1683,27 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
     chunk.file = gen.chunk.file
     procGen.procReturnTy = returnTy
 
-    # add the proc's parameters as locals
     procGen.pushScope()
-    for (name, ty, implSym, isMut, isOpt) in params:
+    for (pname, ty, implSym, isMut, isOpt) in params:
       var varType =
-        if isMut: skVar # value is mutable
-        else: skLet # value is immutable
-      let param = procGen.declareVar(name, varType, ty)
-      param.varSet = true  # arguments are not assignable
+        if isMut: skVar
+        else: skLet
+      let param = procGen.declareVar(pname, varType, ty)
+      param.varSet = true
 
-    # declare ``result`` if applicable
     if returnTy.tyKind != ttyVoid:
       let res = newIdent("result")
       procGen.declareVar(res, skVar, returnTy, isMagic = true)
       procGen.pushDefault(returnTy)
       procGen.popVar(res)
 
-    # add the proc into the script
     theProc.procId = gen.script.procs.len
     gen.script.procs.add(theProc)
     if sym.procExport:
-      # export the proc if needed (exported procs need to be in procsExport
-      # for the runtime to find them, but they also need to be in procs for
-      # the compiler to compile them, so we add them to both)
       gen.script.procsExport.add(theProc)
 
-    # compile the proc's body
     discard procGen.genBlock(body, isStmt = true)
 
-    # finally, return ``result`` if applicable
     if returnTy.tyKind != ttyVoid:
       let resultSym = procGen.lookup(newIdent("result"))
       procGen.chunk.emit(opcPushL)
@@ -1641,12 +1713,9 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
       procGen.chunk.emit(opcReturnVoid)
     procGen.popScope()
   else:
-    # add the proc into the script
     theProc.procId = gen.script.procs.len
     gen.script.procs.add(theProc)
 
-  # pop the generic declaration scope
-  # if not isInstantiation and node[1].kind != nkEmpty:
   if not isInstantiation and sym.isGeneric:
     gen.popScope()
   result = sym
@@ -2600,6 +2669,7 @@ proc genScript*(program: Ast, includePath: Option[string],
                   emitHalt: static bool = true) {.codegen.} =
   ## Generates the code for a full script.
   gen.includeBasePath = includePath
+  gen.fwdDecl = program.forwardDecl
   for node in program.nodes:
     gen.genStmt(node)
   when emitHalt == true:
