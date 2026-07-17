@@ -107,6 +107,7 @@ type
     activeCoroutine*: Coroutine
     savedStack: seq[Value]
     savedCallStack: seq[CallFrame]
+    globals*: Table[string, Value]
     savedPcIdx: int
     savedChunk: Chunk
     savedCo: CachedOps
@@ -492,15 +493,16 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
     stepping.state = csRunning
 
   # initialize globals with provided data
-  # this is a Tim-specific hack and must be rethought for a more
-  # general VM design. for now we just want to get Tim's rendering working with
-  var globals = Table[string, Value]()
-  globals["app"] = initValue(globalData)
-  globals["this"] = initValue(localData)
+  # globals are stored on the VM so they persist across interpret() calls,
+  # enabling stateful REPL sessions
+  if vm.globals.len == 0:
+    vm.globals = Table[string, Value]()
+    vm.globals["app"] = initValue(globalData)
+    vm.globals["this"] = initValue(localData)
 
   when defined(vancodeJitDynasm):
     if vm.jit.setGlobalsPtr != nil:
-      vm.jit.setGlobalsPtr(addr globals)
+      vm.jit.setGlobalsPtr(addr vm.globals)
 
   template unary(expr) =
     let a {.inject.} = stack.pop()
@@ -653,11 +655,11 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       #
       of opcPushG:
         # The `opcPushG` pushes a global variable onto the stack.
-        stack.push(globals[co.getArg1Str(pcIdx, currentChunk)])
+        stack.push(vm.globals[co.getArg1Str(pcIdx, currentChunk)])
       of opcPopG:
         # The `opcPopG` pops the top of the stack and stores it in a global variable.
         let val = stack.pop()
-        globals[co.getArg1Str(pcIdx, currentChunk)] = val
+        vm.globals[co.getArg1Str(pcIdx, currentChunk)] = val
       of opcPushL:
         let idx = co.getArg1Int(pcIdx)
         ensureLocal(idx)
