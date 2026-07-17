@@ -99,6 +99,7 @@
   hotProcCounts*: Table[string, int]
   importedModules*: Table[string, Script]
   activeCoroutine*: Coroutine
+  globals*: Table[string, Value]
   jit*: JitHooks
   pendingCallback*: Value
   traceCache*: TraceCache">Vm</a></li>
@@ -284,6 +285,7 @@
   <span class="Identifier">hotProcCounts</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <span class="Identifier">int</span><span class="Other">]</span>
   <span class="Identifier">importedModules</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">]</span>
   <span class="Identifier">activeCoroutine</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Coroutine"><span class="Identifier">Coroutine</span></a>
+  <span class="Identifier">globals</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="value.html#Value"><span class="Identifier">Value</span></a><span class="Other">]</span>
   <span class="Identifier">jit</span><span class="Operator">*</span><span class="Other">:</span> <a href="value.html#JitHooks"><span class="Identifier">JitHooks</span></a>
   <span class="Identifier">pendingCallback</span><span class="Operator">*</span><span class="Other">:</span> <a href="value.html#Value"><span class="Identifier">Value</span></a>
   <span class="Identifier">traceCache</span><span class="Operator">*</span><span class="Other">:</span> <a href="jit/trace_cache.html#TraceCache"><span class="Identifier">TraceCache</span></a></pre></dt>
@@ -470,7 +472,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-12 11:33:12 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-17 10:55:22 UTC</small>
       </div>
     </div>
   </div>
