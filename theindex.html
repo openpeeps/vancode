@@ -339,6 +339,10 @@
 <li><a class="reference external"
           data-doc-search-tag="errors: const ErrCannotDiscardVoid" href="vancode/interpreter/errors.html#ErrCannotDiscardVoid">errors: const ErrCannotDiscardVoid</a></li>
           </ul></dd>
+<dt><a name="ErrCoroMustHaveReturnType" href="#ErrCoroMustHaveReturnType"><span>ErrCoroMustHaveReturnType:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="errors: const ErrCoroMustHaveReturnType" href="vancode/interpreter/errors.html#ErrCoroMustHaveReturnType">errors: const ErrCoroMustHaveReturnType</a></li>
+          </ul></dd>
 <dt><a name="ErrCouldNotInferGeneric" href="#ErrCouldNotInferGeneric"><span>ErrCouldNotInferGeneric:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="errors: const ErrCouldNotInferGeneric" href="vancode/interpreter/errors.html#ErrCouldNotInferGeneric">errors: const ErrCouldNotInferGeneric</a></li>
@@ -418,6 +422,10 @@
 <dt><a name="ErrOnlyUsableInABlock" href="#ErrOnlyUsableInABlock"><span>ErrOnlyUsableInABlock:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="errors: const ErrOnlyUsableInABlock" href="vancode/interpreter/errors.html#ErrOnlyUsableInABlock">errors: const ErrOnlyUsableInABlock</a></li>
+          </ul></dd>
+<dt><a name="ErrOnlyUsableInACoroutine" href="#ErrOnlyUsableInACoroutine"><span>ErrOnlyUsableInACoroutine:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="errors: const ErrOnlyUsableInACoroutine" href="vancode/interpreter/errors.html#ErrOnlyUsableInACoroutine">errors: const ErrOnlyUsableInACoroutine</a></li>
           </ul></dd>
 <dt><a name="ErrOnlyUsableInALoop" href="#ErrOnlyUsableInALoop"><span>ErrOnlyUsableInALoop:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -590,6 +598,18 @@
 <dt><a name="genContinue" href="#genContinue"><span>genContinue:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc genContinue(gen: CodeGen; node: Node)" href="vancode/interpreter/codegen.html#genContinue%2CCodeGen%2CNode">codegen: proc genContinue(gen: CodeGen; node: Node)</a></li>
+          </ul></dd>
+<dt><a name="genCoroResume" href="#genCoroResume"><span>genCoroResume:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="codegen: proc genCoroResume(gen: CodeGen; node: Node): Sym" href="vancode/interpreter/codegen.html#genCoroResume%2CCodeGen%2CNode">codegen: proc genCoroResume(gen: CodeGen; node: Node): Sym</a></li>
+          </ul></dd>
+<dt><a name="genCoroutineDecl" href="#genCoroutineDecl"><span>genCoroutineDecl:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="codegen: proc genCoroutineDecl(gen: CodeGen; node: Node; isInstantiation = false): Sym" href="vancode/interpreter/codegen.html#genCoroutineDecl%2CCodeGen%2CNode">codegen: proc genCoroutineDecl(gen: CodeGen; node: Node; isInstantiation = false): Sym</a></li>
+          </ul></dd>
+<dt><a name="genCreateCoro" href="#genCreateCoro"><span>genCreateCoro:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="codegen: proc genCreateCoro(gen: CodeGen; node: Node): Sym" href="vancode/interpreter/codegen.html#genCreateCoro%2CCodeGen%2CNode">codegen: proc genCreateCoro(gen: CodeGen; node: Node): Sym</a></li>
           </ul></dd>
 <dt><a name="genDiscard" href="#genDiscard"><span>genDiscard:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1323,6 +1343,10 @@
 <li><a class="reference external"
           data-doc-search-tag="sym: SymKind.skConst" href="vancode/interpreter/sym.html#skConst">sym: SymKind.skConst</a></li>
           </ul></dd>
+<dt><a name="skCoroutine" href="#skCoroutine"><span>skCoroutine:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="sym: SymKind.skCoroutine" href="vancode/interpreter/sym.html#skCoroutine">sym: SymKind.skCoroutine</a></li>
+          </ul></dd>
 <dt><a name="skDecl" href="#skDecl"><span>skDecl:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="sym: const skDecl" href="vancode/interpreter/sym.html#skDecl">sym: const skDecl</a></li>
@@ -1611,7 +1635,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-17 11:07:05 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-18 21:19:39 UTC</small>
       </div>
     </div>
   </div>

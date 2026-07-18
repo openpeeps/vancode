@@ -69,6 +69,7 @@
     nil
   of gkProc, gkBlockProc:
   of gkIterator:
+  of gkCoroutine:
   resolver*: FileResolver ## the file resolver used for resolving imports and includes. This is shared
                           ## between codegen instances to maintain a consistent cache of resolved files.
   parserCallback*: ParserCallback ## a callback used to parse custom nodes
@@ -170,6 +171,18 @@
 </ul>
 <ul class="simple nested-toc-section">genContinue
   <li><a class="reference" href="#genContinue%2CCodeGen%2CNode" title="genContinue(gen: CodeGen; node: Node)">genContinue(gen: CodeGen; node: Node)</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">genCoroResume
+  <li><a class="reference" href="#genCoroResume%2CCodeGen%2CNode" title="genCoroResume(gen: CodeGen; node: Node): Sym">genCoroResume(gen: CodeGen; node: Node): Sym</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">genCoroutineDecl
+  <li><a class="reference" href="#genCoroutineDecl%2CCodeGen%2CNode" title="genCoroutineDecl(gen: CodeGen; node: Node; isInstantiation = false): Sym">genCoroutineDecl(gen: CodeGen; node: Node; isInstantiation = false): Sym</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">genCreateCoro
+  <li><a class="reference" href="#genCreateCoro%2CCodeGen%2CNode" title="genCreateCoro(gen: CodeGen; node: Node): Sym">genCreateCoro(gen: CodeGen; node: Node): Sym</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">genDiscard
@@ -363,6 +376,7 @@
     <span class="Keyword">nil</span>
   <span class="Keyword">of</span> <span class="Identifier">gkProc</span><span class="Other">,</span> <span class="Identifier">gkBlockProc</span><span class="Other">:</span>
   <span class="Keyword">of</span> <span class="Identifier">gkIterator</span><span class="Other">:</span>
+  <span class="Keyword">of</span> <span class="Identifier">gkCoroutine</span><span class="Other">:</span>
   <span class="Identifier">resolver</span><span class="Operator">*</span><span class="Other">:</span> <a href="resolver.html#FileResolver"><span class="Identifier">FileResolver</span></a> <span class="Comment">## the file resolver used for resolving imports and includes. This is shared</span>
                           <span class="Comment">## between codegen instances to maintain a consistent cache of resolved files.</span>
   <span class="Identifier">parserCallback</span><span class="Operator">*</span><span class="Other">:</span> <a href="#ParserCallback"><span class="Identifier">ParserCallback</span></a> <span class="Comment">## a callback used to parse custom nodes</span>
@@ -656,6 +670,45 @@
 </div>
 
 </div>
+<div id="genCoroResume-procs-all">
+  <div id="genCoroResume,CodeGen,Node">
+  <dt><pre><span class="Keyword">proc</span> <a href="#genCoroResume%2CCodeGen%2CNode"><span class="Identifier">genCoroResume</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
+<div id="genCoroutineDecl-procs-all">
+  <div id="genCoroutineDecl,CodeGen,Node">
+  <dt><pre><span class="Keyword">proc</span> <a href="#genCoroutineDecl%2CCodeGen%2CNode"><span class="Identifier">genCoroutineDecl</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">isInstantiation</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
+<div id="genCreateCoro-procs-all">
+  <div id="genCreateCoro,CodeGen,Node">
+  <dt><pre><span class="Keyword">proc</span> <a href="#genCreateCoro%2CCodeGen%2CNode"><span class="Identifier">genCreateCoro</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
 <div id="genDiscard-procs-all">
   <div id="genDiscard,CodeGen,Node">
   <dt><pre><span class="Keyword">proc</span> <a href="#genDiscard%2CCodeGen%2CNode"><span class="Identifier">genDiscard</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span> {.
@@ -864,7 +917,7 @@
 <div id="genYield-procs-all">
   <div id="genYield,CodeGen,Node">
   <dt><pre><span class="Keyword">proc</span> <a href="#genYield%2CCodeGen%2CNode"><span class="Identifier">genYield</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span> {.
-    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -1082,7 +1135,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-17 11:07:05 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-18 21:19:39 UTC</small>
       </div>
     </div>
   </div>

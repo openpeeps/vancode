@@ -1,41 +1,41 @@
 nimTitle	ast	vancode/interpreter/ast.html	module vancode/interpreter/ast		0
 nim	NodeKind	vancode/interpreter/ast.html#NodeKind	enum NodeKind		34
-nim	htmlAttrClass	vancode/interpreter/ast.html#htmlAttrClass	HtmlAttributeType.htmlAttrClass		91
-nim	htmlAttrId	vancode/interpreter/ast.html#htmlAttrId	HtmlAttributeType.htmlAttrId		91
-nim	htmlAttrIdent	vancode/interpreter/ast.html#htmlAttrIdent	HtmlAttributeType.htmlAttrIdent		91
-nim	htmlAttr	vancode/interpreter/ast.html#htmlAttr	HtmlAttributeType.htmlAttr		91
-nim	HtmlAttributeType	vancode/interpreter/ast.html#HtmlAttributeType	enum HtmlAttributeType		91
-nim	Node	vancode/interpreter/ast.html#Node	type Node		94
-nim	Ast	vancode/interpreter/ast.html#Ast	type Ast		126
-nim	debugEcho	vancode/interpreter/ast.html#debugEcho,Node	proc debugEcho(node: Node)		137
-nim	debugEcho	vancode/interpreter/ast.html#debugEcho,seq[Node]	proc debugEcho(nodes: seq[Node])		141
-nim	len	vancode/interpreter/ast.html#len,Node	proc len(node: Node): int		145
-nim	`[]`	vancode/interpreter/ast.html#[],Node,	proc `[]`(node: Node; index: int | BackwardsIndex): Node		148
-nim	`[]`	vancode/interpreter/ast.html#[],Node,HSlice	proc `[]`(node: Node; slice: HSlice): seq[Node]		151
-nim	`[]=`	vancode/interpreter/ast.html#[]=,Node,,Node	proc `[]=`(node: Node; index: int | BackwardsIndex; child: Node)		154
-nim	items	vancode/interpreter/ast.html#items.i,Node	iterator items(node: Node): Node		157
-nim	pairs	vancode/interpreter/ast.html#pairs.i,Node	iterator pairs(node: Node): tuple[i: int, n: Node]		169
-nim	add	vancode/interpreter/ast.html#add,Node,Node	proc add(node, child: Node): Node		173
-nim	add	vancode/interpreter/ast.html#add,Node,openArray[Node]	proc add(node: Node; children: openArray[Node]): Node		177
-nim	hash	vancode/interpreter/ast.html#hash,Node	proc hash(node: Node): Hash		181
-nim	`$`	vancode/interpreter/ast.html#$,Node	proc `$`(node: Node): string		199
-nim	treeRepr	vancode/interpreter/ast.html#treeRepr,Node	proc treeRepr(node: Node): string		214
-nim	render	vancode/interpreter/ast.html#render,Node	proc render(node: Node): string		232
-nim	newNode	vancode/interpreter/ast.html#newNode,NodeKind	proc newNode(kind: NodeKind): Node		347
-nim	newEmpty	vancode/interpreter/ast.html#newEmpty	proc newEmpty(): Node		351
-nim	newNil	vancode/interpreter/ast.html#newNil	proc newNil(): Node		355
-nim	nkBlock	vancode/interpreter/ast.html#nkBlock,varargs[Node]	proc nkBlock(children: varargs[Node]): Node		359
-nim	newTree	vancode/interpreter/ast.html#newTree,NodeKind,varargs[Node]	proc newTree(kind: NodeKind; children: varargs[Node]): Node		363
-nim	newBoolLit	vancode/interpreter/ast.html#newBoolLit,bool	proc newBoolLit(val: bool): Node		369
-nim	newIntLit	vancode/interpreter/ast.html#newIntLit,int64	proc newIntLit(val: int64): Node		374
-nim	newFloatLit	vancode/interpreter/ast.html#newFloatLit,float64	proc newFloatLit(val: float64): Node		379
-nim	newStringLit	vancode/interpreter/ast.html#newStringLit,string	proc newStringLit(val: string): Node		384
-nim	newIdent	vancode/interpreter/ast.html#newIdent,string,int,int	proc newIdent(ident: string; ln, col: int = 0): Node		389
-nim	newIdentDefs	vancode/interpreter/ast.html#newIdentDefs,openArray[Node],Node	proc newIdentDefs(names: openArray[Node]; ty: Node; value = newEmpty()): Node		396
-nim	newInfix	vancode/interpreter/ast.html#newInfix,Node,Node,Node	proc newInfix(op, left, right: Node): Node		401
-nim	newCall	vancode/interpreter/ast.html#newCall,Node,varargs[Node]	proc newCall(ident: Node; args: varargs[Node]): Node		405
-nim	newFunction	vancode/interpreter/ast.html#newFunction,Node,Node,Node,Node	proc newFunction(ident, body: Node; genericParams, formalParams: Node = newEmpty()): Node		411
-nim	defaultNil	vancode/interpreter/ast.html#defaultNil	let defaultNil		423
-nimgrp	debugecho	vancode/interpreter/ast.html#debugEcho-procs-all	proc		137
-nimgrp	[]	vancode/interpreter/ast.html#[]-procs-all	proc		148
-nimgrp	add	vancode/interpreter/ast.html#add-procs-all	proc		173
+nim	htmlAttrClass	vancode/interpreter/ast.html#htmlAttrClass	HtmlAttributeType.htmlAttrClass		92
+nim	htmlAttrId	vancode/interpreter/ast.html#htmlAttrId	HtmlAttributeType.htmlAttrId		92
+nim	htmlAttrIdent	vancode/interpreter/ast.html#htmlAttrIdent	HtmlAttributeType.htmlAttrIdent		92
+nim	htmlAttr	vancode/interpreter/ast.html#htmlAttr	HtmlAttributeType.htmlAttr		92
+nim	HtmlAttributeType	vancode/interpreter/ast.html#HtmlAttributeType	enum HtmlAttributeType		92
+nim	Node	vancode/interpreter/ast.html#Node	type Node		95
+nim	Ast	vancode/interpreter/ast.html#Ast	type Ast		127
+nim	debugEcho	vancode/interpreter/ast.html#debugEcho,Node	proc debugEcho(node: Node)		138
+nim	debugEcho	vancode/interpreter/ast.html#debugEcho,seq[Node]	proc debugEcho(nodes: seq[Node])		142
+nim	len	vancode/interpreter/ast.html#len,Node	proc len(node: Node): int		146
+nim	`[]`	vancode/interpreter/ast.html#[],Node,	proc `[]`(node: Node; index: int | BackwardsIndex): Node		149
+nim	`[]`	vancode/interpreter/ast.html#[],Node,HSlice	proc `[]`(node: Node; slice: HSlice): seq[Node]		152
+nim	`[]=`	vancode/interpreter/ast.html#[]=,Node,,Node	proc `[]=`(node: Node; index: int | BackwardsIndex; child: Node)		155
+nim	items	vancode/interpreter/ast.html#items.i,Node	iterator items(node: Node): Node		158
+nim	pairs	vancode/interpreter/ast.html#pairs.i,Node	iterator pairs(node: Node): tuple[i: int, n: Node]		170
+nim	add	vancode/interpreter/ast.html#add,Node,Node	proc add(node, child: Node): Node		174
+nim	add	vancode/interpreter/ast.html#add,Node,openArray[Node]	proc add(node: Node; children: openArray[Node]): Node		178
+nim	hash	vancode/interpreter/ast.html#hash,Node	proc hash(node: Node): Hash		182
+nim	`$`	vancode/interpreter/ast.html#$,Node	proc `$`(node: Node): string		200
+nim	treeRepr	vancode/interpreter/ast.html#treeRepr,Node	proc treeRepr(node: Node): string		215
+nim	render	vancode/interpreter/ast.html#render,Node	proc render(node: Node): string		233
+nim	newNode	vancode/interpreter/ast.html#newNode,NodeKind	proc newNode(kind: NodeKind): Node		348
+nim	newEmpty	vancode/interpreter/ast.html#newEmpty	proc newEmpty(): Node		352
+nim	newNil	vancode/interpreter/ast.html#newNil	proc newNil(): Node		356
+nim	nkBlock	vancode/interpreter/ast.html#nkBlock,varargs[Node]	proc nkBlock(children: varargs[Node]): Node		360
+nim	newTree	vancode/interpreter/ast.html#newTree,NodeKind,varargs[Node]	proc newTree(kind: NodeKind; children: varargs[Node]): Node		364
+nim	newBoolLit	vancode/interpreter/ast.html#newBoolLit,bool	proc newBoolLit(val: bool): Node		370
+nim	newIntLit	vancode/interpreter/ast.html#newIntLit,int64	proc newIntLit(val: int64): Node		375
+nim	newFloatLit	vancode/interpreter/ast.html#newFloatLit,float64	proc newFloatLit(val: float64): Node		380
+nim	newStringLit	vancode/interpreter/ast.html#newStringLit,string	proc newStringLit(val: string): Node		385
+nim	newIdent	vancode/interpreter/ast.html#newIdent,string,int,int	proc newIdent(ident: string; ln, col: int = 0): Node		390
+nim	newIdentDefs	vancode/interpreter/ast.html#newIdentDefs,openArray[Node],Node	proc newIdentDefs(names: openArray[Node]; ty: Node; value = newEmpty()): Node		397
+nim	newInfix	vancode/interpreter/ast.html#newInfix,Node,Node,Node	proc newInfix(op, left, right: Node): Node		402
+nim	newCall	vancode/interpreter/ast.html#newCall,Node,varargs[Node]	proc newCall(ident: Node; args: varargs[Node]): Node		406
+nim	newFunction	vancode/interpreter/ast.html#newFunction,Node,Node,Node,Node	proc newFunction(ident, body: Node; genericParams, formalParams: Node = newEmpty()): Node		412
+nim	defaultNil	vancode/interpreter/ast.html#defaultNil	let defaultNil		424
+nimgrp	debugecho	vancode/interpreter/ast.html#debugEcho-procs-all	proc		138
+nimgrp	[]	vancode/interpreter/ast.html#[]-procs-all	proc		149
+nimgrp	add	vancode/interpreter/ast.html#add-procs-all	proc		174

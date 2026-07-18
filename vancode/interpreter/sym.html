@@ -120,6 +120,8 @@
     of ttyAlias:
       aliasId*: TypeId       ## the id of the alias, used for lookups and type checking
       aliasTy*: Sym          ## the type this alias refers to
+    of ttyCoroutine:
+      coroResultTy*: Sym     ## the result type of resume()
     of ttyCustom:
       nil
     of ttyHtmlElement:
@@ -139,6 +141,12 @@
     procType*: ProcType      ## whether the proc is a normal function or a macro
     procExport*: bool        ## whether the proc is exported or not
     procMemoize*: bool       ## whether the proc is memoized or not. todo: implement memoization
+  of skCoroutine:
+    coroId*: uint16          ## the unique number of the coroutine's proc
+    coroParams*: seq[ProcParam] ## the coroutine's parameters
+    coroReturnTy*: Sym       ## the return type of the coroutine
+    coroYieldTy*: Sym        ## the yield type of the coroutine
+    coroExport*: bool        ## whether the coroutine is exported or not
   of skIterator:
     iterParams*: seq[ProcParam] ## the iterator's parameters
     iterYieldTy*: Sym        ## the yield type of the iterator
@@ -153,15 +161,15 @@
   genericInstArgs*: Option[seq[Sym]] ## some if the sym is an instantiation">Sym</a></li>
 <li><a class="reference" href="#SymKind" title="SymKind = enum
   skVar = &quot;var&quot;, skConst = &quot;const&quot;, skLet = &quot;let&quot;, skType = &quot;type&quot;,
-  skProc = &quot;fn&quot;, skIterator = &quot;iterator&quot;, skGenericParam = &quot;generic param&quot;,
-  skHtmlType = &quot;html&quot;, skChoice = &quot;(...)&quot; ## an overloaded symbol, stores many symbols with \
-                                          ## the same name">SymKind</a></li>
+  skProc = &quot;fn&quot;, skIterator = &quot;iterator&quot;, skCoroutine = &quot;coroutine&quot;,
+  skGenericParam = &quot;generic param&quot;, skHtmlType = &quot;html&quot;, skChoice = &quot;(...)&quot; ## an overloaded symbol, stores many symbols with \
+                                                                            ## the same name">SymKind</a></li>
 <li><a class="reference" href="#TypeKind" title="TypeKind {..} = enum
   ttyVoid = &quot;void&quot;, ttyAny = &quot;any&quot;, ttyBool = &quot;bool&quot;, ttyInt = &quot;int&quot;,
   ttyFloat = &quot;float&quot;, ttyString = &quot;string&quot;, ttyPointer = &quot;pointer&quot;,
   ttyProc = &quot;proc&quot;, ttyJson = &quot;json&quot;, ttyArray = &quot;array&quot;, ttyNil = &quot;nil&quot;,
-  ttyObject = &quot;object&quot;, ttyAlias = &quot;alias&quot;, ttyCustom = &quot;custom&quot;,
-  ttyHtmlElement = &quot;HtmlElement&quot;">TypeKind</a></li>
+  ttyObject = &quot;object&quot;, ttyCoroutine = &quot;coroutine&quot;, ttyAlias = &quot;alias&quot;,
+  ttyCustom = &quot;custom&quot;, ttyHtmlElement = &quot;HtmlElement&quot;">TypeKind</a></li>
 
     </ul>
   </details>
@@ -170,8 +178,8 @@
   <details open>
     <summary><a class="reference reference-toplevel" href="#10" id="60">Consts</a></summary>
     <ul class="simple simple-toc-section">
-      <li><a class="reference" href="#skCallable" title="skCallable = {skProc, skIterator}">skCallable</a></li>
-<li><a class="reference" href="#skDecl" title="skDecl = {skVar..skIterator}">skDecl</a></li>
+      <li><a class="reference" href="#skCallable" title="skCallable = {skProc, skIterator, skCoroutine}">skCallable</a></li>
+<li><a class="reference" href="#skDecl" title="skDecl = {skVar..skCoroutine}">skDecl</a></li>
 <li><a class="reference" href="#skTyped" title="skTyped = {skType, skHtmlType, skGenericParam}">skTyped</a></li>
 <li><a class="reference" href="#skVars" title="skVars = {skVar, skLet, skConst}">skVars</a></li>
 <li><a class="reference" href="#tyMeta" title="tyMeta = {ttyVoid, ttyAny}">tyMeta</a></li>
@@ -436,6 +444,8 @@
     <span class="Keyword">of</span> <span class="Identifier">ttyAlias</span><span class="Other">:</span>
       <span class="Identifier">aliasId</span><span class="Operator">*</span><span class="Other">:</span> <a href="value.html#TypeId"><span class="Identifier">TypeId</span></a>       <span class="Comment">## the id of the alias, used for lookups and type checking</span>
       <span class="Identifier">aliasTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>          <span class="Comment">## the type this alias refers to</span>
+    <span class="Keyword">of</span> <span class="Identifier">ttyCoroutine</span><span class="Other">:</span>
+      <span class="Identifier">coroResultTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>     <span class="Comment">## the result type of resume()</span>
     <span class="Keyword">of</span> <span class="Identifier">ttyCustom</span><span class="Other">:</span>
       <span class="Keyword">nil</span>
     <span class="Keyword">of</span> <span class="Identifier">ttyHtmlElement</span><span class="Other">:</span>
@@ -455,6 +465,12 @@
     <span class="Identifier">procType</span><span class="Operator">*</span><span class="Other">:</span> <a href="#ProcType"><span class="Identifier">ProcType</span></a>      <span class="Comment">## whether the proc is a normal function or a macro</span>
     <span class="Identifier">procExport</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>        <span class="Comment">## whether the proc is exported or not</span>
     <span class="Identifier">procMemoize</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>       <span class="Comment">## whether the proc is memoized or not. todo: implement memoization</span>
+  <span class="Keyword">of</span> <span class="Identifier">skCoroutine</span><span class="Other">:</span>
+    <span class="Identifier">coroId</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">uint16</span>          <span class="Comment">## the unique number of the coroutine's proc</span>
+    <span class="Identifier">coroParams</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#ProcParam"><span class="Identifier">ProcParam</span></a><span class="Other">]</span> <span class="Comment">## the coroutine's parameters</span>
+    <span class="Identifier">coroReturnTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>       <span class="Comment">## the return type of the coroutine</span>
+    <span class="Identifier">coroYieldTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>        <span class="Comment">## the yield type of the coroutine</span>
+    <span class="Identifier">coroExport</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>        <span class="Comment">## whether the coroutine is exported or not</span>
   <span class="Keyword">of</span> <span class="Identifier">skIterator</span><span class="Other">:</span>
     <span class="Identifier">iterParams</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#ProcParam"><span class="Identifier">ProcParam</span></a><span class="Other">]</span> <span class="Comment">## the iterator's parameters</span>
     <span class="Identifier">iterYieldTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>        <span class="Comment">## the yield type of the iterator</span>
@@ -476,9 +492,9 @@
 <div id="SymKind">
   <dt><pre><a href="#SymKind"><span class="Identifier">SymKind</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">skVar</span> <span class="Other">=</span> <span class="StringLit">&quot;var&quot;</span><span class="Other">,</span> <span class="Identifier">skConst</span> <span class="Other">=</span> <span class="StringLit">&quot;const&quot;</span><span class="Other">,</span> <span class="Identifier">skLet</span> <span class="Other">=</span> <span class="StringLit">&quot;let&quot;</span><span class="Other">,</span> <span class="Identifier">skType</span> <span class="Other">=</span> <span class="StringLit">&quot;type&quot;</span><span class="Other">,</span>
-  <span class="Identifier">skProc</span> <span class="Other">=</span> <span class="StringLit">&quot;fn&quot;</span><span class="Other">,</span> <span class="Identifier">skIterator</span> <span class="Other">=</span> <span class="StringLit">&quot;iterator&quot;</span><span class="Other">,</span> <span class="Identifier">skGenericParam</span> <span class="Other">=</span> <span class="StringLit">&quot;generic param&quot;</span><span class="Other">,</span>
-  <span class="Identifier">skHtmlType</span> <span class="Other">=</span> <span class="StringLit">&quot;html&quot;</span><span class="Other">,</span> <span class="Identifier">skChoice</span> <span class="Other">=</span> <span class="StringLit">&quot;(...)&quot;</span> <span class="Comment">## an overloaded symbol, stores many symbols with \</span>
-                                          <span class="Comment">## the same name</span></pre></dt>
+  <span class="Identifier">skProc</span> <span class="Other">=</span> <span class="StringLit">&quot;fn&quot;</span><span class="Other">,</span> <span class="Identifier">skIterator</span> <span class="Other">=</span> <span class="StringLit">&quot;iterator&quot;</span><span class="Other">,</span> <span class="Identifier">skCoroutine</span> <span class="Other">=</span> <span class="StringLit">&quot;coroutine&quot;</span><span class="Other">,</span>
+  <span class="Identifier">skGenericParam</span> <span class="Other">=</span> <span class="StringLit">&quot;generic param&quot;</span><span class="Other">,</span> <span class="Identifier">skHtmlType</span> <span class="Other">=</span> <span class="StringLit">&quot;html&quot;</span><span class="Other">,</span> <span class="Identifier">skChoice</span> <span class="Other">=</span> <span class="StringLit">&quot;(...)&quot;</span> <span class="Comment">## an overloaded symbol, stores many symbols with \</span>
+                                                                            <span class="Comment">## the same name</span></pre></dt>
   <dd>
     
     The kind of a symbol.
@@ -490,8 +506,8 @@
   <span class="Identifier">ttyVoid</span> <span class="Other">=</span> <span class="StringLit">&quot;void&quot;</span><span class="Other">,</span> <span class="Identifier">ttyAny</span> <span class="Other">=</span> <span class="StringLit">&quot;any&quot;</span><span class="Other">,</span> <span class="Identifier">ttyBool</span> <span class="Other">=</span> <span class="StringLit">&quot;bool&quot;</span><span class="Other">,</span> <span class="Identifier">ttyInt</span> <span class="Other">=</span> <span class="StringLit">&quot;int&quot;</span><span class="Other">,</span>
   <span class="Identifier">ttyFloat</span> <span class="Other">=</span> <span class="StringLit">&quot;float&quot;</span><span class="Other">,</span> <span class="Identifier">ttyString</span> <span class="Other">=</span> <span class="StringLit">&quot;string&quot;</span><span class="Other">,</span> <span class="Identifier">ttyPointer</span> <span class="Other">=</span> <span class="StringLit">&quot;pointer&quot;</span><span class="Other">,</span>
   <span class="Identifier">ttyProc</span> <span class="Other">=</span> <span class="StringLit">&quot;proc&quot;</span><span class="Other">,</span> <span class="Identifier">ttyJson</span> <span class="Other">=</span> <span class="StringLit">&quot;json&quot;</span><span class="Other">,</span> <span class="Identifier">ttyArray</span> <span class="Other">=</span> <span class="StringLit">&quot;array&quot;</span><span class="Other">,</span> <span class="Identifier">ttyNil</span> <span class="Other">=</span> <span class="StringLit">&quot;nil&quot;</span><span class="Other">,</span>
-  <span class="Identifier">ttyObject</span> <span class="Other">=</span> <span class="StringLit">&quot;object&quot;</span><span class="Other">,</span> <span class="Identifier">ttyAlias</span> <span class="Other">=</span> <span class="StringLit">&quot;alias&quot;</span><span class="Other">,</span> <span class="Identifier">ttyCustom</span> <span class="Other">=</span> <span class="StringLit">&quot;custom&quot;</span><span class="Other">,</span>
-  <span class="Identifier">ttyHtmlElement</span> <span class="Other">=</span> <span class="StringLit">&quot;HtmlElement&quot;</span></pre></dt>
+  <span class="Identifier">ttyObject</span> <span class="Other">=</span> <span class="StringLit">&quot;object&quot;</span><span class="Other">,</span> <span class="Identifier">ttyCoroutine</span> <span class="Other">=</span> <span class="StringLit">&quot;coroutine&quot;</span><span class="Other">,</span> <span class="Identifier">ttyAlias</span> <span class="Other">=</span> <span class="StringLit">&quot;alias&quot;</span><span class="Other">,</span>
+  <span class="Identifier">ttyCustom</span> <span class="Other">=</span> <span class="StringLit">&quot;custom&quot;</span><span class="Other">,</span> <span class="Identifier">ttyHtmlElement</span> <span class="Other">=</span> <span class="StringLit">&quot;HtmlElement&quot;</span></pre></dt>
   <dd>
     
     The kind of a type.
@@ -505,7 +521,7 @@
   <h1><a class="toc-backref" href="#10">Consts</a></h1>
   <dl class="item">
     <div id="skCallable">
-  <dt><pre><a href="#skCallable"><span class="Identifier">skCallable</span></a> <span class="Other">=</span> <span class="Other">{</span><span class="DecNumber">skProc</span><span class="Other">,</span> <span class="DecNumber">skIterator</span><span class="Other">}</span></pre></dt>
+  <dt><pre><a href="#skCallable"><span class="Identifier">skCallable</span></a> <span class="Other">=</span> <span class="Other">{</span><span class="DecNumber">skProc</span><span class="Other">,</span> <span class="DecNumber">skIterator</span><span class="Other">,</span> <span class="DecNumber">skCoroutine</span><span class="Other">}</span></pre></dt>
   <dd>
     
     
@@ -513,7 +529,7 @@
   </dd>
 </div>
 <div id="skDecl">
-  <dt><pre><a href="#skDecl"><span class="Identifier">skDecl</span></a> <span class="Other">=</span> <span class="Other">{</span><span class="DecNumber">skVar</span><span class="Other">..</span><span class="DecNumber">skIterator</span><span class="Other">}</span></pre></dt>
+  <dt><pre><a href="#skDecl"><span class="Identifier">skDecl</span></a> <span class="Other">=</span> <span class="Other">{</span><span class="DecNumber">skVar</span><span class="Other">..</span><span class="DecNumber">skCoroutine</span><span class="Other">}</span></pre></dt>
   <dd>
     
     
@@ -895,7 +911,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-17 11:07:04 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-18 21:19:39 UTC</small>
       </div>
     </div>
   </div>

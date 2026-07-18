@@ -61,6 +61,7 @@
       <li><a class="reference" href="#ErrAssignOpExpected" title="ErrAssignOpExpected = &quot;assignment operator \'=\' expected, got \'$1\'&quot;">ErrAssignOpExpected</a></li>
 <li><a class="reference" href="#ErrBadIndentation" title="ErrBadIndentation = &quot;Bad indentation&quot;">ErrBadIndentation</a></li>
 <li><a class="reference" href="#ErrCannotDiscardVoid" title="ErrCannotDiscardVoid = &quot;expression \'$1\' of type `void` cannot be discarded&quot;">ErrCannotDiscardVoid</a></li>
+<li><a class="reference" href="#ErrCoroMustHaveReturnType" title="ErrCoroMustHaveReturnType = &quot;coroutine must have a non-void return type&quot;">ErrCoroMustHaveReturnType</a></li>
 <li><a class="reference" href="#ErrCouldNotInferGeneric" title="ErrCouldNotInferGeneric = &quot;could not infer generic params for \'$1\'. specify them explicitly&quot;">ErrCouldNotInferGeneric</a></li>
 <li><a class="reference" href="#ErrExportOnlyTopLevel" title="ErrExportOnlyTopLevel = &quot;exporting symbols is only allowed at the top level&quot;">ErrExportOnlyTopLevel</a></li>
 <li><a class="reference" href="#ErrFieldInitMustBeAColonExpr" title="ErrFieldInitMustBeAColonExpr = &quot;field initializer must be a colon expression: \'a: b\'&quot;">ErrFieldInitMustBeAColonExpr</a></li>
@@ -81,6 +82,7 @@
 <li><a class="reference" href="#ErrNotGeneric" title="ErrNotGeneric = &quot;\'$1\' is not generic&quot;">ErrNotGeneric</a></li>
 <li><a class="reference" href="#ErrObjectFieldsMustBeInitialized" title="ErrObjectFieldsMustBeInitialized = &quot;all object fields must be initialized&quot;">ErrObjectFieldsMustBeInitialized</a></li>
 <li><a class="reference" href="#ErrOnlyUsableInABlock" title="ErrOnlyUsableInABlock = &quot;\'$1\' can only be used inside a loop or a block statement&quot;">ErrOnlyUsableInABlock</a></li>
+<li><a class="reference" href="#ErrOnlyUsableInACoroutine" title="ErrOnlyUsableInACoroutine = &quot;\'$1\' can only be used inside a coroutine&quot;">ErrOnlyUsableInACoroutine</a></li>
 <li><a class="reference" href="#ErrOnlyUsableInALoop" title="ErrOnlyUsableInALoop = &quot;\'$1\' can only be used inside a loop&quot;">ErrOnlyUsableInALoop</a></li>
 <li><a class="reference" href="#ErrOnlyUsableInAMacro" title="ErrOnlyUsableInAMacro = &quot;\'$1\' can only be used inside a macro&quot;">ErrOnlyUsableInAMacro</a></li>
 <li><a class="reference" href="#ErrOnlyUsableInAnIterator" title="ErrOnlyUsableInAnIterator = &quot;\'$1\' can only be used inside an iterator&quot;">ErrOnlyUsableInAnIterator</a></li>
@@ -144,6 +146,14 @@
 </div>
 <div id="ErrCannotDiscardVoid">
   <dt><pre><a href="#ErrCannotDiscardVoid"><span class="Identifier">ErrCannotDiscardVoid</span></a> <span class="Other">=</span> <span class="StringLit">&quot;expression \'$1\' of type `void` cannot be discarded&quot;</span></pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+<div id="ErrCoroMustHaveReturnType">
+  <dt><pre><a href="#ErrCoroMustHaveReturnType"><span class="Identifier">ErrCoroMustHaveReturnType</span></a> <span class="Other">=</span> <span class="StringLit">&quot;coroutine must have a non-void return type&quot;</span></pre></dt>
   <dd>
     
     
@@ -304,6 +314,14 @@
 </div>
 <div id="ErrOnlyUsableInABlock">
   <dt><pre><a href="#ErrOnlyUsableInABlock"><span class="Identifier">ErrOnlyUsableInABlock</span></a> <span class="Other">=</span> <span class="StringLit">&quot;\'$1\' can only be used inside a loop or a block statement&quot;</span></pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+<div id="ErrOnlyUsableInACoroutine">
+  <dt><pre><a href="#ErrOnlyUsableInACoroutine"><span class="Identifier">ErrOnlyUsableInACoroutine</span></a> <span class="Other">=</span> <span class="StringLit">&quot;\'$1\' can only be used inside a coroutine&quot;</span></pre></dt>
   <dd>
     
     
@@ -552,7 +570,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-17 11:07:04 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-07-18 21:19:38 UTC</small>
       </div>
     </div>
   </div>
