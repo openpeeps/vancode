@@ -60,6 +60,7 @@ type
     gkProc
     gkBlockProc
     gkIterator
+    gkCoroutine
     gkHtmlNest
 
   CodeGenCache* = object
@@ -101,6 +102,9 @@ type
       iterForBody: Node         # the for loop's body
       iterForVar: Node          # the for loop variable's name
       iterForCtx: Context       # the for loop's context
+    of gkCoroutine:
+      coroReturnTy: Sym         # the coroutine's return type
+      coroYieldTy: Sym          # the coroutine's yield type
     resolver*: FileResolver
       ## the file resolver used for resolving imports and includes. This is shared
       ## between codegen instances to maintain a consistent cache of resolved files.
@@ -950,7 +954,7 @@ proc callProc*(procSym: Sym, argTypes: seq[Sym],
       if procSym.src.isSome(): procSym.src.get()
       else: gen.chunk.file # fallback to current file
     gen.chunk.emit(gen.chunk.getString(theSource))
-    gen.chunk.emit(theProc.procId)
+    gen.chunk.emit(theProc.procId.uint16)
     
     # set the result type
     result = theProc.procReturnTy
@@ -1236,6 +1240,51 @@ proc objConstr*(node: Node, ty: Sym, constructFromIdent = false): Sym {.codegen.
   for kid in keyIds:
     gen.chunk.emit(kid)
 
+proc makeCoroType(gen: CodeGen, resultTy: Sym): Sym =
+  ## Create a Coroutine[T] type symbol from a result type.
+  let base = gen.module.sym"coroutine"
+  if base != nil and resultTy != nil:
+    result = gen.instantiate(base, @[resultTy], nil)
+    if result != nil and result.tyKind == ttyCoroutine:
+      result.coroResultTy = resultTy
+  if result == nil:
+    result = newSym(skType, newIdent("Coroutine"))
+    result.tyKind = ttyCoroutine
+    result.coroResultTy = resultTy
+
+proc genCreateCoro*(node: Node): Sym {.codegen.} =
+  ## Codegen for the `createCoro` intrinsic.
+  if node.len < 2:
+    node.error("createCoro requires a proc or coroutine argument")
+  let targetSym = gen.lookup(node[1])
+  if targetSym.kind notin {skProc, skCoroutine}:
+    node[1].error("createCoro expects a proc or coroutine")
+  let procId =
+    if targetSym.kind == skCoroutine: targetSym.coroId
+    else: targetSym.procId
+  gen.chunk.emit(opcCreateCoro)
+  gen.chunk.emit(procId)
+  let returnTy =
+    if targetSym.kind == skCoroutine: targetSym.coroReturnTy
+    else: targetSym.procReturnTy
+  result = gen.makeCoroType(returnTy)
+
+proc genCoroResume*(node: Node): Sym {.codegen.} =
+  ## Codegen for the `resume` intrinsic.
+  if node.len < 2:
+    node.error("resume requires a coroutine expression")
+  for i in 2..<node.len:
+    discard gen.genExpr(node[i])
+  let coroType = gen.genExpr(node[1])
+  gen.chunk.emit(opcCoroResume)
+  let t =
+    if coroType.kind in skVars: coroType.varTy
+    else: coroType
+  if t.tyKind == ttyCoroutine and t.coroResultTy != nil:
+    result = t.coroResultTy
+  else:
+    result = gen.module.sym"any"
+
 proc call*(node: Node): Sym {.codegen.} =
   ## Generates code for an nkCall (proc call or object constructor).
   ## TODO: Indirect calls
@@ -1243,6 +1292,13 @@ proc call*(node: Node): Sym {.codegen.} =
   of nkIdent:
     # the call is direct or from a variable
     let sym = gen.lookup(node[0])  # lookup the left-hand side
+    # Coroutine intrinsics: intercept createCoro and resume
+    if sym.kind in {skProc, skCoroutine, skChoice}:
+      let name = sym.name.ident.toLowerAscii
+      if name == "createcoro":
+        return gen.genCreateCoro(node)
+      elif name == "resume":
+        return gen.genCoroResume(node)
     case sym.kind
     of skType: # object construction
       result = gen.objConstr(node, sym)
@@ -2185,33 +2241,43 @@ proc genContinue*(node: Node) {.codegen.} =
 proc genReturn*(node: Node) {.codegen.} =
   ## Generate code for a ``return`` statement.
 
-  # return is only valid in procedures, of course
-  if gen.kind != gkProc:
+  # return is only valid in procedures and coroutines, of course
+  if gen.kind notin {gkProc, gkCoroutine}:
     node.error(ErrOnlyUsableInAProc % "return")
+
+  let retTy =
+    if gen.kind == gkCoroutine: gen.coroReturnTy
+    else: gen.procReturnTy
 
   # for non-void returns where we don't have a
   # value specified, we return the magic 'result' variable
   # this is exactly why shadowing 'result' is prohibited
   if node[0].kind == nkEmpty:
-    if gen.procReturnTy.tyKind != ttyVoid:
+    if retTy.tyKind != ttyVoid:
       let resultSym = gen.lookup(newIdent("result"))
       gen.chunk.emit(opcPushL)
-      gen.chunk.emit(resultSym.varStackPos.uint16)
+      gen.chunk.emit(resultSym.varStackPos.uint8)
   # otherwise if we have a value, use that
   else:
     let valTy = gen.genExpr(node[0])
-    if not unwrapType(valTy).sameType(unwrapType(gen.procReturnTy)):
-      node[0].error(ErrTypeMismatch % [$valTy.name, $gen.procReturnTy.name])
+    if not unwrapType(valTy).sameType(unwrapType(retTy)):
+      node[0].error(ErrTypeMismatch % [$valTy.name, $retTy.name])
 
   # hayago uses two different opcodes for
   # void and non-void return, so we handle that
-  if gen.procReturnTy.tyKind != ttyVoid:
+  if retTy.tyKind != ttyVoid:
     gen.chunk.emit(opcReturnVal)
   else:
     gen.chunk.emit(opcReturnVoid)
 
 proc genYield*(node: Node) {.codegen.} =
   ## Generate code for a ``yield`` statement.
+
+  # Inside a coroutine: emit opcCoroYield (runtime suspend/resume)
+  if gen.kind == gkCoroutine:
+    discard gen.genExpr(node[0])
+    gen.chunk.emit(opcCoroYield)
+    return
 
   # yield can only be used inside of an iterator,
   # but never in a for loop's body. using yield in a for loop's
@@ -2417,6 +2483,93 @@ proc genIterator*(node: Node, isInstantiation = false): Sym {.codegen.} =
 
   # add the resulting iterator to the current scope
   gen.addSym(result)
+
+proc genCoroutineDecl*(node: Node, isInstantiation = false): Sym {.codegen.} =
+  ## Process and compile a coroutine declaration.
+  if not isInstantiation and node[1].kind != nkEmpty:
+    gen.pushScope()
+  let
+    name = node[0]
+    formalParams = node[2]
+    body = node[3]
+    genericParams =
+      if not isInstantiation:
+        gen.collectGenericParams(node[1])
+      else:
+        seq[Sym].none
+    params = gen.collectParams(formalParams, genericParams)
+    returnTy =
+      if formalParams[0].kind != nkEmpty:
+        gen.lookup(formalParams[0])
+      else:
+        node.error(ErrCoroMustHaveReturnType)
+        gen.module.sym"void"
+
+  if body.kind == nkEmpty:
+    node.error(ErrCoroMustHaveReturnType)
+
+  let identName =
+    if name.kind == nkPostfix: name[1]
+    else: name
+  let loweredName = identName.ident
+  identName.ident = loweredName[0] & loweredName[1..^1].toLowerAscii
+
+  let id = gen.script.procs.len.uint16
+  let hasReturnType = returnTy.kind == skType and returnTy.tyKind != ttyVoid
+  let theProc = Proc(
+    name: identName.ident, kind: pkNative,
+    paramCount: params.len, hasResult: hasReturnType
+  )
+  let sym = newSym(skCoroutine, identName, impl = node)
+  sym.coroId = id
+  sym.coroParams = params
+  sym.coroReturnTy = returnTy
+  sym.coroExport = name.kind == nkPostfix
+
+  if not isInstantiation and sym.isGeneric:
+    gen.popScope()
+
+  gen.addSym(sym, scopeOffset = ord(sym.genericParams.isSome))
+
+  if not sym.isGeneric or isInstantiation:
+    var chunk = newChunk(gen.chunk.file)
+    var coroGen = initCodeGen(gen.script, gen.module, chunk, gkCoroutine,
+      ctxAllocator =
+        if gen.kind == gkToplevel: nil
+        else: gen.ctxAllocator
+    )
+    theProc.chunk = chunk
+    chunk.file = gen.chunk.file
+    coroGen.coroReturnTy = returnTy
+    coroGen.coroYieldTy = returnTy
+
+    theProc.procId = gen.script.procs.len
+    gen.script.procs.add(theProc)
+    if sym.coroExport:
+      gen.script.procsExport.add(theProc)
+
+    coroGen.pushScope()
+    for (pname, ty, implSym, isMut, isOpt) in params:
+      var varType = if isMut: skVar else: skLet
+      let param = coroGen.declareVar(pname, varType, ty)
+      param.varSet = true
+
+    if hasReturnType:
+      let res = newIdent("result")
+      coroGen.declareVar(res, skVar, returnTy, isMagic = true)
+      coroGen.pushDefault(returnTy)
+      coroGen.popVar(res)
+
+    discard coroGen.genBlock(body, isStmt = true)
+
+    if hasReturnType:
+      let resultSym = coroGen.lookup(newIdent("result"))
+      coroGen.chunk.emit(opcPushL)
+      coroGen.chunk.emit(resultSym.varStackPos.uint8)
+      coroGen.chunk.emit(opcReturnVal)
+    else:
+      coroGen.chunk.emit(opcReturnVoid)
+    coroGen.popScope()
 
 proc genVar*(node: Node) {.codegen.} =
   # handle variable declarations
@@ -2626,6 +2779,7 @@ proc genStmt*(node: Node) {.codegen.} =
     of nkYield: gen.genYield(node)                # yield statement
     of nkProc: discard gen.genProc(node)          # procedure declaration
     of nkIterator: discard gen.genIterator(node)  # iterator declaration
+    of nkCoroutine: discard gen.genCoroutineDecl(node)  # coroutine declaration
     of nkObjectStorage: discard gen.genObjectStorage(node)      # object declaration
     of nkObject: discard gen.genObject(node)
     of nkTypeDef: discard gen.genTypeDef(node)    # type definition

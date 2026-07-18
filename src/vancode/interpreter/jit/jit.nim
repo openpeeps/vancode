@@ -33,7 +33,7 @@ proc detectRecursiveAndCompile*(vm: Vm; enableJit: bool = true) =
             p.jitForeign = proc (args: StackView, argc: int): Value {.closure.} =
               var flatLocals = newSeq[int64](max(nLocals, 1))
               for i in 0..<min(argc, nLocals):
-                if args[i] != nil and args[i].typeId == tyInt:
+                if args[i].typeId == tyInt:
                   flatLocals[i] = args[i].intVal
                 else:
                   flatLocals[i] = 0

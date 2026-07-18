@@ -62,6 +62,7 @@ type
     skType = "type"
     skProc = "fn"
     skIterator = "iterator"
+    skCoroutine = "coroutine"
     skGenericParam = "generic param"
     skHtmlType = "html"
     skChoice = "(...)"  ## an overloaded symbol, stores many symbols with \
@@ -87,6 +88,7 @@ type
 
     # user-defined types
     ttyObject = "object"
+    ttyCoroutine = "coroutine"
     ttyAlias = "alias"
     ttyCustom = "custom"
       # a user-defined type that doesn't have a
@@ -133,6 +135,8 @@ type
       of ttyAlias:
         aliasId*: TypeId          ## the id of the alias, used for lookups and type checking
         aliasTy*: Sym             ## the type this alias refers to
+      of ttyCoroutine:
+        coroResultTy*: Sym             ## the result type of resume()
       of ttyCustom:
         discard # todo
       of ttyHtmlElement: discard
@@ -150,6 +154,12 @@ type
       procType*: ProcType         ## whether the proc is a normal function or a macro
       procExport*: bool           ## whether the proc is exported or not
       procMemoize*: bool          ## whether the proc is memoized or not. todo: implement memoization
+    of skCoroutine:
+      coroId*: uint16                  ## the unique number of the coroutine's proc
+      coroParams*: seq[ProcParam]      ## the coroutine's parameters
+      coroReturnTy*: Sym               ## the return type of the coroutine
+      coroYieldTy*: Sym                ## the yield type of the coroutine
+      coroExport*: bool                ## whether the coroutine is exported or not
     of skIterator:
       iterParams*: seq[ProcParam]       ## the iterator's parameters
       iterYieldTy*: Sym                 ## the yield type of the iterator
@@ -191,7 +201,7 @@ type
 
 const
   skVars* = {skVar, skLet, skConst}
-  skCallable* = {skProc, skIterator}
+  skCallable* = {skProc, skIterator, skCoroutine}
   skDecl* = {skType} + skCallable + skVars
   skTyped* = {skType, skHtmlType, skGenericParam}
 
@@ -211,6 +221,7 @@ proc params*(sym: Sym): seq[ProcParam] =
   case sym.kind
   of skProc: result = sym.procParams
   of skIterator: result = sym.iterParams
+  of skCoroutine: result = sym.coroParams
   else: discard
 
 proc returnTy*(sym: Sym): Sym =
@@ -219,6 +230,7 @@ proc returnTy*(sym: Sym): Sym =
   case sym.kind
   of skProc: result = sym.procReturnTy
   of skIterator: result = sym.iterYieldTy
+  of skCoroutine: result = sym.coroReturnTy
   else: discard
 
 proc `$`*(sym: Sym): string
@@ -286,6 +298,8 @@ proc `$`*(sym: Sym): string =
           "macro " & sym.name.ident[1..^1]
         else:
           $skProc & " " & sym.name.render
+      elif sym.kind == skCoroutine:
+        $skCoroutine & " " & sym.name.render
       else:
         $skIterator & " " & sym.name.render
     if sym.genericParams.isSome or sym.genericInstArgs.isSome:
@@ -488,6 +502,8 @@ proc canExport(sym: Sym): bool =
       sym.procExport
     of skIterator:
       sym.iterExport
+    of skCoroutine:
+      sym.coroExport
     else: false
 
 proc addVariable*(scope: Scope, sym: Sym, lookupName: Node,
@@ -649,6 +665,11 @@ proc initSystemTypes*(module: Module) =
   # module.add(genType(ttyObject, "tuple", true))
   module.add(genType(ttyPointer, "pointer", true))
   module.add(genType(ttyProc, "proc", true))
+
+  let genCoroT = ast.newIdent("T")
+  let genCoroTypeParam = newSym(skGenericParam, genCoroT, impl = genCoroT)
+  genCoroTypeParam.constraint = module.sym"any"
+  module.add(genType(ttyCoroutine, "coroutine", true, some(@[genCoroTypeParam])))
 
 proc genPtr*(module: Module, typeId: TypeId, name: string): Sym =
   let kind = case typeId

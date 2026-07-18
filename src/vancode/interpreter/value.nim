@@ -69,7 +69,7 @@ type
         ## the fields of this object, stored
         ## in the same order as `keys`
 
-  Value* {.acyclic.} = ref object
+  Value* = object
     case typeId*: TypeId  ## the type ID, used for dynamic dispatch
     of tyBool:
       boolVal*: bool
@@ -78,11 +78,11 @@ type
     of tyFloat:
       floatVal*: float64
     of tyString:
-      stringVal*: ref string
+      stringVal*: string
     of tyJsonStorage:
       jsonVal*: JsonNode
     of tyProc:
-      procVal*: ref ProcRef
+      procVal*: ProcRef
     else:
       objectVal*: Object
 
@@ -113,11 +113,11 @@ proc toValue*(vs: ValueStorage): Value {.inline.} =
   of tyInt: Value(typeId: tyInt, intVal: vs.intVal)
   of tyBool: Value(typeId: tyBool, boolVal: vs.boolVal)
   of tyFloat: Value(typeId: tyFloat, floatVal: vs.floatVal)
-  of tyNil: nil
+  of tyNil: Value(typeId: tyNil)
   else: vs.refVal
 
 proc toStorage*(v: Value): ValueStorage {.inline.} =
-  if v == nil: return ValueStorage(typeId: tyNil)
+  if v.typeId == tyNil: return ValueStorage(typeId: tyNil)
   case v.typeId
   of tyInt: ValueStorage(typeId: tyInt, intVal: v.intVal)
   of tyBool: ValueStorage(typeId: tyBool, boolVal: v.boolVal)
@@ -136,7 +136,7 @@ proc dumpHook*(s: var string, val: Value) =
   of tyInt: s.add($val.intVal)
   of tyFloat: s.add($val.floatVal)
   of tyString:
-    s.add("\"" & val.stringVal[] & "\"")
+    s.add("\"" & val.stringVal & "\"")
   of tyJsonStorage: 
     dumpHook(s, val.jsonVal)
   of tyArrayObject:
@@ -145,7 +145,7 @@ proc dumpHook*(s: var string, val: Value) =
       let f = val.objectVal.fields[i]
       case f.typeId
       of tyString:
-        s.add("\"" & f.refVal.stringVal[] & "\"")
+        s.add("\"" & f.refVal.stringVal & "\"")
       of tyInt, tyBool, tyFloat:
         dumpHook(s, f.toValue)
       else:
@@ -183,7 +183,7 @@ proc `$`*(value: Value): string =
     of tyBool: $value.boolVal
     of tyInt: $value.intVal
     of tyFloat: $value.floatVal
-    of tyString: value.stringVal[]
+    of tyString: value.stringVal
     of tyJsonStorage: toJson(value.jsonVal)
     of tyArrayObject:
       var vs = newSeq[Value](value.objectVal.fields.len)
@@ -226,9 +226,7 @@ proc initValue*(v: float64): Value =
 
 proc initValue*(v: string): Value =
   ## Initializes a string value.
-  result = Value(typeId: tyString)
-  new(result.stringVal)
-  result.stringVal[] = v
+  result = Value(typeId: tyString, stringVal: v)
 
 proc initValue*(v: JsonNode): Value =
   ## Initializes a JSON value.
@@ -243,9 +241,7 @@ proc initValue*(nptr: pointer, tag: string): Value =
 
 proc initValue*(procId: int, procScript: string): Value =
   ## Initializes a proc reference value.
-  result = Value(typeId: tyProc)
-  new(result.procVal)
-  result.procVal[] = ProcRef(procId: procId, procScript: procScript)
+  result = Value(typeId: tyProc, procVal: ProcRef(procId: procId, procScript: procScript))
 
 proc initValue*[T: tuple | object | ref](id: TypeId, value: T): Value =
   ## Safely initializes a foreign object value.

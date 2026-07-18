@@ -23,7 +23,7 @@ const hotRecompileThreshold* = 100
 var jitGlobalVm*: Vm = nil
 var jitGlobalsPtr*: pointer = nil
 var jitBridgeTmpBuf: array[256, Value]
-var jitCallbackResult: Value = nil  # GC root for execCallback result
+var jitCallbackResult: Value
 
 var jitRecompileHook*: proc(theProc: Proc) {.nimcall.} = nil
 var compileProcHook*: proc(vm: Vm, theProc: Proc): ForeignProc {.nimcall.} = nil
@@ -44,14 +44,14 @@ proc setJitGlobalsFromTable*(t: ptr Table[string, Value]) {.cdecl, exportc.} =
   ## Copy globals from the VM's table into the JIT raw cache.
   jitGlobalsCount = 0
   for k, v in t[]:
-    if v != nil:
-      jitGlobalsKeys[jitGlobalsCount] = hash(k).uint32
-      case v.typeId
-      of tyInt: jitGlobalsVals[jitGlobalsCount] = v.intVal
-      of tyBool: jitGlobalsVals[jitGlobalsCount] = int64(v.boolVal.ord)
-      else: jitGlobalsVals[jitGlobalsCount] = cast[int64](v)
-      jitGlobalsTypes[jitGlobalsCount] = v.typeId.int32
-      inc jitGlobalsCount
+    if v.typeId == tyNil: continue
+    jitGlobalsKeys[jitGlobalsCount] = hash(k).uint32
+    case v.typeId
+    of tyInt: jitGlobalsVals[jitGlobalsCount] = v.intVal
+    of tyBool: jitGlobalsVals[jitGlobalsCount] = int64(v.boolVal.ord)
+    else: jitGlobalsVals[jitGlobalsCount] = 0
+    jitGlobalsTypes[jitGlobalsCount] = v.typeId.int32
+    inc jitGlobalsCount
 
 proc setJitGlobalsPtr*(p: pointer) =
   ## Set the global VM globals pointer for JIT bridge access and populate cache
@@ -99,106 +99,92 @@ proc findProcById*(procId: int): Proc =
   nil
 
 proc jitBridgeMakeInt*(val: int64): int64 {.cdecl, exportc.} =
-  ## JIT bridge: create a tyInt Value from an int64, returns cast[int64]
-  result = cast[int64](Value(typeId: tyInt, intVal: val))
+  jitBridgeTmpBuf[0] = Value(typeId: tyInt, intVal: val)
+  result = cast[int64](addr jitBridgeTmpBuf[0])
 
 proc jitBridgeMakeBool*(val: bool): int64 {.cdecl, exportc.} =
-  ## JIT bridge: create a tyBool Value from a bool, returns cast[int64]
-  result = cast[int64](Value(typeId: tyBool, boolVal: val))
+  jitBridgeTmpBuf[0] = Value(typeId: tyBool, boolVal: val)
+  result = cast[int64](addr jitBridgeTmpBuf[0])
 
 proc jitBridgeExtractInt*(valPtr: int64): int64 {.cdecl, exportc.} =
-  ## JIT bridge: extract intVal from a Value pointer, returns int64
-  result = cast[Value](valPtr).intVal
+  let v = cast[ptr Value](cast[pointer](valPtr))[]
+  result = v.intVal
 
 proc jitBridgeConstrArray*(count: int32): int64 {.cdecl, exportc.} =
-  ## JIT bridge: construct an array Value with `count` slots
   let arr = initArray(count)
-  result = cast[int64](arr)
+  jitBridgeTmpBuf[0] = arr
+  result = cast[int64](addr jitBridgeTmpBuf[0])
 
 var jitProcCache: array[65536, pointer]
 
 proc jitBridgeFastAdd*(listPtr: int64, itemVal: int64): int64 {.cdecl, exportc.} =
-  ## JIT bridge: fast path for array.add(int), appends int64 item
-  cast[Value](listPtr).objectVal.fields.add(ValueStorage(typeId: tyInt, intVal: itemVal))
+  let v = cast[ptr Value](cast[pointer](listPtr))[]
+  v.objectVal.fields.add(ValueStorage(typeId: tyInt, intVal: itemVal))
   0
 
 proc jitBridgeConcatStr*(a: int64, b: int64): int64 {.cdecl, exportc.} =
-  ## JIT bridge: concatenate two string Values, returns cast[int64] of result
-  let av = cast[Value](a)
-  let bv = cast[Value](b)
-  if av == nil or bv == nil: return 0
-  let resultVal = Value(typeId: tyString, stringVal: new string)
-  resultVal.stringVal[] = av.stringVal[] & bv.stringVal[]
-  result = cast[int64](resultVal)
+  let ap = cast[ptr Value](cast[pointer](a))[]
+  let bp = cast[ptr Value](cast[pointer](b))[]
+  jitBridgeTmpBuf[0] = Value(typeId: tyString, stringVal: ap.stringVal & bp.stringVal)
+  result = cast[int64](addr jitBridgeTmpBuf[0])
 
 proc jitBridgeEqStr*(a: int64, b: int64): int64 {.cdecl, exportc.} =
-  ## JIT bridge: compare two string Values for equality, returns 0/1
-  let av = cast[Value](a)
-  let bv = cast[Value](b)
-  if av == nil or bv == nil: return int64(av == bv)
-  result = int64(av.stringVal[] == bv.stringVal[])
+  let ap = cast[ptr Value](cast[pointer](a))[]
+  let bp = cast[ptr Value](cast[pointer](b))[]
+  result = int64(ap.stringVal == bp.stringVal)
 
 proc jitBridgeGetField*(objVal: int64, fieldId: int32): int64 {.cdecl, exportc.} =
-  ## JIT bridge: get field by index from an object Value
-  let obj = cast[Value](objVal)
-  if obj == nil or obj.objectVal.isNil or fieldId < 0 or fieldId >= obj.objectVal.fields.len:
+  let obj = cast[ptr Value](cast[pointer](objVal))[]
+  if obj.objectVal == nil or obj.objectVal.isNil or fieldId < 0 or fieldId >= obj.objectVal.fields.len:
     return 0
   let vs = obj.objectVal.fields[fieldId]
-  result = cast[int64](vs.toValue)
+  jitBridgeTmpBuf[0] = vs.toValue
+  result = cast[int64](addr jitBridgeTmpBuf[0])
 
 proc jitBridgeSetField*(objVal: int64, fieldId: int32, val: int64) {.cdecl, exportc.} =
-  ## JIT bridge: set field by index on an object Value
-  let obj = cast[Value](objVal)
-  if obj == nil or obj.objectVal.isNil or fieldId < 0 or fieldId >= obj.objectVal.fields.len:
+  let obj = cast[ptr Value](cast[pointer](objVal))[]
+  if obj.objectVal == nil or obj.objectVal.isNil or fieldId < 0 or fieldId >= obj.objectVal.fields.len:
     return
-  let vs = cast[Value](val)
-  if vs != nil:
-    obj.objectVal.fields[fieldId] = vs.toStorage
+  let vs = cast[ptr Value](cast[pointer](val))[]
+  obj.objectVal.fields[fieldId] = vs.toStorage
 
 proc jitBridgeGetItem*(arrVal: int64, index: int64): int64 {.cdecl, exportc.} =
-  ## JIT bridge: get array element by int64 index
-  let arr = cast[Value](arrVal)
-  if arr == nil or arr.objectVal.isNil or index < 0 or index >= arr.objectVal.fields.len:
+  let arr = cast[ptr Value](cast[pointer](arrVal))[]
+  if arr.objectVal == nil or arr.objectVal.isNil or index < 0 or index >= arr.objectVal.fields.len:
     return 0
-  result = cast[int64](arr.objectVal.fields[index.int].toValue)
+  jitBridgeTmpBuf[0] = arr.objectVal.fields[index.int].toValue
+  result = cast[int64](addr jitBridgeTmpBuf[0])
 
 proc jitBridgeSetItem*(arrVal: int64, index: int64, valPtr: int64) {.cdecl, exportc.} =
-  ## JIT bridge: set array element by int64 index
-  let arr = cast[Value](arrVal)
-  if arr == nil or arr.objectVal.isNil or index < 0 or index >= arr.objectVal.fields.len:
+  let arr = cast[ptr Value](cast[pointer](arrVal))[]
+  if arr.objectVal == nil or arr.objectVal.isNil or index < 0 or index >= arr.objectVal.fields.len:
     return
-  let vs = cast[Value](valPtr)
-  if vs != nil:
-    arr.objectVal.fields[index.int] = vs.toStorage
+  let vs = cast[ptr Value](cast[pointer](valPtr))[]
+  arr.objectVal.fields[index.int] = vs.toStorage
 
 proc jitBridgeConstrObj*(count: int32, flatArgs: ptr int64): int64 {.cdecl, exportc.} =
-  ## JIT bridge: construct an object from flat arg array (positional values, no keys).
   let arr = cast[ptr UncheckedArray[int64]](flatArgs)
   if count > 0:
     var fields = newSeq[ValueStorage](count)
     for i in 0..<count:
-      let valPtr = cast[Value](arr[i])
-      if valPtr != nil:
-        fields[i] = valPtr.toStorage
-    result = cast[int64](Value(typeId: tyArrayObject, objectVal:
-      Object(isForeign: false, fields: fields)))
+      let valPtr = cast[ptr Value](cast[pointer](arr[i]))[]
+      fields[i] = valPtr.toStorage
+    jitBridgeTmpBuf[0] = Value(typeId: tyArrayObject, objectVal:
+      Object(isForeign: false, fields: fields))
   else:
-    result = cast[int64](Value(typeId: tyArrayObject, objectVal:
-      Object(isForeign: false)))
+    jitBridgeTmpBuf[0] = Value(typeId: tyArrayObject, objectVal:
+      Object(isForeign: false))
+  result = cast[int64](addr jitBridgeTmpBuf[0])
 
 proc jitBridgePushProc*(scriptPath: cstring, procId: int32): int64 {.cdecl, exportc.} =
-  ## JIT bridge: create a tyProc Value from scriptPath and procId
   if jitGlobalVm == nil: return 0
   let path = if scriptPath != nil: $scriptPath else: ""
-  let val = Value(typeId: tyProc)
-  new(val.procVal)
-  val.procVal[] = ProcRef(procId: procId.int, procScript: path)
-  result = cast[int64](val)
+  jitBridgeTmpBuf[0] = Value(typeId: tyProc, procVal: ProcRef(procId: procId.int, procScript: path))
+  result = cast[int64](addr jitBridgeTmpBuf[0])
 
 proc jitBridgeCallI*(procRefVal: int64, flatArgs: ptr int64, argc: int32, argTypes: ptr int32): int64 {.cdecl, exportc.} =
-  ## JIT bridge: indirect proc call via a tyProc Value on the stack
-  let val = cast[Value](procRefVal)
-  if val == nil or val.typeId != tyProc: return 0
+  let val = cast[ptr Value](cast[pointer](procRefVal))[]
+  if val.typeId != tyProc: return 0
   let pref = val.procVal
   var target: Script = nil
   if jitGlobalVm != nil and pref.procScript in jitGlobalVm.importedModules:
@@ -218,18 +204,19 @@ proc jitBridgeCallI*(procRefVal: int64, flatArgs: ptr int64, argc: int32, argTyp
       case t
       of tyInt: jitBridgeTmpBuf[i] = Value(typeId: tyInt, intVal: arr[i])
       of tyBool: jitBridgeTmpBuf[i] = Value(typeId: tyBool, boolVal: arr[i] != 0)
-      else: jitBridgeTmpBuf[i] = cast[Value](arr[i])
+      else: jitBridgeTmpBuf[i] = cast[ptr Value](cast[pointer](arr[i]))[]
   let callResult =
     if theProc.jitForeign != nil:
       theProc.jitForeign(cast[StackView](addr jitBridgeTmpBuf[0]), argc)
     elif theProc.kind == pkForeign and theProc.foreign != nil:
       theProc.foreign(cast[StackView](addr jitBridgeTmpBuf[0]), argc)
     else:
-      nil
+      Value(typeId: tyNil)
   for i in 0..<argc:
-    jitBridgeTmpBuf[i] = nil
-  if callResult == nil: return 0
-  result = cast[int64](callResult)
+    jitBridgeTmpBuf[i] = Value(typeId: tyNil)
+  if callResult.typeId == tyNil: return 0
+  result = cast[int64](addr jitBridgeTmpBuf[0])
+  jitBridgeTmpBuf[0] = callResult
 
 proc jitCallProcBridgeFlat*(procId: int32, flatArgs: ptr int64, argc: int32, argTypes: ptr int32): int64 {.cdecl, exportc.} =
   ## JIT bridge: call a proc by procId with flat int64 args (used by opcCallD JIT codegen)
@@ -276,7 +263,7 @@ proc jitCallProcBridgeFlat*(procId: int32, flatArgs: ptr int64, argc: int32, arg
       elif t == tyBool:
         jitBridgeTmpBuf[i] = Value(typeId: tyBool, boolVal: arr[i] != 0)
       else:
-        jitBridgeTmpBuf[i] = cast[Value](arr[i])
+        jitBridgeTmpBuf[i] = cast[ptr Value](cast[pointer](arr[i]))[]
   when defined(vancodeJitLog):
     stderr.writeLine "[jit] bridge: calling proc " & theProc.name
   let callResult =
@@ -285,10 +272,10 @@ proc jitCallProcBridgeFlat*(procId: int32, flatArgs: ptr int64, argc: int32, arg
     elif theProc.kind == pkForeign and theProc.foreign != nil:
       theProc.foreign(cast[StackView](addr jitBridgeTmpBuf[0]), argc)
     else:
-      nil
+      Value(typeId: tyNil)
   for i in 0..<argc:
-    jitBridgeTmpBuf[i] = nil
-  if callResult == nil: return 0
+    jitBridgeTmpBuf[i] = Value(typeId: tyNil)
+  if callResult.typeId == tyNil: return 0
   case callResult.typeId
   of tyInt: return callResult.intVal
   of tyBool: return callResult.boolVal.ord.int64
@@ -313,7 +300,7 @@ proc jitCallProcBridge*(procId: int32, stackIPtr: ptr int64, sp: int32, deltaPtr
     flatArgs[i] = arr[sp.int - argc + i]
   if theProc.jitForeign != nil:
     let callResult = theProc.jitForeign(cast[StackView](addr flatArgs[0]), argc)
-    if callResult != nil:
+    if callResult.typeId != tyNil:
       case callResult.typeId
       of tyInt:
         resultIntPtr[] = callResult.intVal
@@ -344,10 +331,7 @@ proc callCallback*(procScript: cstring, procId: int32,
   if theProc.jitForeign != nil:
     discard theProc.jitForeign(nil, 0)
     return 1
-  var cbVal = Value(typeId: tyProc)
-  new(cbVal.procVal)
-  cbVal.procVal[] = ProcRef(procId: procId, procScript: scriptPath)
-  jitGlobalVm.pendingCallback = cbVal
+  jitGlobalVm.pendingCallback = Value(typeId: tyProc, procVal: ProcRef(procId: procId.int, procScript: scriptPath))
   result = 1
 
 proc execCallback*(procScript: cstring, procId: int32,
@@ -376,24 +360,25 @@ proc execCallback*(procScript: cstring, procId: int32,
       elif t == tyBool:
         jitBridgeTmpBuf[i] = Value(typeId: tyBool, boolVal: arr[i] != 0)
       elif t == tyString:
-        jitBridgeTmpBuf[i] = cast[Value](arr[i])
+        jitBridgeTmpBuf[i] = cast[ptr Value](cast[pointer](arr[i]))[]
       elif t == tyFloat:
         jitBridgeTmpBuf[i] = Value(typeId: tyFloat, floatVal: cast[float64](arr[i]))
       else:
-        jitBridgeTmpBuf[i] = cast[Value](arr[i])
+        jitBridgeTmpBuf[i] = cast[ptr Value](cast[pointer](arr[i]))[]
   if compileProcHook != nil and theProc.jitForeign == nil:
     let compiled = compileProcHook(jitGlobalVm, theProc)
     if compiled != nil:
       theProc.jitForeign = compiled
 
-  var callbackResult: Value = nil
+  var callbackResult: Value
   if theProc.kind == pkForeign and theProc.foreign != nil:
     callbackResult = theProc.foreign(cast[StackView](addr jitBridgeTmpBuf[0]), argc)
   else:
     callbackResult = interpret(jitGlobalVm, target, theProc.chunk,
       jitBridgeTmpBuf[0..<argc])
   for i in 0..<argc:
-    jitBridgeTmpBuf[i] = nil
-  jitCallbackResult = callbackResult  # keep alive as GC root
-  if callbackResult != nil:
-    result = cast[int64](callbackResult)
+    jitBridgeTmpBuf[i] = Value(typeId: tyNil)
+  jitCallbackResult = callbackResult
+  jitBridgeTmpBuf[0] = callbackResult
+  if callbackResult.typeId != tyNil:
+    result = cast[int64](addr jitBridgeTmpBuf[0])

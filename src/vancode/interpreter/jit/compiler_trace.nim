@@ -85,6 +85,28 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
     if cached.opcodes[p] == opcJumpBack: inc numJBack
   if numJBack > 1: return nil
 
+  # Reject traces where a conditional forward jump has its target inside the
+  # recorded Pc range but the Pc immediately after the jump (the discard that
+  # cleans up the pushed-back condition on the true path) is NOT in the trace.
+  # vancode_jump_fwd_f/_t push the condition back when the jump is not taken,
+  # so the trace MUST include the `opcDiscard` right after such a jump.
+  let minPc = trace.pcs[0]
+  let maxPc = trace.pcs[^1]
+  block checkForwardJumps:
+    for pc in trace.pcs:
+      let oc = cached.opcodes[pc]
+      if oc in {opcJumpFwdF, opcJumpFwdT}:
+        let tgt = jtTargets[pc]
+        if tgt >= minPc and tgt <= maxPc:
+          block targetCheck:
+            for tp in trace.pcs:
+              if tp == tgt: break targetCheck
+            return nil
+          block nextPcCheck:
+            for tp in trace.pcs:
+              if tp == pc + 1: break nextPcCheck
+            return nil
+
   var d: ptr dasm_State = nil
   dasm_init(addr d, DASM_MAXSECTION)
 
@@ -104,7 +126,6 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
   vancode_define_label(addr d, 0)
 
   var definedLabels: seq[int] = @[]
-  var prevPc = -1
   for pc in trace.pcs:
     let oc = cached.opcodes[pc]
 
@@ -148,14 +169,7 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
     of opcInvB:
       vancode_inv_b(addr d)
     of opcDiscard:
-      if prevPc >= 0 and cached.opcodes[prevPc] in {opcJumpFwdF, opcJumpFwdT}:
-        let jumpTgt = jtTargets[prevPc]
-        if jumpTgt >= 0 and jumpTgt in labelForTarget:
-          discard
-        else:
-          vancode_discard(addr d, cached.getArg1Int(pc).cint)
-      else:
-        vancode_discard(addr d, cached.getArg1Int(pc).cint)
+      vancode_discard(addr d, cached.getArg1Int(pc).cint)
     of opcPushG, opcPopG:
       discard
     of opcJumpFwd:
@@ -201,7 +215,6 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
       freeJitCode(codeBuf, maxCodeSize)
       dasm_free(addr d)
       return nil
-    prevPc = pc
     discard
 
   vancode_define_label(addr d, 1)

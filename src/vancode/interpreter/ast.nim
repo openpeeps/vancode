@@ -84,6 +84,7 @@ type
     nkArray          # array declaration - array[T, ...] {...}
     nkProc           # procedure declaration - proc p(a: s, ...) -> t {...}
     nkIterator       # iterator declaration - iterator i(a: s, ...) -> t {...}
+    nkCoroutine      # coroutine declaration - coro func name(...): t = body
     nkBlock          # block statement - block {...}
     nkDocComment     # doc comment - <!-- ... -->
     nkObjectStorage  # object storage - used to store JSON-like objects

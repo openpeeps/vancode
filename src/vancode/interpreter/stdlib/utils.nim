@@ -29,7 +29,7 @@ type
 
 proc defaultNodeFromValue*(v: Value): Node =
   ## Converts runtime Value -> AST literal for default parameter codegen.
-  if v == nil: return ast.newNode(nkNil)
+  if v.typeId == tyNil: return ast.newNode(nkNil)
   case v.typeId
   of tyBool:
     result = ast.newNode(nkBool)
@@ -42,7 +42,7 @@ proc defaultNodeFromValue*(v: Value): Node =
     result.floatVal = v.floatVal
   of tyString:
     result = ast.newNode(nkString)
-    result.stringVal = v.stringVal[]
+    result.stringVal = v.stringVal
   of tyNil:
     result = ast.newNode(nkNil)
   else:
@@ -64,7 +64,7 @@ proc addProc*(script: Script, module: Module, name: string,
 
     # If a default Value is provided, expose it through implSym.impl
     # so callProc -> genExpr(...) pushes that exact value.
-    if param.val != nil and param.pImplSym == nil:
+    if param.val.typeId != tyNil and param.pImplSym == nil:
       let n = defaultNodeFromValue(param.val)
       if n != nil:
         param.pImplSym = newSym(
@@ -73,7 +73,7 @@ proc addProc*(script: Script, module: Module, name: string,
           impl = n
         )
 
-    let optional = param.isOpt or param.val != nil
+    let optional = param.isOpt or param.val.typeId != tyNil
 
     nodeParams.add((
       ast.newIdent(param.pName),
@@ -102,14 +102,14 @@ proc addProc*(script: Script, module: Module, name: string,
   if impl != nil:
     script.procs.add(theProc)
 
-proc paramDef*(name: string, kind: TypeKind, val: Value = nil,
+proc paramDef*(name: string, kind: TypeKind, val: Value = Value(typeId: tyNil),
               sym: Sym = nil; mut: bool = false,
               isOpt: bool = false, kindStr = ""): TempParamDef {.inline.} =
   ## Create a new parameter definition.
-  result = (name, kind, kindStr, sym, mut, (isOpt or val != nil), val)
+  result = (name, kind, kindStr, sym, mut, (isOpt or val.typeId != tyNil), val)
 
-proc p*(name: string, kind: TypeKind, val: Value = nil,
+proc p*(name: string, kind: TypeKind, val: Value = Value(typeId: tyNil),
               sym: Sym = nil; mut: bool = false,
               isOpt: bool = false, kindStr = ""): TempParamDef {.inline.} =
   ## Create a new parameter definition
-  result = (name, kind, kindStr, sym, mut, (isOpt or val != nil), val)
+  result = (name, kind, kindStr, sym, mut, (isOpt or val.typeId != tyNil), val)

@@ -62,8 +62,10 @@ const
   ErrOnlyUsableInAProc* = "'$1' can only be used inside a proc"
   ErrOnlyUsableInAMacro* = "'$1' can only be used inside a macro"
   ErrOnlyUsableInAnIterator* = "'$1' can only be used inside an iterator"
+  ErrOnlyUsableInACoroutine* = "'$1' can only be used inside a coroutine"
   ErrVarMustHaveValue* = "variable must have a value"
   ErrIterMustHaveYieldType* = "iterator must have a non-void yield type"
+  ErrCoroMustHaveReturnType* = "coroutine must have a non-void return type"
   ErrSymKindMismatch* = "$1 expected, but got $2"
   ErrInvalidSymName* = "'$1' is not a valid symbol name"
   ErrCouldNotInferGeneric* =
