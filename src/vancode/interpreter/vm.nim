@@ -495,11 +495,8 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
   # initialize globals with provided data
   # globals are stored on the VM so they persist across interpret() calls,
   # enabling stateful REPL sessions
-  if vm.globals.len == 0:
-    vm.globals = Table[string, Value]()
-    vm.globals["app"] = initValue(globalData)
-    vm.globals["this"] = initValue(localData)
-
+  # if vm.globals.len == 0:
+  #   vm.globals = Table[string, Value]()
   when defined(vancodeJitDynasm):
     if vm.jit.setGlobalsPtr != nil:
       vm.jit.setGlobalsPtr(addr vm.globals)
@@ -604,6 +601,24 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
   # Voodoo placeholder for injecting custom code at the start of the main loop
   conditionalPlaceholder"VanCodeVMBeforeMainLoop"
 
+  when defined(vancodeJitDynasm):
+    template recordNotTakenPath(traceBuf: TraceBuffer, traceNumLocals: var int, co: CachedOps, pcIdx, tgt: int) =
+      for p in pcIdx + 1 ..< tgt:
+        traceBuf.pcs.add(p)
+        let notTakenOc = co.opcodes[p]
+        if notTakenOc in {opcPushL, opcPopL, opcIncL, opcDecL}:
+          let nidx = co.getArg1Int(p)
+          if nidx + 1 > traceNumLocals: traceNumLocals = nidx + 1
+        if notTakenOc notin {opcPushI, opcPushTrue, opcPushFalse, opcPushNil,
+                             opcPushL, opcPopL, opcIncL, opcDecL,
+                             opcAddI, opcSubI, opcMultI, opcDivI, opcNegI,
+                             opcEqI, opcLessI, opcGreaterI,
+                             opcInvB, opcDiscard,
+                             opcJumpFwd, opcJumpFwdF, opcJumpFwdT,
+                             opcReturnVal, opcReturnVoid, opcHalt, opcNoop}:
+          traceState = tsIdle
+          break
+
   # Main execution loop
   while true:
     # {.computedGoto.}
@@ -667,6 +682,9 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         let idx = co.getArg1Int(pcIdx)
         ensureLocal(idx)
         stack.push(stack[stackBottom + idx])
+        when false:
+          let debugProcName = if currentChunk != nil and currentChunk.file.len > 0: currentChunk.file else: "?"
+          stderr.writeLine "  PUSHL ", idx, " → stack.len=", stack.len, " val.typeId=", stack[^1].typeId, " val.intVal=", stack[^1].intVal, " chunk=", debugProcName
       of opcPopL:
         let idx = co.getArg1Int(pcIdx)
         let val = stack.pop()
@@ -675,13 +693,13 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       of opcIncL:
         let idx = co.getArg1Int(pcIdx)
         ensureLocal(idx)
-        let pos = stackBottom + idx
-        stack[pos] = Value(typeId: tyInt, intVal: stack[pos].intVal + 1)
+        let old = stack[stackBottom + idx]
+        stack[stackBottom + idx] = Value(typeId: tyInt, intVal: old.intVal + 1)
       of opcDecL:
         let idx = co.getArg1Int(pcIdx)
         ensureLocal(idx)
-        let pos = stackBottom + idx
-        stack[pos] = Value(typeId: tyInt, intVal: stack[pos].intVal - 1)
+        let old = stack[stackBottom + idx]
+        stack[stackBottom + idx] = Value(typeId: tyInt, intVal: old.intVal - 1)
       #
       # Arrays / Objects
       #
@@ -742,7 +760,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         of tyInt:
           jsonValue = obj.jsonVal[key.intVal]
         of tyString:
-          jsonValue = obj.jsonVal[key.stringVal]
+          jsonValue = obj.jsonVal[key.stringVal[]]
         else: discard
         stack.push(initValue(jsonValue))
       of opcSetJ:
@@ -788,7 +806,9 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       of opcConcatStr:
         let b = stack.pop()
         let a = stack.pop()
-        var result = Value(typeId: tyString, stringVal: a.stringVal & b.stringVal)
+        var result = Value(typeId: tyString)
+        new(result.stringVal)
+        result.stringVal[] = a.stringVal[] & b.stringVal[]
         stack.push(result)
       #
       # Logic
@@ -829,7 +849,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       of opcEqS:
         let b = stack.pop()
         let a = stack.pop()
-        stack.push(initValue(a.stringVal == b.stringVal))
+        stack.push(initValue(a.stringVal[] == b.stringVal[]))
       #
       # Modules
       #
@@ -865,7 +885,11 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           else: false
         if cond:
           let tgt = co.jumpTargets[pcIdx]
-          if tgt >= 0: pcIdx = tgt - 1
+          if tgt >= 0:
+            when defined(vancodeJitDynasm):
+              if traceState == tsRecording:
+                recordNotTakenPath(traceBuf, traceNumLocals, co, pcIdx, tgt)
+            pcIdx = tgt - 1
           when defined(hayaVmWriteStackOps):
             echo "JumpFwdT: tgt=", tgt, " cond=", cond
       of opcJumpFwdF:
@@ -879,7 +903,11 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           else: false
         if not cond:
           let tgt = co.jumpTargets[pcIdx]
-          if tgt >= 0: pcIdx = tgt - 1
+          if tgt >= 0:
+            when defined(vancodeJitDynasm):
+              if traceState == tsRecording:
+                recordNotTakenPath(traceBuf, traceNumLocals, co, pcIdx, tgt)
+            pcIdx = tgt - 1
           when defined(hayaVmWriteStackOps):
             echo "JumpFwdF: tgt=", tgt, " cond=", cond
       of opcJumpBack:
@@ -891,21 +919,25 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
               let numLocals = entry.numLocals
               if traceFlatLocals.len < numLocals:
                 traceFlatLocals = newSeq[int64](numLocals)
-              var flatInit = ""
+              var traceOrigTypes = newSeq[TypeId](numLocals)
               for i in 0..<numLocals:
                 let idx = stackBottom + i
+                traceOrigTypes[i] =
+                  if idx < stack.len: stack[idx].typeId
+                  else: tyInt
                 traceFlatLocals[i] =
                   if idx < stack.len and stack[idx].typeId == tyInt: stack[idx].intVal
                   else: 0
-                flatInit.add($traceFlatLocals[i] & ",")
-              #stderr.writeLine "[trace] EXEC tgt=" & $tgt & " nloc=" & $numLocals & " sBot=" & $stackBottom & " sLen=" & $stack.len & " flat=" & flatInit
               type TraceFn = proc (locals: ptr int64, count: cint): int64 {.cdecl.}
               let fnPtr = cast[TraceFn](entry.code)
               discard fnPtr(addr traceFlatLocals[0], numLocals.cint)
               for j in 0..<numLocals:
                 let idx = stackBottom + j
                 ensureLocal(j)
-                stack[idx] = initValue(traceFlatLocals[j])
+                case traceOrigTypes[j]
+                of tyInt: stack[idx] = initValue(traceFlatLocals[j])
+                of tyBool: stack[idx] = initValue(traceFlatLocals[j] != 0)
+                else: stack[idx] = initValue(traceFlatLocals[j])
               # Skip trailing discards that the guard already consumed
               var scanPc = pcIdx + 1
               while scanPc < co.opcodes.len and co.opcodes[scanPc] == opcDiscard:
@@ -1048,7 +1080,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           if p.hasResult:
             stack.push(callResult)
           when defined(hayaVmWriteStackOps):
-            if callResult.typeId != tyNil:
+            if callResult != nil:
               echo "Foreign call result: ", callResult
             else:
               echo "Foreign call result: nil"
@@ -1088,9 +1120,9 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
             else:
               p.foreign(nil, 0)
           restoreFrame()
-          if vm.pendingCallback.typeId != tyNil:
+          if vm.pendingCallback != nil:
             let cb = vm.pendingCallback
-            vm.pendingCallback = Value(typeId: tyNil)
+            vm.pendingCallback = nil
             if p.hasResult:
               stack.push(callResult)
             let cbId = cb.procVal.procId
@@ -1338,16 +1370,16 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
   
   if stepping != nil and stepping.state == csRunning:
     stepping.state = csCompleted
-    stepping.result = if stack.len > 0: stack[^1] else: Value(typeId: tyNil)
+    stepping.result = if stack.len > 0: stack[^1] else: nil
     return stepping.result
 
-  if result.typeId == tyNil:
+  if result == nil or result.typeId == tyNil:
     if stack.len > 0:
       # when defined(vancodeJitDynasm):
       #   stderr.writeLine "DEBUG: stack.len at end = " & $stack.len & " last.typeId = " & $stack[^1].typeId
       return stack[^1]
     else:
-      return Value(typeId: tyNil)
+      return nil
 
 proc stepCoroutine*(vm: Vm, coro: Coroutine): CoroutineResult =
   if coro.state notin {csCreated, csSuspended}:

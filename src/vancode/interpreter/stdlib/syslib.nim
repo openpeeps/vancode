@@ -68,7 +68,7 @@ proc initSystemOps*(script: Script, module: Module) =
     of tyBool: result = initValue(args[0].boolVal == args[1].boolVal)
     of tyInt: result = initValue(args[0].intVal == args[1].intVal)
     of tyFloat: result = initValue(args[0].floatVal == args[1].floatVal)
-    of tyString: result = initValue(args[0].stringVal == args[1].stringVal)
+    of tyString: result = initValue(args[0].stringVal[] == args[1].stringVal[])
     else: result = initValue(false)
   let isnotImpl = proc (args: StackView; argc: int): Value =
     result = isImpl(args, argc)

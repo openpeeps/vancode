@@ -169,7 +169,11 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
     of opcInvB:
       vancode_inv_b(addr d)
     of opcDiscard:
-      vancode_discard(addr d, cached.getArg1Int(pc).cint)
+      if pc in labelForTarget:
+        discard  # this discard is the target of a forward jump — the DynASM
+                  # jump_fwd_f already popped the condition from the native stack
+      else:
+        vancode_discard(addr d, cached.getArg1Int(pc).cint)
     of opcPushG, opcPopG:
       discard
     of opcJumpFwd:
