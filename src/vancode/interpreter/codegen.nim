@@ -1326,19 +1326,26 @@ proc genGetField*(node: Node): Sym {.codegen.} =
   var valTy: Sym =
     if recvSym.kind in skVars: recvSym.varTy else: recvSym
 
-  # Pointers go through FFI
+  # Pointers: try UFCS first, fall back to FFI
   if valTy.tyKind == ttyPointer:
-    if policyAny in gen.policy.disallow or policyLoadDynlib in gen.policy.disallow:
-      node.error(ErrPolicyViolation % "dynamic library loading is disabled")
     if node[1].kind == nkCall:
-      for arg in node[1].children[1..^1]:
-        discard gen.genExpr(arg)
-      gen.chunk.emit(opcFFIGetProc)
-      gen.chunk.emit(gen.chunk.getString(node[1][0].ident))
-      gen.chunk.emit(uint8(node[1].children.len - 1))
-      return valTy
-    else:
-      node[1].error("Pointer member access must be a call")
+      let calleeNode = node[1][0]
+      var fnSym: Sym
+      try:
+        fnSym = gen.lookup(calleeNode)
+      except:
+        fnSym = nil
+      if fnSym == nil or fnSym.kind != skProc:
+        if policyAny in gen.policy.disallow or policyLoadDynlib in gen.policy.disallow:
+          node.error(ErrPolicyViolation % "dynamic library loading is disabled")
+        for arg in node[1].children[1..^1]:
+          discard gen.genExpr(arg)
+        gen.chunk.emit(opcFFIGetProc)
+        gen.chunk.emit(gen.chunk.getString(node[1][0].ident))
+        gen.chunk.emit(uint8(node[1].children.len - 1))
+        return valTy
+      # fnSym found as skProc — fall through to UFCS below
+    # For nkIdent, also fall through to UFCS (treat as `ident(receiver)`)
 
   if valTy.tyKind notin {ttyObject}:
     # Only objects can be accessed with dot/bracket
@@ -1519,9 +1526,15 @@ proc genIf*(node: Node, isStmt: bool): Sym {.codegen.} =
       # the else branch is missing
       node.error(ErrTypeMismatch % ["void", "expression"])
 
+  # dummy byte target for forward jumps that skip past all code;
+  # emit raw noop byte (emit(opcNoop) silently drops it)
+  gen.chunk.code.add(Opcode.opcNoop.uint8)
+  gen.chunk.addLineInfo(1)
+
   # finally, fill all the jump gaps
   for jmp in jumpsToEnd:
-    gen.chunk.patchHole(jmp)
+    # patch targeting the dummy noop byte (codeLen - 1), not past end
+    gen.chunk.fillHole(jmp, uint16(gen.chunk.code.len - jmp))
 
   # if the 'if' is a statement, its type is void
   if isStmt:
