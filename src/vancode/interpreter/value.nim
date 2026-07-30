@@ -177,6 +177,8 @@ proc toJsonStr*(v: Value): string =
 
 proc `$`*(value: Value): string =
   ## Returns a value's string representation.
+  if value == nil: return ""
+  if value.typeId == tyString and value.stringVal == nil: return ""
   result = 
     case value.typeId
     of tyNil: "nil"
