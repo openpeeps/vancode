@@ -1159,8 +1159,8 @@ proc infix*(node: Node): Sym {.codegen.} =
       gen.chunk.emit(opcDiscard)
       gen.chunk.emit(1'u8)
       let bTy = gen.genExpr(rhs) # generate the right-hand side
-      if aTy.tyKind != ttyBool: lhs.error(ErrTypeMismatch % [$aTy, "bool"])
-      if bTy.tyKind != ttyBool: rhs.error(ErrTypeMismatch % [$bTy, "bool"])
+      if aTy.tyKind notin {ttyBool, ttyJson}: lhs.error(ErrTypeMismatch % [$aTy, "bool"])
+      if bTy.tyKind notin {ttyBool, ttyJson}: rhs.error(ErrTypeMismatch % [$bTy, "bool"])
       gen.chunk.patchHole(hole)
       result = gen.module.sym"bool"
     of "and": # ``and``
