@@ -1906,19 +1906,22 @@ proc tryElideWhile*(node: Node): bool {.codegen.} =
 
   proc isTriviallyDeadDeclStmt(stmt: Node, loopVarName: string): bool =
     if stmt.kind notin {nkVar, nkLet, nkConst}: return false
-    for decl in stmt:
-      # prevent shadowing loop var inside body
-      for name in decl[0..^3]:
-        var n = name
-        if n.kind == nkPostfix and n.len == 2:
-          n = n[1]
-        if n.kind == nkIdent and n.ident == loopVarName:
-          return false
+    for identDefs in stmt:
+      # each child of `identDefs` is an `nkAssign(ident, ty, val)` item,
+      # mirroring the structure `genVar` iterates over (`node.children[0]`)
+      for decl in identDefs:
+        # prevent shadowing loop var inside body
+        for name in decl[0..^3]:
+          var n = name
+          if n.kind == nkPostfix and n.len == 2:
+            n = n[1]
+          if n.kind == nkIdent and n.ident == loopVarName:
+            return false
 
-      let implNode = decl[^1]
-      # only allow literal/no-op initializers
-      if not isPureLiteralExpr(implNode):
-        return false
+        let implNode = decl[^1]
+        # only allow literal/no-op initializers
+        if not isPureLiteralExpr(implNode):
+          return false
     true
 
   proc stepOf(stmt: Node, loopVarName: string): int =
