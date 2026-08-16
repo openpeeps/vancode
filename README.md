@@ -122,7 +122,10 @@ _todo example here_
 > For a full example of how to use Voodoo to extend the AST, Codegen and VM, check the [Tim Engine](https://github.com/openpeeps/tim/blob/main/src/tim/engine/transformers.nim) transformers module.
 
 ## Projects using VanCode
+Here you can find some cool little projects and DSLs engines.
+
 - [Tim Engine](https://github.com/openpeeps/tim) - A beautiful template engine and DSL for generating HTML templates
+- [Dfkup](https://github.com/dfkup/dfkup) - A scripting language easy to learn and work with so you don't f*ck up!
 
 ## Roadmap
 - [x] JIT compilation using DynASM
