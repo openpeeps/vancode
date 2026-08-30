@@ -1,0 +1,21 @@
+nimTitle	manager	vancode/interpreter/manager.html	module vancode/interpreter/manager		0
+nim	ModuleEntry	vancode/interpreter/manager.html#ModuleEntry	object ModuleEntry		16
+nim	ModuleManager	vancode/interpreter/manager.html#ModuleManager	type ModuleManager		30
+nim	newModuleManager	vancode/interpreter/manager.html#newModuleManager,Option[string],int,uint32	proc newModuleManager(resolver = initResolver();\n                 cacheRoot: Option[string] = none(string); maxEntries = 256;\n                 fbeVersion = 1'u32; policy = CompilationPolicy()): ModuleManager		43
+nim	computeHash	vancode/interpreter/manager.html#computeHash,string	proc computeHash(source: string): string		66
+nim	hashSource	vancode/interpreter/manager.html#hashSource,ModuleManager,string	proc hashSource(m: ModuleManager; source: string): string		70
+nim	hasHash	vancode/interpreter/manager.html#hasHash,ModuleManager,string	proc hasHash(m: ModuleManager; hash: string): bool		110
+nim	hasModule	vancode/interpreter/manager.html#hasModule,ModuleManager,string	proc hasModule(m: ModuleManager; path: string): bool		114
+nim	getByHash	vancode/interpreter/manager.html#getByHash,ModuleManager,string	proc getByHash(m: ModuleManager; hash: string): Option[ModuleEntry]		121
+nim	getModule	vancode/interpreter/manager.html#getModule,ModuleManager,string	proc getModule(m: ModuleManager; path: string): Option[ModuleEntry]		129
+nim	allPaths	vancode/interpreter/manager.html#allPaths,ModuleManager	proc allPaths(m: ModuleManager): seq[string]		140
+nim	allHashes	vancode/interpreter/manager.html#allHashes,ModuleManager	proc allHashes(m: ModuleManager): seq[string]		144
+nim	len	vancode/interpreter/manager.html#len,ModuleManager	proc len(m: ModuleManager): int		148
+nim	put	vancode/interpreter/manager.html#put,ModuleManager,ModuleEntry	proc put(m: ModuleManager; entry: ModuleEntry)		152
+nim	tryLoadPersistent	vancode/interpreter/manager.html#tryLoadPersistent,ModuleManager,string	proc tryLoadPersistent(m: ModuleManager; hash: string): Option[ModuleEntry]		174
+nim	invalidate	vancode/interpreter/manager.html#invalidate,ModuleManager,string	proc invalidate(m: ModuleManager; path: string; recursive = true)		188
+nim	invalidateHash	vancode/interpreter/manager.html#invalidateHash,ModuleManager,string	proc invalidateHash(m: ModuleManager; hash: string)		210
+nim	clear	vancode/interpreter/manager.html#clear,ModuleManager	proc clear(m: ModuleManager; clearPersistent = false)		222
+nim	dependencies	vancode/interpreter/manager.html#dependencies,ModuleManager,string	proc dependencies(m: ModuleManager; path: string): seq[string]		233
+nim	sharedManager	vancode/interpreter/manager.html#sharedManager,Option[string],int,uint32	proc sharedManager(cacheRoot: Option[string] = none(string); maxEntries = 256;\n              fbeVersion = 1'u32): ModuleManager		242
+nim	setSharedManager	vancode/interpreter/manager.html#setSharedManager,ModuleManager	proc setSharedManager(m: ModuleManager)		254

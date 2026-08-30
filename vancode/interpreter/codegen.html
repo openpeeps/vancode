@@ -72,6 +72,8 @@
   of gkCoroutine:
   resolver*: FileResolver ## the file resolver used for resolving imports and includes. This is shared
                           ## between codegen instances to maintain a consistent cache of resolved files.
+  manager*: ModuleManager    ## shared module manager (hash-keyed LRU + flysystem). Replaces Packager.
+  pkgr*: Packager[PackageConfig]
   parserCallback*: ParserCallback ## a callback used to parse custom nodes
   allowExprResult*: bool
   policy*: CompilationPolicy ## Compilation policy controlling which features are allowed">CodeGen</a></li>
@@ -264,23 +266,51 @@
 
 </ul>
 <ul class="simple nested-toc-section">initCodeGen
-  <li><a class="reference" href="#initCodeGen%2CScript%2CModule%2CChunk%2CContextAllocator%2CPackager%2CParserCallback%2CCompilationPolicy" title="initCodeGen(script: Script; module: Module; chunk: Chunk; kind = gkToplevel;
-            ctxAllocator: ContextAllocator = nil; pkgr: Packager = nil;
+  <li><a class="reference" href="#initCodeGen%2CScript%2CModule%2CChunk%2CContextAllocator%2CModuleManager%2CParserCallback%2CCompilationPolicy" title="initCodeGen(script: Script; module: Module; chunk: Chunk; kind = gkToplevel;
+            ctxAllocator: ContextAllocator = nil; manager: ModuleManager = nil;
             parserCallback: ParserCallback = nil;
             policy: CompilationPolicy = CompilationPolicy()): CodeGen">initCodeGen(script: Script; module: Module; chunk: Chunk; kind = gkToplevel;
-            ctxAllocator: ContextAllocator = nil; pkgr: Packager = nil;
+            ctxAllocator: ContextAllocator = nil; manager: ModuleManager = nil;
             parserCallback: ParserCallback = nil;
             policy: CompilationPolicy = CompilationPolicy()): CodeGen</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">initCodeGenLegacy
+  <li><a class="reference" href="#initCodeGenLegacy%2CScript%2CModule%2CChunk%2CContextAllocator%2CPackager%5BPackageConfig%5D%2CParserCallback%2CCompilationPolicy" title="initCodeGenLegacy(script: Script; module: Module; chunk: Chunk;
+                  kind = gkToplevel; ctxAllocator: ContextAllocator = nil;
+                  pkgr: Packager[PackageConfig] = nil;
+                  parserCallback: ParserCallback = nil;
+                  policy: CompilationPolicy = CompilationPolicy()): CodeGen">initCodeGenLegacy(script: Script; module: Module; chunk: Chunk;
+                  kind = gkToplevel; ctxAllocator: ContextAllocator = nil;
+                  pkgr: Packager[PackageConfig] = nil;
+                  parserCallback: ParserCallback = nil;
+                  policy: CompilationPolicy = CompilationPolicy()): CodeGen</a></li>
+
+</ul>
 <ul class="simple nested-toc-section">initCompiler
-  <li><a class="reference" href="#initCompiler%2CScript%2CModule%2CChunk%2CPackager%2CStandardLibrary%2CParserCallback%2COption%5Bstring%5D%2CCompilationPolicy" title="initCompiler(script: Script; module: Module; chunk: Chunk; pkgr: Packager = nil;
-             stdlibs: StandardLibrary; parserCallback: ParserCallback = nil;
+  <li><a class="reference" href="#initCompiler%2CScript%2CModule%2CChunk%2CModuleManager%2CStandardLibrary%2CParserCallback%2COption%5Bstring%5D%2CCompilationPolicy" title="initCompiler(script: Script; module: Module; chunk: Chunk;
+             manager: ModuleManager = nil; stdlibs: StandardLibrary;
+             parserCallback: ParserCallback = nil;
              triggerFromPath: Option[string] = none(string);
-             policy: CompilationPolicy = CompilationPolicy()): CodeGen">initCompiler(script: Script; module: Module; chunk: Chunk; pkgr: Packager = nil;
-             stdlibs: StandardLibrary; parserCallback: ParserCallback = nil;
+             policy: CompilationPolicy = CompilationPolicy()): CodeGen">initCompiler(script: Script; module: Module; chunk: Chunk;
+             manager: ModuleManager = nil; stdlibs: StandardLibrary;
+             parserCallback: ParserCallback = nil;
              triggerFromPath: Option[string] = none(string);
              policy: CompilationPolicy = CompilationPolicy()): CodeGen</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">initCompilerLegacy
+  <li><a class="reference" href="#initCompilerLegacy%2CScript%2CModule%2CChunk%2CPackager%5BPackageConfig%5D%2CStandardLibrary%2CParserCallback%2COption%5Bstring%5D%2CCompilationPolicy" title="initCompilerLegacy(script: Script; module: Module; chunk: Chunk;
+                   pkgr: Packager[PackageConfig] = nil;
+                   stdlibs: StandardLibrary;
+                   parserCallback: ParserCallback = nil;
+                   triggerFromPath: Option[string] = none(string);
+                   policy: CompilationPolicy = CompilationPolicy()): CodeGen">initCompilerLegacy(script: Script; module: Module; chunk: Chunk;
+                   pkgr: Packager[PackageConfig] = nil;
+                   stdlibs: StandardLibrary;
+                   parserCallback: ParserCallback = nil;
+                   triggerFromPath: Option[string] = none(string);
+                   policy: CompilationPolicy = CompilationPolicy()): CodeGen</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">newProc
@@ -361,7 +391,7 @@
     <div class="section" id="6">
   <h1><a class="toc-backref" href="#6">Imports</a></h1>
   <dl class="item">
-    <a class="reference external" href="ast.html">ast</a>, <a class="reference external" href="chunk.html">chunk</a>, <a class="reference external" href="errors.html">errors</a>, <a class="reference external" href="sym.html">sym</a>, <a class="reference external" href="value.html">value</a>, <a class="reference external" href="resolver.html">resolver</a>, <a class="reference external" href="../manager/configurator.html">../manager/configurator</a>, <a class="reference external" href="../manager/packager.html">../manager/packager</a>
+    <a class="reference external" href="ast.html">ast</a>, <a class="reference external" href="chunk.html">chunk</a>, <a class="reference external" href="errors.html">errors</a>, <a class="reference external" href="sym.html">sym</a>, <a class="reference external" href="value.html">value</a>, <a class="reference external" href="resolver.html">resolver</a>, <a class="reference external" href="policy.html">policy</a>, <a class="reference external" href="manager.html">manager</a>, <a class="reference external" href="../manager/packager.html">../manager/packager</a>, <a class="reference external" href="../manager/configurator.html">../manager/configurator</a>
   </dl>
 </div>
 <div class="section" id="7">
@@ -379,9 +409,11 @@
   <span class="Keyword">of</span> <span class="Identifier">gkCoroutine</span><span class="Other">:</span>
   <span class="Identifier">resolver</span><span class="Operator">*</span><span class="Other">:</span> <a href="resolver.html#FileResolver"><span class="Identifier">FileResolver</span></a> <span class="Comment">## the file resolver used for resolving imports and includes. This is shared</span>
                           <span class="Comment">## between codegen instances to maintain a consistent cache of resolved files.</span>
+  <span class="Identifier">manager</span><span class="Operator">*</span><span class="Other">:</span> <a href="manager.html#ModuleManager"><span class="Identifier">ModuleManager</span></a>    <span class="Comment">## shared module manager (hash-keyed LRU + flysystem). Replaces Packager.</span>
+  <span class="Identifier">pkgr</span><span class="Operator">*</span><span class="Other">:</span> <a href="../manager/packager.html#Packager"><span class="Identifier">Packager</span></a><span class="Other">[</span><a href="../manager/configurator.html#PackageConfig"><span class="Identifier">PackageConfig</span></a><span class="Other">]</span>
   <span class="Identifier">parserCallback</span><span class="Operator">*</span><span class="Other">:</span> <a href="#ParserCallback"><span class="Identifier">ParserCallback</span></a> <span class="Comment">## a callback used to parse custom nodes</span>
   <span class="Identifier">allowExprResult</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>
-  <span class="Identifier">policy</span><span class="Operator">*</span><span class="Other">:</span> <a href="../manager/configurator.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a> <span class="Comment">## Compilation policy controlling which features are allowed</span></pre></dt>
+  <span class="Identifier">policy</span><span class="Operator">*</span><span class="Other">:</span> <a href="policy.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a> <span class="Comment">## Compilation policy controlling which features are allowed</span></pre></dt>
   <dd>
     
     a code generator for a module or proc.
@@ -626,7 +658,7 @@
   <div id="genBlock,CodeGen,Node,bool">
   <dt><pre><span class="Keyword">proc</span> <a href="#genBlock%2CCodeGen%2CNode%2Cbool"><span class="Identifier">genBlock</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">isStmt</span><span class="Other">:</span> <span class="Identifier">bool</span><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">IOError</span><span class="Other">]</span><span class="Other">,</span>
-    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">,</span> <span class="Identifier">ReadDirEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     
@@ -776,9 +808,9 @@
 <div id="genImport-procs-all">
   <div id="genImport,CodeGen,Node">
   <dt><pre><span class="Keyword">proc</span> <a href="#genImport%2CCodeGen%2CNode"><span class="Identifier">genImport</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span>
-    <span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span>
+    <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span>
     <span class="Identifier">IOError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span>
-    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ReadDirEffect</span><span class="Other">,</span> <span class="Identifier">RootEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     
@@ -868,7 +900,7 @@
   <div id="genStmt,CodeGen,Node">
   <dt><pre><span class="Keyword">proc</span> <a href="#genStmt%2CCodeGen%2CNode"><span class="Identifier">genStmt</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">IOError</span><span class="Other">]</span><span class="Other">,</span>
-    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">,</span> <span class="Identifier">ReadDirEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     
@@ -953,11 +985,28 @@
 
 </div>
 <div id="initCodeGen-procs-all">
-  <div id="initCodeGen,Script,Module,Chunk,ContextAllocator,Packager,ParserCallback,CompilationPolicy">
-  <dt><pre><span class="Keyword">proc</span> <a href="#initCodeGen%2CScript%2CModule%2CChunk%2CContextAllocator%2CPackager%2CParserCallback%2CCompilationPolicy"><span class="Identifier">initCodeGen</span></a><span class="Other">(</span><span class="Identifier">script</span><span class="Other">:</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">;</span> <span class="Identifier">module</span><span class="Other">:</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">chunk</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a><span class="Other">;</span>
+  <div id="initCodeGen,Script,Module,Chunk,ContextAllocator,ModuleManager,ParserCallback,CompilationPolicy">
+  <dt><pre><span class="Keyword">proc</span> <a href="#initCodeGen%2CScript%2CModule%2CChunk%2CContextAllocator%2CModuleManager%2CParserCallback%2CCompilationPolicy"><span class="Identifier">initCodeGen</span></a><span class="Other">(</span><span class="Identifier">script</span><span class="Other">:</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">;</span> <span class="Identifier">module</span><span class="Other">:</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">chunk</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a><span class="Other">;</span>
                  <span class="Identifier">kind</span> <span class="Other">=</span> <span class="Identifier">gkToplevel</span><span class="Other">;</span> <span class="Identifier">ctxAllocator</span><span class="Other">:</span> <span class="Identifier">ContextAllocator</span> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span>
-                 <span class="Identifier">pkgr</span><span class="Other">:</span> <a href="../manager/packager.html#Packager"><span class="Identifier">Packager</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span> <span class="Identifier">parserCallback</span><span class="Other">:</span> <a href="#ParserCallback"><span class="Identifier">ParserCallback</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span>
-                 <span class="Identifier">policy</span><span class="Other">:</span> <a href="../manager/configurator.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a> <span class="Other">=</span> <a href="../manager/configurator.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a> {.
+                 <span class="Identifier">manager</span><span class="Other">:</span> <a href="manager.html#ModuleManager"><span class="Identifier">ModuleManager</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span>
+                 <span class="Identifier">parserCallback</span><span class="Other">:</span> <a href="#ParserCallback"><span class="Identifier">ParserCallback</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span>
+                 <span class="Identifier">policy</span><span class="Other">:</span> <a href="policy.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a> <span class="Other">=</span> <a href="policy.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
+<div id="initCodeGenLegacy-procs-all">
+  <div id="initCodeGenLegacy,Script,Module,Chunk,ContextAllocator,Packager[PackageConfig],ParserCallback,CompilationPolicy">
+  <dt><pre><span class="Keyword">proc</span> <a href="#initCodeGenLegacy%2CScript%2CModule%2CChunk%2CContextAllocator%2CPackager%5BPackageConfig%5D%2CParserCallback%2CCompilationPolicy"><span class="Identifier">initCodeGenLegacy</span></a><span class="Other">(</span><span class="Identifier">script</span><span class="Other">:</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">;</span> <span class="Identifier">module</span><span class="Other">:</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">chunk</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a><span class="Other">;</span>
+                       <span class="Identifier">kind</span> <span class="Other">=</span> <span class="Identifier">gkToplevel</span><span class="Other">;</span> <span class="Identifier">ctxAllocator</span><span class="Other">:</span> <span class="Identifier">ContextAllocator</span> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span>
+                       <span class="Identifier">pkgr</span><span class="Other">:</span> <a href="../manager/packager.html#Packager"><span class="Identifier">Packager</span></a><span class="Other">[</span><a href="../manager/configurator.html#PackageConfig"><span class="Identifier">PackageConfig</span></a><span class="Other">]</span> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span>
+                       <span class="Identifier">parserCallback</span><span class="Other">:</span> <a href="#ParserCallback"><span class="Identifier">ParserCallback</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span>
+                       <span class="Identifier">policy</span><span class="Other">:</span> <a href="policy.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a> <span class="Other">=</span> <a href="policy.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -968,18 +1017,33 @@
 
 </div>
 <div id="initCompiler-procs-all">
-  <div id="initCompiler,Script,Module,Chunk,Packager,StandardLibrary,ParserCallback,Option[string],CompilationPolicy">
-  <dt><pre><span class="Keyword">proc</span> <a href="#initCompiler%2CScript%2CModule%2CChunk%2CPackager%2CStandardLibrary%2CParserCallback%2COption%5Bstring%5D%2CCompilationPolicy"><span class="Identifier">initCompiler</span></a><span class="Other">(</span><span class="Identifier">script</span><span class="Other">:</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">;</span> <span class="Identifier">module</span><span class="Other">:</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">chunk</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a><span class="Other">;</span>
-                  <span class="Identifier">pkgr</span><span class="Other">:</span> <a href="../manager/packager.html#Packager"><span class="Identifier">Packager</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span> <span class="Identifier">stdlibs</span><span class="Other">:</span> <a href="#StandardLibrary"><span class="Identifier">StandardLibrary</span></a><span class="Other">;</span>
+  <div id="initCompiler,Script,Module,Chunk,ModuleManager,StandardLibrary,ParserCallback,Option[string],CompilationPolicy">
+  <dt><pre><span class="Keyword">proc</span> <a href="#initCompiler%2CScript%2CModule%2CChunk%2CModuleManager%2CStandardLibrary%2CParserCallback%2COption%5Bstring%5D%2CCompilationPolicy"><span class="Identifier">initCompiler</span></a><span class="Other">(</span><span class="Identifier">script</span><span class="Other">:</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">;</span> <span class="Identifier">module</span><span class="Other">:</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">chunk</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a><span class="Other">;</span>
+                  <span class="Identifier">manager</span><span class="Other">:</span> <a href="manager.html#ModuleManager"><span class="Identifier">ModuleManager</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span> <span class="Identifier">stdlibs</span><span class="Other">:</span> <a href="#StandardLibrary"><span class="Identifier">StandardLibrary</span></a><span class="Other">;</span>
                   <span class="Identifier">parserCallback</span><span class="Other">:</span> <a href="#ParserCallback"><span class="Identifier">ParserCallback</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span>
                   <span class="Identifier">triggerFromPath</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span> <span class="Other">=</span> <span class="Identifier">none</span><span class="Other">(</span><span class="Identifier">string</span><span class="Other">)</span><span class="Other">;</span>
-                  <span class="Identifier">policy</span><span class="Other">:</span> <a href="../manager/configurator.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a> <span class="Other">=</span> <a href="../manager/configurator.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a> {.
+                  <span class="Identifier">policy</span><span class="Other">:</span> <a href="policy.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a> <span class="Other">=</span> <a href="policy.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    <p>Initialize a new code generator with a new script and module</p>
-<p>This is the main entry point for code generation, and can be called by your main module or by other modules to initialize code generation for a new script</p>
+    Initialize a new code generator with a new script and module
+    
+  </dd>
+</div>
 
+</div>
+<div id="initCompilerLegacy-procs-all">
+  <div id="initCompilerLegacy,Script,Module,Chunk,Packager[PackageConfig],StandardLibrary,ParserCallback,Option[string],CompilationPolicy">
+  <dt><pre><span class="Keyword">proc</span> <a href="#initCompilerLegacy%2CScript%2CModule%2CChunk%2CPackager%5BPackageConfig%5D%2CStandardLibrary%2CParserCallback%2COption%5Bstring%5D%2CCompilationPolicy"><span class="Identifier">initCompilerLegacy</span></a><span class="Other">(</span><span class="Identifier">script</span><span class="Other">:</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">;</span> <span class="Identifier">module</span><span class="Other">:</span> <a href="sym.html#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">chunk</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a><span class="Other">;</span>
+                        <span class="Identifier">pkgr</span><span class="Other">:</span> <a href="../manager/packager.html#Packager"><span class="Identifier">Packager</span></a><span class="Other">[</span><a href="../manager/configurator.html#PackageConfig"><span class="Identifier">PackageConfig</span></a><span class="Other">]</span> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span>
+                        <span class="Identifier">stdlibs</span><span class="Other">:</span> <a href="#StandardLibrary"><span class="Identifier">StandardLibrary</span></a><span class="Other">;</span>
+                        <span class="Identifier">parserCallback</span><span class="Other">:</span> <a href="#ParserCallback"><span class="Identifier">ParserCallback</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span>
+                        <span class="Identifier">triggerFromPath</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span> <span class="Other">=</span> <span class="Identifier">none</span><span class="Other">(</span><span class="Identifier">string</span><span class="Other">)</span><span class="Other">;</span>
+                        <span class="Identifier">policy</span><span class="Other">:</span> <a href="policy.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a> <span class="Other">=</span> <a href="policy.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
     
   </dd>
 </div>
@@ -1135,7 +1199,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-08-16 12:37:27 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-08-30 20:12:40 UTC</small>
       </div>
     </div>
   </div>

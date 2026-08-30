@@ -1,0 +1,6 @@
+nimTitle	fbe	vancode/interpreter/cache/fbe.html	module vancode/interpreter/cache/fbe		0
+nim	isFbeVersionCompatible	vancode/interpreter/cache/fbe.html#isFbeVersionCompatible,uint32,uint32	proc isFbeVersionCompatible(got, expected: uint32): bool		11
+nim	toFbe	vancode/interpreter/cache/fbe.html#toFbe,Ast,uint32	proc toFbe(ast: Ast; version: uint32): string		299
+nim	fromFbe	vancode/interpreter/cache/fbe.html#fromFbe,string,typeAst,uint32	proc fromFbe(data: string; T: type Ast; expectedVersion: uint32): Ast		311
+nim	toFbeFile	vancode/interpreter/cache/fbe.html#toFbeFile,string,Ast,uint32	proc toFbeFile(path: string; ast: Ast; version: uint32)		325
+nim	fromFbeFile	vancode/interpreter/cache/fbe.html#fromFbeFile,string,typeAst,uint32	proc fromFbeFile(path: string; T: type Ast; expectedVersion: uint32): Ast		328

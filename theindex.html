@@ -28,7 +28,7 @@
     <label for="nav-toggle" id="nav-overlay"></label>
     <div class="container">
       <h1 class="title">Index</h1>
-      Modules: <a href="index.html">vancode</a>, <a href="vancode/interpreter/ast.html">vancode/interpreter/ast</a>, <a href="vancode/interpreter/chunk.html">vancode/interpreter/chunk</a>, <a href="vancode/interpreter/codegen.html">vancode/interpreter/codegen</a>, <a href="vancode/interpreter/errors.html">vancode/interpreter/errors</a>, <a href="vancode/interpreter/jit/trace_cache.html">vancode/interpreter/jit/trace_cache</a>, <a href="vancode/interpreter/jit/trace_types.html">vancode/interpreter/jit/trace_types</a>, <a href="vancode/interpreter/resolver.html">vancode/interpreter/resolver</a>, <a href="vancode/interpreter/stdlib/syslib.html">vancode/interpreter/stdlib/syslib</a>, <a href="vancode/interpreter/stdlib/utils.html">vancode/interpreter/stdlib/utils</a>, <a href="vancode/interpreter/sym.html">vancode/interpreter/sym</a>, <a href="vancode/interpreter/value.html">vancode/interpreter/value</a>, <a href="vancode/interpreter/vm.html">vancode/interpreter/vm</a>, <a href="vancode/manager/configurator.html">vancode/manager/configurator</a>, <a href="vancode/manager/packager.html">vancode/manager/packager</a>, <a href="vancode/manager/remote.html">vancode/manager/remote</a>.<br/><p /><h2>API symbols</h2>
+      Modules: <a href="index.html">vancode</a>, <a href="vancode/interpreter/ast.html">vancode/interpreter/ast</a>, <a href="vancode/interpreter/cache/fbe.html">vancode/interpreter/cache/fbe</a>, <a href="vancode/interpreter/chunk.html">vancode/interpreter/chunk</a>, <a href="vancode/interpreter/codegen.html">vancode/interpreter/codegen</a>, <a href="vancode/interpreter/errors.html">vancode/interpreter/errors</a>, <a href="vancode/interpreter/jit/trace_cache.html">vancode/interpreter/jit/trace_cache</a>, <a href="vancode/interpreter/jit/trace_types.html">vancode/interpreter/jit/trace_types</a>, <a href="vancode/interpreter/manager.html">vancode/interpreter/manager</a>, <a href="vancode/interpreter/policy.html">vancode/interpreter/policy</a>, <a href="vancode/interpreter/resolver.html">vancode/interpreter/resolver</a>, <a href="vancode/interpreter/stdlib/syslib.html">vancode/interpreter/stdlib/syslib</a>, <a href="vancode/interpreter/stdlib/utils.html">vancode/interpreter/stdlib/utils</a>, <a href="vancode/interpreter/sym.html">vancode/interpreter/sym</a>, <a href="vancode/interpreter/value.html">vancode/interpreter/value</a>, <a href="vancode/interpreter/vm.html">vancode/interpreter/vm</a>, <a href="vancode/manager/configurator.html">vancode/manager/configurator</a>, <a href="vancode/manager/fbe_ast.html">vancode/manager/fbe_ast</a>, <a href="vancode/manager/packager.html">vancode/manager/packager</a>, <a href="vancode/manager/remote.html">vancode/manager/remote</a>.<br/><p /><h2>API symbols</h2>
 <dl><dt><a name="%60%24%60" href="#%60%24%60"><span>`$`:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="ast: proc `$`(node: Node): string" href="vancode/interpreter/ast.html#%24%2CNode">ast: proc `$`(node: Node): string</a></li>
@@ -46,8 +46,6 @@
           data-doc-search-tag="sym: proc `$`(sym: Sym): string" href="vancode/interpreter/sym.html#%24%2CSym">sym: proc `$`(sym: Sym): string</a></li>
           <li><a class="reference external"
           data-doc-search-tag="value: proc `$`(value: Value): string" href="vancode/interpreter/value.html#%24%2CValue">value: proc `$`(value: Value): string</a></li>
-          <li><a class="reference external"
-          data-doc-search-tag="configurator: proc `$`(c: PackageConfig): string" href="vancode/manager/configurator.html#%24%2CPackageConfig">configurator: proc `$`(c: PackageConfig): string</a></li>
           </ul></dd>
 <dt><a name="%60%3D%3D%60" href="#%60%3D%3D%60"><span>`==`:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -117,9 +115,17 @@
             fromOtherModule: static bool = false): bool" href="vancode/interpreter/sym.html#addVariable%2CScope%2CSym%2CNode%2Cstaticbool">sym: proc addVariable(scope: Scope; sym: Sym; lookupName: Node;
             fromOtherModule: static bool = false): bool</a></li>
           </ul></dd>
+<dt><a name="allHashes" href="#allHashes"><span>allHashes:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: proc allHashes(m: ModuleManager): seq[string]" href="vancode/interpreter/manager.html#allHashes%2CModuleManager">manager: proc allHashes(m: ModuleManager): seq[string]</a></li>
+          </ul></dd>
 <dt><a name="allocCtx" href="#allocCtx"><span>allocCtx:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc allocCtx(allocator: ContextAllocator): Context" href="vancode/interpreter/codegen.html#allocCtx%2CContextAllocator">codegen: proc allocCtx(allocator: ContextAllocator): Context</a></li>
+          </ul></dd>
+<dt><a name="allPaths" href="#allPaths"><span>allPaths:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: proc allPaths(m: ModuleManager): seq[string]" href="vancode/interpreter/manager.html#allPaths%2CModuleManager">manager: proc allPaths(m: ModuleManager): seq[string]</a></li>
           </ul></dd>
 <dt><a name="ArgTuple" href="#ArgTuple"><span>ArgTuple:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -139,7 +145,7 @@
           </ul></dd>
 <dt><a name="cacheModule" href="#cacheModule"><span>cacheModule:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="packager: proc cacheModule(pkgr: Packager; pkgName: string; ast: Ast)" href="vancode/manager/packager.html#cacheModule%2CPackager%2Cstring%2CAst">packager: proc cacheModule(pkgr: Packager; pkgName: string; ast: Ast)</a></li>
+          data-doc-search-tag="packager: proc cacheModule[C](pkgr: Packager[C]; pkgName: string; ast: Ast; version: uint32)" href="vancode/manager/packager.html#cacheModule%2CPackager%5BC%5D%2Cstring%2CAst%2Cuint32">packager: proc cacheModule[C](pkgr: Packager[C]; pkgName: string; ast: Ast; version: uint32)</a></li>
           </ul></dd>
 <dt><a name="call" href="#call"><span>call:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -160,6 +166,10 @@
 <dt><a name="Chunk" href="#Chunk"><span>Chunk:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="chunk: type Chunk" href="vancode/interpreter/chunk.html#Chunk">chunk: type Chunk</a></li>
+          </ul></dd>
+<dt><a name="clear" href="#clear"><span>clear:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: proc clear(m: ModuleManager; clearPersistent = false)" href="vancode/interpreter/manager.html#clear%2CModuleManager">manager: proc clear(m: ModuleManager; clearPersistent = false)</a></li>
           </ul></dd>
 <dt><a name="clearFile" href="#clearFile"><span>clearFile:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -197,11 +207,15 @@
           </ul></dd>
 <dt><a name="CompilationPolicy" href="#CompilationPolicy"><span>CompilationPolicy:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: object CompilationPolicy" href="vancode/manager/configurator.html#CompilationPolicy">configurator: object CompilationPolicy</a></li>
+          data-doc-search-tag="policy: object CompilationPolicy" href="vancode/interpreter/policy.html#CompilationPolicy">policy: object CompilationPolicy</a></li>
           </ul></dd>
 <dt><a name="CompilationSettings" href="#CompilationSettings"><span>CompilationSettings:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="configurator: object CompilationSettings" href="vancode/manager/configurator.html#CompilationSettings">configurator: object CompilationSettings</a></li>
+          </ul></dd>
+<dt><a name="computeHash" href="#computeHash"><span>computeHash:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: proc computeHash(source: string): string" href="vancode/interpreter/manager.html#computeHash%2Cstring">manager: proc computeHash(source: string): string</a></li>
           </ul></dd>
 <dt><a name="ConfigType" href="#ConfigType"><span>ConfigType:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -237,7 +251,7 @@
           </ul></dd>
 <dt><a name="createPackage" href="#createPackage"><span>createPackage:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="packager: proc createPackage(pkgr: Packager; orgName, pkgName: string; pkgConfig: PackageConfig): bool" href="vancode/manager/packager.html#createPackage%2CPackager%2Cstring%2Cstring%2CPackageConfig">packager: proc createPackage(pkgr: Packager; orgName, pkgName: string; pkgConfig: PackageConfig): bool</a></li>
+          data-doc-search-tag="packager: proc createPackage[C](pkgr: Packager[C]; orgName, pkgName: string; pkgConfig: C): bool" href="vancode/manager/packager.html#createPackage%2CPackager%5BC%5D%2Cstring%2Cstring%2CC">packager: proc createPackage[C](pkgr: Packager[C]; orgName, pkgName: string; pkgConfig: C): bool</a></li>
           </ul></dd>
 <dt><a name="crErrored" href="#crErrored"><span>crErrored:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -287,11 +301,19 @@
 <li><a class="reference external"
           data-doc-search-tag="utils: proc defaultNodeFromValue(v: Value): Node" href="vancode/interpreter/stdlib/utils.html#defaultNodeFromValue%2CValue">utils: proc defaultNodeFromValue(v: Value): Node</a></li>
           </ul></dd>
+<dt><a name="DefaultPackager" href="#DefaultPackager"><span>DefaultPackager:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="packager: type DefaultPackager" href="vancode/manager/packager.html#DefaultPackager">packager: type DefaultPackager</a></li>
+          </ul></dd>
+<dt><a name="defaultPackagerRoot" href="#defaultPackagerRoot"><span>defaultPackagerRoot:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="packager: proc defaultPackagerRoot(): string" href="vancode/manager/packager.html#defaultPackagerRoot">packager: proc defaultPackagerRoot(): string</a></li>
+          </ul></dd>
 <dt><a name="deletePackage" href="#deletePackage"><span>deletePackage:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="packager: proc deletePackage(pkgr: Packager; pkgName: string;
-              pkgVersion: Option[Version] = none(Version))" href="vancode/manager/packager.html#deletePackage%2CPackager%2Cstring%2COption%5BVersion%5D">packager: proc deletePackage(pkgr: Packager; pkgName: string;
-              pkgVersion: Option[Version] = none(Version))</a></li>
+          data-doc-search-tag="packager: proc deletePackage[C](pkgr: Packager[C]; pkgName: string;
+                 pkgVersion: Option[Version] = none(Version))" href="vancode/manager/packager.html#deletePackage%2CPackager%5BC%5D%2Cstring%2COption%5BVersion%5D">packager: proc deletePackage[C](pkgr: Packager[C]; pkgName: string;
+                 pkgVersion: Option[Version] = none(Version))</a></li>
           </ul></dd>
 <dt><a name="dependants" href="#dependants"><span>dependants:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -299,6 +321,8 @@
           </ul></dd>
 <dt><a name="dependencies" href="#dependencies"><span>dependencies:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
+          data-doc-search-tag="manager: proc dependencies(m: ModuleManager; path: string): seq[string]" href="vancode/interpreter/manager.html#dependencies%2CModuleManager%2Cstring">manager: proc dependencies(m: ModuleManager; path: string): seq[string]</a></li>
+          <li><a class="reference external"
           data-doc-search-tag="resolver: proc dependencies(resolver: FileResolver; filePath: string): seq[string]" href="vancode/interpreter/resolver.html#dependencies%2CFileResolver%2Cstring">resolver: proc dependencies(resolver: FileResolver; filePath: string): seq[string]</a></li>
           </ul></dd>
 <dt><a name="download" href="#download"><span>download:</span></a></dt><dd><ul class="simple">
@@ -575,6 +599,14 @@
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc freeCtx(allocator: ContextAllocator; ctx: Context)" href="vancode/interpreter/codegen.html#freeCtx%2CContextAllocator%2CContext">codegen: proc freeCtx(allocator: ContextAllocator; ctx: Context)</a></li>
           </ul></dd>
+<dt><a name="fromFbe" href="#fromFbe"><span>fromFbe:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="fbe: proc fromFbe(data: string; T: type Ast; expectedVersion: uint32): Ast" href="vancode/interpreter/cache/fbe.html#fromFbe%2Cstring%2CtypeAst%2Cuint32">fbe: proc fromFbe(data: string; T: type Ast; expectedVersion: uint32): Ast</a></li>
+          </ul></dd>
+<dt><a name="fromFbeFile" href="#fromFbeFile"><span>fromFbeFile:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="fbe: proc fromFbeFile(path: string; T: type Ast; expectedVersion: uint32): Ast" href="vancode/interpreter/cache/fbe.html#fromFbeFile%2Cstring%2CtypeAst%2Cuint32">fbe: proc fromFbeFile(path: string; T: type Ast; expectedVersion: uint32): Ast</a></li>
+          </ul></dd>
 <dt><a name="genArray" href="#genArray"><span>genArray:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc genArray(gen: CodeGen; node: Node; isInstantiation = false): Sym" href="vancode/interpreter/codegen.html#genArray%2CCodeGen%2CNode">codegen: proc genArray(gen: CodeGen; node: Node; isInstantiation = false): Sym</a></li>
@@ -614,10 +646,6 @@
 <dt><a name="genDiscard" href="#genDiscard"><span>genDiscard:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc genDiscard(gen: CodeGen; node: Node)" href="vancode/interpreter/codegen.html#genDiscard%2CCodeGen%2CNode">codegen: proc genDiscard(gen: CodeGen; node: Node)</a></li>
-          </ul></dd>
-<dt><a name="generateYaml" href="#generateYaml"><span>generateYaml:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="configurator: proc generateYaml(c: PackageConfig): string" href="vancode/manager/configurator.html#generateYaml%2CPackageConfig">configurator: proc generateYaml(c: PackageConfig): string</a></li>
           </ul></dd>
 <dt><a name="genExpr" href="#genExpr"><span>genExpr:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -707,9 +735,13 @@
 <li><a class="reference external"
           data-doc-search-tag="vm: template getArg1Int(co: CachedOps; i: int): int" href="vancode/interpreter/vm.html#getArg1Int.t%2CCachedOps%2Cint">vm: template getArg1Int(co: CachedOps; i: int): int</a></li>
           </ul></dd>
+<dt><a name="getByHash" href="#getByHash"><span>getByHash:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: proc getByHash(m: ModuleManager; hash: string): Option[ModuleEntry]" href="vancode/interpreter/manager.html#getByHash%2CModuleManager%2Cstring">manager: proc getByHash(m: ModuleManager; hash: string): Option[ModuleEntry]</a></li>
+          </ul></dd>
 <dt><a name="getCachedModule" href="#getCachedModule"><span>getCachedModule:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="packager: proc getCachedModule(pkgr: Packager; pkgName: string): Ast" href="vancode/manager/packager.html#getCachedModule%2CPackager%2Cstring">packager: proc getCachedModule(pkgr: Packager; pkgName: string): Ast</a></li>
+          data-doc-search-tag="packager: proc getCachedModule[C](pkgr: Packager[C]; pkgName: string; version: uint32): Ast" href="vancode/manager/packager.html#getCachedModule%2CPackager%5BC%5D%2Cstring%2Cuint32">packager: proc getCachedModule[C](pkgr: Packager[C]; pkgName: string; version: uint32): Ast</a></li>
           </ul></dd>
 <dt><a name="getCachedOps" href="#getCachedOps"><span>getCachedOps:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -747,13 +779,17 @@
 <li><a class="reference external"
           data-doc-search-tag="chunk: proc getLineInfoTable(chunk: Chunk): seq[LineInfo]" href="vancode/interpreter/chunk.html#getLineInfoTable%2CChunk">chunk: proc getLineInfoTable(chunk: Chunk): seq[LineInfo]</a></li>
           </ul></dd>
+<dt><a name="getModule" href="#getModule"><span>getModule:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: proc getModule(m: ModuleManager; path: string): Option[ModuleEntry]" href="vancode/interpreter/manager.html#getModule%2CModuleManager%2Cstring">manager: proc getModule(m: ModuleManager; path: string): Option[ModuleEntry]</a></li>
+          </ul></dd>
 <dt><a name="getModuleName" href="#getModuleName"><span>getModuleName:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="sym: proc getModuleName(module: Module): string" href="vancode/interpreter/sym.html#getModuleName%2CModule">sym: proc getModuleName(module: Module): string</a></li>
           </ul></dd>
 <dt><a name="getModulePath" href="#getModulePath"><span>getModulePath:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="packager: proc getModulePath(pkgr: Packager; pkgName, path: string): string" href="vancode/manager/packager.html#getModulePath%2CPackager%2Cstring%2Cstring">packager: proc getModulePath(pkgr: Packager; pkgName, path: string): string</a></li>
+          data-doc-search-tag="packager: proc getModulePath[C](pkgr: Packager[C]; pkgName, path: string): string" href="vancode/manager/packager.html#getModulePath%2CPackager%5BC%5D%2Cstring%2Cstring">packager: proc getModulePath[C](pkgr: Packager[C]; pkgName, path: string): string</a></li>
           </ul></dd>
 <dt><a name="getOpcode" href="#getOpcode"><span>getOpcode:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -807,13 +843,25 @@
           <li><a class="reference external"
           data-doc-search-tag="sym: proc hash(sym: Sym): Hash" href="vancode/interpreter/sym.html#hash%2CSym">sym: proc hash(sym: Sym): Hash</a></li>
           </ul></dd>
+<dt><a name="hasHash" href="#hasHash"><span>hasHash:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: proc hasHash(m: ModuleManager; hash: string): bool" href="vancode/interpreter/manager.html#hasHash%2CModuleManager%2Cstring">manager: proc hasHash(m: ModuleManager; hash: string): bool</a></li>
+          </ul></dd>
+<dt><a name="hashSource" href="#hashSource"><span>hashSource:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: proc hashSource(m: ModuleManager; source: string): string" href="vancode/interpreter/manager.html#hashSource%2CModuleManager%2Cstring">manager: proc hashSource(m: ModuleManager; source: string): string</a></li>
+          </ul></dd>
 <dt><a name="hasLoadedPackages" href="#hasLoadedPackages"><span>hasLoadedPackages:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="packager: proc hasLoadedPackages(pkgr: Packager): bool" href="vancode/manager/packager.html#hasLoadedPackages%2CPackager">packager: proc hasLoadedPackages(pkgr: Packager): bool</a></li>
+          data-doc-search-tag="packager: proc hasLoadedPackages[C](pkgr: Packager[C]): bool" href="vancode/manager/packager.html#hasLoadedPackages%2CPackager%5BC%5D">packager: proc hasLoadedPackages[C](pkgr: Packager[C]): bool</a></li>
+          </ul></dd>
+<dt><a name="hasModule" href="#hasModule"><span>hasModule:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: proc hasModule(m: ModuleManager; path: string): bool" href="vancode/interpreter/manager.html#hasModule%2CModuleManager%2Cstring">manager: proc hasModule(m: ModuleManager; path: string): bool</a></li>
           </ul></dd>
 <dt><a name="hasPackage" href="#hasPackage"><span>hasPackage:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="packager: proc hasPackage(pkgr: Packager; pkgName: string): bool" href="vancode/manager/packager.html#hasPackage%2CPackager%2Cstring">packager: proc hasPackage(pkgr: Packager; pkgName: string): bool</a></li>
+          data-doc-search-tag="packager: proc hasPackage[C](pkgr: Packager[C]; pkgName: string): bool" href="vancode/manager/packager.html#hasPackage%2CPackager%5BC%5D%2Cstring">packager: proc hasPackage[C](pkgr: Packager[C]; pkgName: string): bool</a></li>
           </ul></dd>
 <dt><a name="have" href="#have"><span>have:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -854,22 +902,50 @@
 <dt><a name="initCodeGen" href="#initCodeGen"><span>initCodeGen:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc initCodeGen(script: Script; module: Module; chunk: Chunk; kind = gkToplevel;
-            ctxAllocator: ContextAllocator = nil; pkgr: Packager = nil;
+            ctxAllocator: ContextAllocator = nil; manager: ModuleManager = nil;
             parserCallback: ParserCallback = nil;
-            policy: CompilationPolicy = CompilationPolicy()): CodeGen" href="vancode/interpreter/codegen.html#initCodeGen%2CScript%2CModule%2CChunk%2CContextAllocator%2CPackager%2CParserCallback%2CCompilationPolicy">codegen: proc initCodeGen(script: Script; module: Module; chunk: Chunk; kind = gkToplevel;
-            ctxAllocator: ContextAllocator = nil; pkgr: Packager = nil;
+            policy: CompilationPolicy = CompilationPolicy()): CodeGen" href="vancode/interpreter/codegen.html#initCodeGen%2CScript%2CModule%2CChunk%2CContextAllocator%2CModuleManager%2CParserCallback%2CCompilationPolicy">codegen: proc initCodeGen(script: Script; module: Module; chunk: Chunk; kind = gkToplevel;
+            ctxAllocator: ContextAllocator = nil; manager: ModuleManager = nil;
             parserCallback: ParserCallback = nil;
             policy: CompilationPolicy = CompilationPolicy()): CodeGen</a></li>
           </ul></dd>
+<dt><a name="initCodeGenLegacy" href="#initCodeGenLegacy"><span>initCodeGenLegacy:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="codegen: proc initCodeGenLegacy(script: Script; module: Module; chunk: Chunk;
+                  kind = gkToplevel; ctxAllocator: ContextAllocator = nil;
+                  pkgr: Packager[PackageConfig] = nil;
+                  parserCallback: ParserCallback = nil;
+                  policy: CompilationPolicy = CompilationPolicy()): CodeGen" href="vancode/interpreter/codegen.html#initCodeGenLegacy%2CScript%2CModule%2CChunk%2CContextAllocator%2CPackager%5BPackageConfig%5D%2CParserCallback%2CCompilationPolicy">codegen: proc initCodeGenLegacy(script: Script; module: Module; chunk: Chunk;
+                  kind = gkToplevel; ctxAllocator: ContextAllocator = nil;
+                  pkgr: Packager[PackageConfig] = nil;
+                  parserCallback: ParserCallback = nil;
+                  policy: CompilationPolicy = CompilationPolicy()): CodeGen</a></li>
+          </ul></dd>
 <dt><a name="initCompiler" href="#initCompiler"><span>initCompiler:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="codegen: proc initCompiler(script: Script; module: Module; chunk: Chunk; pkgr: Packager = nil;
-             stdlibs: StandardLibrary; parserCallback: ParserCallback = nil;
+          data-doc-search-tag="codegen: proc initCompiler(script: Script; module: Module; chunk: Chunk;
+             manager: ModuleManager = nil; stdlibs: StandardLibrary;
+             parserCallback: ParserCallback = nil;
              triggerFromPath: Option[string] = none(string);
-             policy: CompilationPolicy = CompilationPolicy()): CodeGen" href="vancode/interpreter/codegen.html#initCompiler%2CScript%2CModule%2CChunk%2CPackager%2CStandardLibrary%2CParserCallback%2COption%5Bstring%5D%2CCompilationPolicy">codegen: proc initCompiler(script: Script; module: Module; chunk: Chunk; pkgr: Packager = nil;
-             stdlibs: StandardLibrary; parserCallback: ParserCallback = nil;
+             policy: CompilationPolicy = CompilationPolicy()): CodeGen" href="vancode/interpreter/codegen.html#initCompiler%2CScript%2CModule%2CChunk%2CModuleManager%2CStandardLibrary%2CParserCallback%2COption%5Bstring%5D%2CCompilationPolicy">codegen: proc initCompiler(script: Script; module: Module; chunk: Chunk;
+             manager: ModuleManager = nil; stdlibs: StandardLibrary;
+             parserCallback: ParserCallback = nil;
              triggerFromPath: Option[string] = none(string);
              policy: CompilationPolicy = CompilationPolicy()): CodeGen</a></li>
+          </ul></dd>
+<dt><a name="initCompilerLegacy" href="#initCompilerLegacy"><span>initCompilerLegacy:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="codegen: proc initCompilerLegacy(script: Script; module: Module; chunk: Chunk;
+                   pkgr: Packager[PackageConfig] = nil;
+                   stdlibs: StandardLibrary;
+                   parserCallback: ParserCallback = nil;
+                   triggerFromPath: Option[string] = none(string);
+                   policy: CompilationPolicy = CompilationPolicy()): CodeGen" href="vancode/interpreter/codegen.html#initCompilerLegacy%2CScript%2CModule%2CChunk%2CPackager%5BPackageConfig%5D%2CStandardLibrary%2CParserCallback%2COption%5Bstring%5D%2CCompilationPolicy">codegen: proc initCompilerLegacy(script: Script; module: Module; chunk: Chunk;
+                   pkgr: Packager[PackageConfig] = nil;
+                   stdlibs: StandardLibrary;
+                   parserCallback: ParserCallback = nil;
+                   triggerFromPath: Option[string] = none(string);
+                   policy: CompilationPolicy = CompilationPolicy()): CodeGen</a></li>
           </ul></dd>
 <dt><a name="initObject" href="#initObject"><span>initObject:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -877,11 +953,11 @@
           </ul></dd>
 <dt><a name="initPackager" href="#initPackager"><span>initPackager:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="packager: proc initPackager(): Packager" href="vancode/manager/packager.html#initPackager">packager: proc initPackager(): Packager</a></li>
+          data-doc-search-tag="packager: proc initPackager[C](root = defaultPackagerRoot()): Packager[C]" href="vancode/manager/packager.html#initPackager">packager: proc initPackager[C](root = defaultPackagerRoot()): Packager[C]</a></li>
           </ul></dd>
 <dt><a name="initPackageRemote" href="#initPackageRemote"><span>initPackageRemote:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="packager: proc initPackageRemote(): Packager" href="vancode/manager/packager.html#initPackageRemote">packager: proc initPackageRemote(): Packager</a></li>
+          data-doc-search-tag="packager: proc initPackageRemote[C](root = defaultPackagerRoot()): Packager[C]" href="vancode/manager/packager.html#initPackageRemote">packager: proc initPackageRemote[C](root = defaultPackagerRoot()): Packager[C]</a></li>
           </ul></dd>
 <dt><a name="initRemoteSource" href="#initRemoteSource"><span>initRemoteSource:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -929,6 +1005,18 @@
           globaldata = newJObject(); localData = newJObject();
           stepping: Coroutine = nil): Value</a></li>
           </ul></dd>
+<dt><a name="invalidate" href="#invalidate"><span>invalidate:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: proc invalidate(m: ModuleManager; path: string; recursive = true)" href="vancode/interpreter/manager.html#invalidate%2CModuleManager%2Cstring">manager: proc invalidate(m: ModuleManager; path: string; recursive = true)</a></li>
+          </ul></dd>
+<dt><a name="invalidateHash" href="#invalidateHash"><span>invalidateHash:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: proc invalidateHash(m: ModuleManager; hash: string)" href="vancode/interpreter/manager.html#invalidateHash%2CModuleManager%2Cstring">manager: proc invalidateHash(m: ModuleManager; hash: string)</a></li>
+          </ul></dd>
+<dt><a name="isFbeVersionCompatible" href="#isFbeVersionCompatible"><span>isFbeVersionCompatible:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="fbe: proc isFbeVersionCompatible(got, expected: uint32): bool" href="vancode/interpreter/cache/fbe.html#isFbeVersionCompatible%2Cuint32%2Cuint32">fbe: proc isFbeVersionCompatible(got, expected: uint32): bool</a></li>
+          </ul></dd>
 <dt><a name="isGeneric" href="#isGeneric"><span>isGeneric:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="sym: proc isGeneric(sym: Sym): bool" href="vancode/interpreter/sym.html#isGeneric%2CSym">sym: proc isGeneric(sym: Sym): bool</a></li>
@@ -952,6 +1040,8 @@
 <dt><a name="len" href="#len"><span>len:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="ast: proc len(node: Node): int" href="vancode/interpreter/ast.html#len%2CNode">ast: proc len(node: Node): int</a></li>
+          <li><a class="reference external"
+          data-doc-search-tag="manager: proc len(m: ModuleManager): int" href="vancode/interpreter/manager.html#len%2CModuleManager">manager: proc len(m: ModuleManager): int</a></li>
           </ul></dd>
 <dt><a name="LineInfo" href="#LineInfo"><span>LineInfo:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -963,19 +1053,27 @@
           </ul></dd>
 <dt><a name="loadModule" href="#loadModule"><span>loadModule:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="packager: proc loadModule(pkgr: Packager; pkgName: string): string" href="vancode/manager/packager.html#loadModule%2CPackager%2Cstring">packager: proc loadModule(pkgr: Packager; pkgName: string): string</a></li>
+          data-doc-search-tag="packager: proc loadModule[C](pkgr: Packager[C]; pkgName: string): string" href="vancode/manager/packager.html#loadModule%2CPackager%5BC%5D%2Cstring">packager: proc loadModule[C](pkgr: Packager[C]; pkgName: string): string</a></li>
           </ul></dd>
 <dt><a name="loadPackages" href="#loadPackages"><span>loadPackages:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="packager: proc loadPackages(pkgr: Packager)" href="vancode/manager/packager.html#loadPackages%2CPackager">packager: proc loadPackages(pkgr: Packager)</a></li>
+          data-doc-search-tag="packager: proc loadPackages[C](pkgr: Packager[C])" href="vancode/manager/packager.html#loadPackages%2CPackager%5BC%5D">packager: proc loadPackages[C](pkgr: Packager[C])</a></li>
           </ul></dd>
 <dt><a name="Module" href="#Module"><span>Module:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="sym: type Module" href="vancode/interpreter/sym.html#Module">sym: type Module</a></li>
           </ul></dd>
+<dt><a name="ModuleEntry" href="#ModuleEntry"><span>ModuleEntry:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: object ModuleEntry" href="vancode/interpreter/manager.html#ModuleEntry">manager: object ModuleEntry</a></li>
+          </ul></dd>
 <dt><a name="ModuleLibrary" href="#ModuleLibrary"><span>ModuleLibrary:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="codegen: type ModuleLibrary" href="vancode/interpreter/codegen.html#ModuleLibrary">codegen: type ModuleLibrary</a></li>
+          </ul></dd>
+<dt><a name="ModuleManager" href="#ModuleManager"><span>ModuleManager:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: type ModuleManager" href="vancode/interpreter/manager.html#ModuleManager">manager: type ModuleManager</a></li>
           </ul></dd>
 <dt><a name="newBoolLit" href="#newBoolLit"><span>newBoolLit:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1028,6 +1126,14 @@
 <dt><a name="newModule" href="#newModule"><span>newModule:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="sym: proc newModule(name: string; src: Option[string] = none(string)): Module" href="vancode/interpreter/sym.html#newModule%2Cstring%2COption%5Bstring%5D">sym: proc newModule(name: string; src: Option[string] = none(string)): Module</a></li>
+          </ul></dd>
+<dt><a name="newModuleManager" href="#newModuleManager"><span>newModuleManager:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: proc newModuleManager(resolver = initResolver();
+                 cacheRoot: Option[string] = none(string); maxEntries = 256;
+                 fbeVersion = 1'u32; policy = CompilationPolicy()): ModuleManager" href="vancode/interpreter/manager.html#newModuleManager%2COption%5Bstring%5D%2Cint%2Cuint32">manager: proc newModuleManager(resolver = initResolver();
+                 cacheRoot: Option[string] = none(string); maxEntries = 256;
+                 fbeVersion = 1'u32; policy = CompilationPolicy()): ModuleManager</a></li>
           </ul></dd>
 <dt><a name="newNil" href="#newNil"><span>newNil:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1187,39 +1293,39 @@
           </ul></dd>
 <dt><a name="policyAny" href="#policyAny"><span>policyAny:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: PolicyKind.policyAny" href="vancode/manager/configurator.html#policyAny">configurator: PolicyKind.policyAny</a></li>
+          data-doc-search-tag="policy: PolicyKind.policyAny" href="vancode/interpreter/policy.html#policyAny">policy: PolicyKind.policyAny</a></li>
           </ul></dd>
 <dt><a name="policyAssignments" href="#policyAssignments"><span>policyAssignments:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: PolicyKind.policyAssignments" href="vancode/manager/configurator.html#policyAssignments">configurator: PolicyKind.policyAssignments</a></li>
+          data-doc-search-tag="policy: PolicyKind.policyAssignments" href="vancode/interpreter/policy.html#policyAssignments">policy: PolicyKind.policyAssignments</a></li>
           </ul></dd>
 <dt><a name="policyConditionals" href="#policyConditionals"><span>policyConditionals:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: PolicyKind.policyConditionals" href="vancode/manager/configurator.html#policyConditionals">configurator: PolicyKind.policyConditionals</a></li>
+          data-doc-search-tag="policy: PolicyKind.policyConditionals" href="vancode/interpreter/policy.html#policyConditionals">policy: PolicyKind.policyConditionals</a></li>
           </ul></dd>
 <dt><a name="policyImports" href="#policyImports"><span>policyImports:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: PolicyKind.policyImports" href="vancode/manager/configurator.html#policyImports">configurator: PolicyKind.policyImports</a></li>
+          data-doc-search-tag="policy: PolicyKind.policyImports" href="vancode/interpreter/policy.html#policyImports">policy: PolicyKind.policyImports</a></li>
           </ul></dd>
 <dt><a name="PolicyKind" href="#PolicyKind"><span>PolicyKind:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: enum PolicyKind" href="vancode/manager/configurator.html#PolicyKind">configurator: enum PolicyKind</a></li>
+          data-doc-search-tag="policy: enum PolicyKind" href="vancode/interpreter/policy.html#PolicyKind">policy: enum PolicyKind</a></li>
           </ul></dd>
 <dt><a name="policyLoadDynlib" href="#policyLoadDynlib"><span>policyLoadDynlib:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: PolicyKind.policyLoadDynlib" href="vancode/manager/configurator.html#policyLoadDynlib">configurator: PolicyKind.policyLoadDynlib</a></li>
+          data-doc-search-tag="policy: PolicyKind.policyLoadDynlib" href="vancode/interpreter/policy.html#policyLoadDynlib">policy: PolicyKind.policyLoadDynlib</a></li>
           </ul></dd>
 <dt><a name="policyLoops" href="#policyLoops"><span>policyLoops:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: PolicyKind.policyLoops" href="vancode/manager/configurator.html#policyLoops">configurator: PolicyKind.policyLoops</a></li>
+          data-doc-search-tag="policy: PolicyKind.policyLoops" href="vancode/interpreter/policy.html#policyLoops">policy: PolicyKind.policyLoops</a></li>
           </ul></dd>
 <dt><a name="policyPackages" href="#policyPackages"><span>policyPackages:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: PolicyKind.policyPackages" href="vancode/manager/configurator.html#policyPackages">configurator: PolicyKind.policyPackages</a></li>
+          data-doc-search-tag="policy: PolicyKind.policyPackages" href="vancode/interpreter/policy.html#policyPackages">policy: PolicyKind.policyPackages</a></li>
           </ul></dd>
 <dt><a name="policyStdlib" href="#policyStdlib"><span>policyStdlib:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="configurator: PolicyKind.policyStdlib" href="vancode/manager/configurator.html#policyStdlib">configurator: PolicyKind.policyStdlib</a></li>
+          data-doc-search-tag="policy: PolicyKind.policyStdlib" href="vancode/interpreter/policy.html#policyStdlib">policy: PolicyKind.policyStdlib</a></li>
           </ul></dd>
 <dt><a name="prefix" href="#prefix"><span>prefix:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1265,6 +1371,10 @@
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc pushConst(gen: CodeGen; node: Node): Sym" href="vancode/interpreter/codegen.html#pushConst%2CCodeGen%2CNode">codegen: proc pushConst(gen: CodeGen; node: Node): Sym</a></li>
           </ul></dd>
+<dt><a name="put" href="#put"><span>put:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: proc put(m: ModuleManager; entry: ModuleEntry)" href="vancode/interpreter/manager.html#put%2CModuleManager%2CModuleEntry">manager: proc put(m: ModuleManager; entry: ModuleEntry)</a></li>
+          </ul></dd>
 <dt><a name="readFile" href="#readFile"><span>readFile:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="resolver: proc readFile(resolver: FileResolver; filePath: string): string" href="vancode/interpreter/resolver.html#readFile%2CFileResolver%2Cstring">resolver: proc readFile(resolver: FileResolver; filePath: string): string</a></li>
@@ -1273,6 +1383,26 @@
 <li><a class="reference external"
           data-doc-search-tag="chunk: proc rebuildStringIds(chunk: var Chunk)" href="vancode/interpreter/chunk.html#rebuildStringIds%2CChunk">chunk: proc rebuildStringIds(chunk: var Chunk)</a></li>
           </ul></dd>
+<dt><a name="relIndexPath" href="#relIndexPath"><span>relIndexPath:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="packager: const relIndexPath" href="vancode/manager/packager.html#relIndexPath">packager: const relIndexPath</a></li>
+          </ul></dd>
+<dt><a name="relPackageCachedDir" href="#relPackageCachedDir"><span>relPackageCachedDir:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="packager: const relPackageCachedDir" href="vancode/manager/packager.html#relPackageCachedDir">packager: const relPackageCachedDir</a></li>
+          </ul></dd>
+<dt><a name="relPackagesDir" href="#relPackagesDir"><span>relPackagesDir:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="packager: const relPackagesDir" href="vancode/manager/packager.html#relPackagesDir">packager: const relPackagesDir</a></li>
+          </ul></dd>
+<dt><a name="relPackageSourceDir" href="#relPackageSourceDir"><span>relPackageSourceDir:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="packager: const relPackageSourceDir" href="vancode/manager/packager.html#relPackageSourceDir">packager: const relPackageSourceDir</a></li>
+          </ul></dd>
+<dt><a name="relTmpDir" href="#relTmpDir"><span>relTmpDir:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="packager: const relTmpDir" href="vancode/manager/packager.html#relTmpDir">packager: const relTmpDir</a></li>
+          </ul></dd>
 <dt><a name="RemoteSource" href="#RemoteSource"><span>RemoteSource:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="remote: object RemoteSource" href="vancode/manager/remote.html#RemoteSource">remote: object RemoteSource</a></li>
@@ -1280,10 +1410,6 @@
 <dt><a name="render" href="#render"><span>render:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="ast: proc render(node: Node): string" href="vancode/interpreter/ast.html#render%2CNode">ast: proc render(node: Node): string</a></li>
-          </ul></dd>
-<dt><a name="Requirement" href="#Requirement"><span>Requirement:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="configurator: object Requirement" href="vancode/manager/configurator.html#Requirement">configurator: object Requirement</a></li>
           </ul></dd>
 <dt><a name="resolveFile" href="#resolveFile"><span>resolveFile:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1330,6 +1456,16 @@
 <dt><a name="setLineInfoTable" href="#setLineInfoTable"><span>setLineInfoTable:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="chunk: proc setLineInfoTable(chunk: var Chunk; info: seq[LineInfo])" href="vancode/interpreter/chunk.html#setLineInfoTable%2CChunk%2Cseq%5BLineInfo%5D">chunk: proc setLineInfoTable(chunk: var Chunk; info: seq[LineInfo])</a></li>
+          </ul></dd>
+<dt><a name="setSharedManager" href="#setSharedManager"><span>setSharedManager:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: proc setSharedManager(m: ModuleManager)" href="vancode/interpreter/manager.html#setSharedManager%2CModuleManager">manager: proc setSharedManager(m: ModuleManager)</a></li>
+          </ul></dd>
+<dt><a name="sharedManager" href="#sharedManager"><span>sharedManager:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: proc sharedManager(cacheRoot: Option[string] = none(string); maxEntries = 256;
+              fbeVersion = 1'u32): ModuleManager" href="vancode/interpreter/manager.html#sharedManager%2COption%5Bstring%5D%2Cint%2Cuint32">manager: proc sharedManager(cacheRoot: Option[string] = none(string); maxEntries = 256;
+              fbeVersion = 1'u32): ModuleManager</a></li>
           </ul></dd>
 <dt><a name="skCallable" href="#skCallable"><span>skCallable:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1439,6 +1575,14 @@
 <li><a class="reference external"
           data-doc-search-tag="trace_types: TraceExitReason.terNormal" href="vancode/interpreter/jit/trace_types.html#terNormal">trace_types: TraceExitReason.terNormal</a></li>
           </ul></dd>
+<dt><a name="toFbe" href="#toFbe"><span>toFbe:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="fbe: proc toFbe(ast: Ast; version: uint32): string" href="vancode/interpreter/cache/fbe.html#toFbe%2CAst%2Cuint32">fbe: proc toFbe(ast: Ast; version: uint32): string</a></li>
+          </ul></dd>
+<dt><a name="toFbeFile" href="#toFbeFile"><span>toFbeFile:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="fbe: proc toFbeFile(path: string; ast: Ast; version: uint32)" href="vancode/interpreter/cache/fbe.html#toFbeFile%2Cstring%2CAst%2Cuint32">fbe: proc toFbeFile(path: string; ast: Ast; version: uint32)</a></li>
+          </ul></dd>
 <dt><a name="toJsonStr" href="#toJsonStr"><span>toJsonStr:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="value: proc toJsonStr(v: Value): string" href="vancode/interpreter/value.html#toJsonStr%2CValue">value: proc toJsonStr(v: Value): string</a></li>
@@ -1482,6 +1626,10 @@
 <dt><a name="tryElideWhile" href="#tryElideWhile"><span>tryElideWhile:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc tryElideWhile(gen: CodeGen; node: Node): bool" href="vancode/interpreter/codegen.html#tryElideWhile%2CCodeGen%2CNode">codegen: proc tryElideWhile(gen: CodeGen; node: Node): bool</a></li>
+          </ul></dd>
+<dt><a name="tryLoadPersistent" href="#tryLoadPersistent"><span>tryLoadPersistent:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="manager: proc tryLoadPersistent(m: ModuleManager; hash: string): Option[ModuleEntry]" href="vancode/interpreter/manager.html#tryLoadPersistent%2CModuleManager%2Cstring">manager: proc tryLoadPersistent(m: ModuleManager; hash: string): Option[ModuleEntry]</a></li>
           </ul></dd>
 <dt><a name="tsCompiled" href="#tsCompiled"><span>tsCompiled:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1551,14 +1699,6 @@
 <li><a class="reference external"
           data-doc-search-tag="sym: enum TypeKind" href="vancode/interpreter/sym.html#TypeKind">sym: enum TypeKind</a></li>
           </ul></dd>
-<dt><a name="typePackage" href="#typePackage"><span>typePackage:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="configurator: ConfigType.typePackage" href="vancode/manager/configurator.html#typePackage">configurator: ConfigType.typePackage</a></li>
-          </ul></dd>
-<dt><a name="typeProject" href="#typeProject"><span>typeProject:</span></a></dt><dd><ul class="simple">
-<li><a class="reference external"
-          data-doc-search-tag="configurator: ConfigType.typeProject" href="vancode/manager/configurator.html#typeProject">configurator: ConfigType.typeProject</a></li>
-          </ul></dd>
 <dt><a name="tyPointer" href="#tyPointer"><span>tyPointer:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="value: const tyPointer" href="vancode/interpreter/value.html#tyPointer">value: const tyPointer</a></li>
@@ -1581,7 +1721,7 @@
           </ul></dd>
 <dt><a name="updatePackages" href="#updatePackages"><span>updatePackages:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="packager: proc updatePackages(pkgr: Packager)" href="vancode/manager/packager.html#updatePackages%2CPackager">packager: proc updatePackages(pkgr: Packager)</a></li>
+          data-doc-search-tag="packager: proc updatePackages[C](pkgr: Packager[C])" href="vancode/manager/packager.html#updatePackages%2CPackager%5BC%5D">packager: proc updatePackages[C](pkgr: Packager[C])</a></li>
           </ul></dd>
 <dt><a name="Value" href="#Value"><span>Value:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1598,6 +1738,10 @@
 <dt><a name="vanCodeStmtNodeKinds" href="#vanCodeStmtNodeKinds"><span>vanCodeStmtNodeKinds:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="codegen: var vanCodeStmtNodeKinds" href="vancode/interpreter/codegen.html#vanCodeStmtNodeKinds">codegen: var vanCodeStmtNodeKinds</a></li>
+          </ul></dd>
+<dt><a name="VersionedPackage" href="#VersionedPackage"><span>VersionedPackage:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="packager: type VersionedPackage" href="vancode/manager/packager.html#VersionedPackage">packager: type VersionedPackage</a></li>
           </ul></dd>
 <dt><a name="VirtualFileSystem" href="#VirtualFileSystem"><span>VirtualFileSystem:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1635,7 +1779,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-08-16 12:37:27 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-08-30 20:12:40 UTC</small>
       </div>
     </div>
   </div>

@@ -1,0 +1,11 @@
+nimTitle	policy	vancode/interpreter/policy.html	module vancode/interpreter/policy		0
+nim	policyAny	vancode/interpreter/policy.html#policyAny	PolicyKind.policyAny		5
+nim	policyStdlib	vancode/interpreter/policy.html#policyStdlib	PolicyKind.policyStdlib		5
+nim	policyPackages	vancode/interpreter/policy.html#policyPackages	PolicyKind.policyPackages		5
+nim	policyImports	vancode/interpreter/policy.html#policyImports	PolicyKind.policyImports		5
+nim	policyLoops	vancode/interpreter/policy.html#policyLoops	PolicyKind.policyLoops		5
+nim	policyConditionals	vancode/interpreter/policy.html#policyConditionals	PolicyKind.policyConditionals		5
+nim	policyAssignments	vancode/interpreter/policy.html#policyAssignments	PolicyKind.policyAssignments		5
+nim	policyLoadDynlib	vancode/interpreter/policy.html#policyLoadDynlib	PolicyKind.policyLoadDynlib		5
+nim	PolicyKind	vancode/interpreter/policy.html#PolicyKind	enum PolicyKind		5
+nim	CompilationPolicy	vancode/interpreter/policy.html#CompilationPolicy	object CompilationPolicy		15
