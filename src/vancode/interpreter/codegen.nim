@@ -23,9 +23,10 @@
 import std/[macros, options, os, hashes,
             sequtils, strutils, tables, json]
 
-import ./[ast, chunk, errors, sym, value, resolver]
-import ../manager/[configurator, packager]
+import ./[ast, chunk, errors, sym, value, resolver, policy, manager]
 import pkg/voodoo/extensibles
+import ../manager/packager
+import ../manager/configurator
 
 var globalTypeCounter* {.global.}: int = 0
 
@@ -108,8 +109,10 @@ type
     resolver*: FileResolver
       ## the file resolver used for resolving imports and includes. This is shared
       ## between codegen instances to maintain a consistent cache of resolved files.
-    pkgr: Packager
-      # the package manager used for resolving packages
+    manager*: ModuleManager
+      ## shared module manager (hash-keyed LRU + flysystem). Replaces Packager.
+    pkgr*: Packager[PackageConfig]
+      # deprecated shim — keep for tim compat, will be removed
     parserCallback*: ParserCallback
       ## a callback used to parse custom nodes
     stdlibs: StandardLibrary
@@ -167,7 +170,7 @@ proc freeCtx*(allocator: ContextAllocator, ctx: Context) =
 
 proc initCodeGen*(script: Script, module: Module, chunk: Chunk,
         kind = gkToplevel, ctxAllocator: ContextAllocator = nil,
-        pkgr: Packager = nil,
+        manager: ModuleManager = nil,
         parserCallback: ParserCallback = nil,
         policy: CompilationPolicy = CompilationPolicy()): CodeGen =
   result = CodeGen(
@@ -175,7 +178,7 @@ proc initCodeGen*(script: Script, module: Module, chunk: Chunk,
     module: module,
     chunk: chunk,
     kind: kind,
-    pkgr: pkgr,
+    manager: manager,
     parserCallback: parserCallback,
     policy: policy,
   )
@@ -183,6 +186,16 @@ proc initCodeGen*(script: Script, module: Module, chunk: Chunk,
     result.ctxAllocator = ContextAllocator()
     result.context = result.ctxAllocator.allocCtx()
   result.resolver = initResolver()
+  if manager != nil:
+    result.resolver = manager.resolver
+
+proc initCodeGenLegacy*(script: Script, module: Module, chunk: Chunk,
+        kind = gkToplevel, ctxAllocator: ContextAllocator = nil,
+        pkgr: Packager[PackageConfig] = nil,
+        parserCallback: ParserCallback = nil,
+        policy: CompilationPolicy = CompilationPolicy()): CodeGen =
+  result = initCodeGen(script, module, chunk, kind, ctxAllocator, nil, parserCallback, policy)
+  result.pkgr = pkgr
 
 proc clone(gen: CodeGen, kind: GenKind): CodeGen =
   # Clone a code generator, using a different kind for the new one.
@@ -677,6 +690,9 @@ proc pushDefault(gen: CodeGen, ty: Sym) =
   of ttyObject:
     gen.chunk.emit(opcPushNil)
     gen.chunk.emit(uint16(tyFirstObject + ty.objectId))
+  of ttyClass, ttyInterface:
+    gen.chunk.emit(opcPushNil)
+    gen.chunk.emit(uint16(0))
   of ttyJson:
     gen.chunk.emit(opcPushJNil)
     gen.chunk.emit(uint16(tyJsonStorage))
@@ -1301,7 +1317,14 @@ proc call*(node: Node): Sym {.codegen.} =
         return gen.genCoroResume(node)
     case sym.kind
     of skType: # object construction
-      result = gen.objConstr(node, sym)
+      if sym.tyKind == ttyClass or sym.tyKind == ttyInterface:
+        gen.chunk.emit(opcPushNil)
+        gen.chunk.emit(uint16(0))
+        result = sym
+      elif sym.tyKind == ttyObject:
+        result = gen.objConstr(node, sym)
+      else:
+        node.error(ErrTypeIsNotAnObject % $sym.name)
     else: # procedure call
       result = gen.procCall(node, sym)
   of nkDot:
@@ -1347,8 +1370,8 @@ proc genGetField*(node: Node): Sym {.codegen.} =
       # fnSym found as skProc — fall through to UFCS below
     # For nkIdent, also fall through to UFCS (treat as `ident(receiver)`)
 
-  if valTy.tyKind notin {ttyObject}:
-    # Only objects can be accessed with dot/bracket
+  if valTy.tyKind notin {ttyObject, ttyClass, ttyInterface}:
+    # Only objects/classes/interfaces can be accessed with dot/bracket
     # For non object/json receiver: treat `a.b` as `b(a)` and `a.b(x)` as `b(a, x)`.
     var
       calleeNode: Node
@@ -1398,6 +1421,11 @@ proc genGetField*(node: Node): Sym {.codegen.} =
     result = field.ty
     gen.chunk.emit(opcGetF)
     gen.chunk.emit(field.id.uint8)
+  elif valTy.tyKind in {ttyClass, ttyInterface}:
+    # validation stub for class/interface fields - return any
+    gen.chunk.emit(opcGetF)
+    gen.chunk.emit(0'u8)
+    result = gen.module.sym"any"
   else:
     let getter = gen.lookup(node[1], quiet = true)
     if getter != nil:
@@ -2656,20 +2684,30 @@ proc genImport*(node: Node) {.codegen.} =
   for pathNode in node.children:
     var path: string
     var astProgram: Ast
-    # handle package imports
-    # e.g. `import "pkg/mypackage/mymodule"`
-    if pathNode.stringVal.startsWith("pkg/") and gen.pkgr != nil:
+    # handle package imports via manager.pkgResolver (replaces Packager)
+    # e.g. `import "pkg/mypackage/mymodule"` — embedder must provide pkgResolver
+    if pathNode.stringVal.startsWith("pkg/"):
       if policyAny in gen.policy.disallow or policyPackages in gen.policy.disallow:
         pathNode.error(ErrPolicyViolation % "packages are disabled")
-      let pkgPath = pathNode.stringVal.split("/")
-      if gen.pkgr.hasPackage(pkgPath[1]):
-        let filePath = if pkgPath.len > 2:
-          pkgPath[2..^1].join("/") # specific file in module, exclude main module
+      if gen.manager != nil and gen.manager.pkgResolver.isSome:
+        let resolved = gen.manager.pkgResolver.get()(pathNode.stringVal)
+        if resolved.isSome:
+          path = resolved.get()
         else:
-          pkgPath[1..^1].join("/") # default to main module
-        path = gen.pkgr.getModulePath(pkgPath[1], filePath)
+          pathNode.error(ErrImportError % pathNode.stringVal)
+      elif gen.pkgr != nil:
+        # legacy Packager path
+        let pkgPath = pathNode.stringVal.split("/")
+        if gen.pkgr.hasPackage(pkgPath[1]):
+          let filePath = if pkgPath.len > 2:
+            pkgPath[2..^1].join("/")
+          else:
+            pkgPath[1..^1].join("/")
+          path = gen.pkgr.getModulePath(pkgPath[1], filePath)
+        else:
+          pathNode.error(ErrImportError % pkgPath[1])
       else:
-        pathNode.error(ErrImportError % pkgPath[1])
+        pathNode.error(ErrImportError % pathNode.stringVal & " (pkg resolver not configured)")
     elif pathNode.stringVal.startsWith("std/"):
       if policyAny in gen.policy.disallow or policyStdlib in gen.policy.disallow:
         pathNode.error(ErrPolicyViolation % "stdlib access is disabled")
@@ -2686,16 +2724,22 @@ proc genImport*(node: Node) {.codegen.} =
       # at compile time
       continue
     else:
-      # handle file imports and includes
+      # handle file imports and includes.
+      # Keep real file extensions (.bass, .css, ...); `.timl` is only appended
+      # when the path carries no extension at all. Imports resolve relative to
+      # the importing module's directory (falls back to CWD); includes keep
+      # their as-written form so an optional includeBasePath still applies.
+      let rawPath = pathNode.stringVal
+      let withExt =
+        if splitFile(rawPath).ext.len > 0: rawPath
+        else: rawPath & ".timl"
       if node.kind == nkImport:
-        path = absolutePath(
-            if pathNode.stringVal.endsWith".timl": pathNode.stringVal
-            else: pathNode.stringVal & ".timl"
-          )
+        let baseDir =
+          if gen.module.src.isSome: parentDir(absolutePath(gen.module.src.get()))
+          else: getCurrentDir()
+        path = absolutePath(withExt, baseDir)
       else:
-        path =
-          if pathNode.stringVal.endsWith".timl": pathNode.stringVal
-          else: pathNode.stringVal & ".timl"
+        path = withExt
     case node.kind
     of nkImport:
       # resolve the module's path
@@ -2708,13 +2752,28 @@ proc genImport*(node: Node) {.codegen.} =
       if gen.kind != gkToplevel:
         node.error(ErrImportOnlyTopLevel)
         return
-      if codegenCache.cachedAst.hasKey(path):
-        # first, check if we have a cached AST for the module
-        astProgram = codegenCache.cachedAst[path]
-      else:
-        # parse the module's source code into an AST
-        # pass the active resolver so the callback can read from VFS
-        gen.parserCallback(astProgram, path, gen.resolver)
+      # try manager hash cache first, then legacy codegenCache
+      var fromManager = false
+      if gen.manager != nil:
+        let cached = gen.manager.getModule(path)
+        if cached.isSome and cached.get().ast != nil:
+          astProgram = cached.get().ast
+          fromManager = true
+        else:
+          # try persistent cache via hash of source (if readable)
+          try:
+            let src = gen.resolver.readFile(path)
+            let h = gen.manager.hashSource(src)
+            let pers = gen.manager.tryLoadPersistent(h)
+            if pers.isSome and pers.get().ast != nil:
+              astProgram = pers.get().ast
+              fromManager = true
+          except: discard
+      if not fromManager:
+        if codegenCache.cachedAst.hasKey(path):
+          astProgram = codegenCache.cachedAst[path]
+        else:
+          gen.parserCallback(astProgram, path, gen.resolver)
 
       var
         importChunk = newChunk(astProgram.sourcePath)
@@ -2729,8 +2788,12 @@ proc genImport*(node: Node) {.codegen.} =
       importScript.stdpos = stdpos
 
       # initialize the code generator
-      var moduleGen: CodeGen = initCodeGen(importScript, importModule, importChunk)
+      var moduleGen: CodeGen = initCodeGen(importScript, importModule, importChunk, manager = gen.manager)
       moduleGen.resolver = gen.resolver
+      moduleGen.manager = gen.manager
+      moduleGen.stdlibs = gen.stdlibs
+      moduleGen.parserCallback = gen.parserCallback
+      moduleGen.policy = gen.policy
       
       # generate the module's script based
       # on the parsed module AST program
@@ -2748,29 +2811,50 @@ proc genImport*(node: Node) {.codegen.} =
       gen.chunk.emit(opcImportModule)
       gen.chunk.emit(gen.chunk.getString(importChunk.file))
 
+      # store in manager LRU (hash-keyed)
+      if gen.manager != nil and not fromManager:
+        try:
+          let src = gen.resolver.readFile(path)
+          let h = gen.manager.hashSource(src)
+          let entry = ModuleEntry(normPath: normalizedPath(path), hash: h, ast: astProgram, script: moduleGen.script, module: moduleGen.module, chunk: importChunk, deps: @[], fbeVersion: gen.manager.fbeVersion)
+          gen.manager.put(entry)
+        except: discard
+
     of nkInclude:
       if gen.includeBasePath.isSome:
-        # if the include path is set, we can use it to resolve the module
         path = absolutePath(gen.includeBasePath.get() / path)
 
-      # resolve the module's path
       let aFile = absolutePath(gen.module.src.get())
       
       try:
         gen.resolver.resolveFile(aFile, path)
       except ResolverError as e:
         pathNode.error(ErrImportError % [e.msg])
-      if codegenCache.cachedAst.hasKey(path):
-        astProgram = codegenCache.cachedAst[path]
-      else:
-        # parse the module's source code into an AST
-        gen.parserCallback(astProgram, path, gen.resolver)
+      var incFromManager = false
+      if gen.manager != nil:
+        let cached = gen.manager.getModule(path)
+        if cached.isSome and cached.get().ast != nil:
+          astProgram = cached.get().ast
+          incFromManager = true
+      if not incFromManager:
+        if codegenCache.cachedAst.hasKey(path):
+          astProgram = codegenCache.cachedAst[path]
+        else:
+          gen.parserCallback(astProgram, path, gen.resolver)
       for n in astProgram.nodes:
         gen.genStmt(n)
+      if gen.manager != nil and not incFromManager:
+        try:
+          let src = gen.resolver.readFile(path)
+          let h = gen.manager.hashSource(src)
+          let entry = ModuleEntry(normPath: normalizedPath(path), hash: h, ast: astProgram, script: nil, module: nil, chunk: nil, deps: @[], fbeVersion: gen.manager.fbeVersion)
+          gen.manager.put(entry)
+        except: discard
     else: discard
 
-    # cache the parsed AST for future imports
-    codegenCache.cachedAst[path] = astProgram
+    # legacy cache for callers without manager
+    if gen.manager == nil:
+      codegenCache.cachedAst[path] = astProgram
 
 proc genComment*(node: Node) {.codegen.} =
   ## Generate an HTML comment.
@@ -2870,17 +2954,24 @@ proc addIterator*(script: Script, module: Module, name: string) =
   discard # todo
 
 proc initCompiler*(script: Script, module: Module,
-          chunk: Chunk, pkgr: Packager = nil,
+          chunk: Chunk, manager: ModuleManager = nil,
           stdlibs: StandardLibrary,
           parserCallback: ParserCallback = nil,
           triggerFromPath: Option[string] = none(string),
           policy: CompilationPolicy = CompilationPolicy()
   ): CodeGen =
   ## Initialize a new code generator with a new script and module
-  ## 
-  ## This is the main entry point for code generation, and can be called by
-  ## your main module or by other modules to initialize code generation for a new script
-  result = initCodeGen(script, module, chunk, pkgr = pkgr, policy = policy)
+  result = initCodeGen(script, module, chunk, manager = manager, policy = policy)
   result.triggerFromPath = triggerFromPath
   result.stdlibs = stdlibs
   result.parserCallback = parserCallback
+
+proc initCompilerLegacy*(script: Script, module: Module,
+          chunk: Chunk, pkgr: Packager[PackageConfig] = nil,
+          stdlibs: StandardLibrary,
+          parserCallback: ParserCallback = nil,
+          triggerFromPath: Option[string] = none(string),
+          policy: CompilationPolicy = CompilationPolicy()
+  ): CodeGen =
+  result = initCompiler(script, module, chunk, nil, stdlibs, parserCallback, triggerFromPath, policy)
+  result.pkgr = pkgr

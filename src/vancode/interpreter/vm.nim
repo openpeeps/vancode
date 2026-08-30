@@ -28,12 +28,15 @@ import ./jit/trace_types, ./jit/trace_cache
 when defined(hayaVmWriteStackOps):
   import pkg/kapsis/interactive/prompts
 
-macro conditionalPlaceholder(id: static string) =
+macro conditionalPlaceholder(id: static string, blockScope: static bool = true) =
   if ExtendableProcBodies.contains(id):
-    result = nnkBlockStmt.newTree(
-      ident("VoodooInjectedSnippet_" & id),
-      ExtendableProcBodies[id]
-    )
+    result =
+      if blockScope:
+        nnkBlockStmt.newTree(
+          ident("VoodooInjectedSnippet_" & id),
+          ExtendableProcBodies[id]
+        )
+      else: ExtendableProcBodies[id]
   else:
     result = newStmtList()
 
@@ -203,6 +206,7 @@ proc markHot(vm: Vm, currentChunk: Chunk) =
 proc markHotProc(vm: Vm, theProc: Proc) =
   if vm.preferences.enableHotCodeDetection and theProc != nil:
     theProc.jitCallCount.inc
+    vm.hotProcCounts.mgetOrPut(theProc.name, 0).inc
     if theProc.jitCallCount == vm.preferences.hotProcThreshold:
       if vm.jit.queueCompile != nil:
         vm.jit.queueCompile(cast[pointer](theProc))
@@ -599,7 +603,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         span("idx=" & $idx & " stackLen=" & $stack.len))
 
   # Voodoo placeholder for injecting custom code at the start of the main loop
-  conditionalPlaceholder"VanCodeVMBeforeMainLoop"
+  conditionalPlaceholder "VanCodeVMBeforeMainLoop", false
 
   when defined(vancodeJitDynasm):
     template recordNotTakenPath(traceBuf: TraceBuffer, traceNumLocals: var int, co: CachedOps, pcIdx, tgt: int) =
@@ -1370,7 +1374,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
   
   if stepping != nil and stepping.state == csRunning:
     stepping.state = csCompleted
-    stepping.result = if stack.len > 0: stack[^1] else: nil
+    stepping.result = if stack.len > 0: stack[^1] else: Value(typeId: tyNil)
     return stepping.result
 
   if result == nil or result.typeId == tyNil:
@@ -1379,7 +1383,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       #   stderr.writeLine "DEBUG: stack.len at end = " & $stack.len & " last.typeId = " & $stack[^1].typeId
       return stack[^1]
     else:
-      return nil
+      return Value(typeId: tyNil)
 
 proc stepCoroutine*(vm: Vm, coro: Coroutine): CoroutineResult =
   if coro.state notin {csCreated, csSuspended}:

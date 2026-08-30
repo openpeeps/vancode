@@ -1,3 +1,5 @@
+# DEPRECATED — use generic package generator
+{.warning: "vancode/manager/remote is deprecated".}
 # VanCode - A fast, extensible bytecode generator and VM for building
 # Domain-Specific Languages (DSLs), or general-purpose programming language# A super fast template engine for cool kids
 #

@@ -124,7 +124,7 @@ proc toStorage*(v: Value): ValueStorage {.inline.} =
   of tyFloat: ValueStorage(typeId: tyFloat, floatVal: v.floatVal)
   else: ValueStorage(typeId: v.typeId, refVal: v)
 
-proc `=destroy`*(fd: ForeignData) =
+proc `=destroy`*(fd: ForeignData) {.nimcall.} =
   if fd.destructor != nil and fd.data != nil:
     fd.destructor(fd.data)
 

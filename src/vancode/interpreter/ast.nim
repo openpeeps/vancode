@@ -24,8 +24,8 @@
 ## to store their child nodes.
 
 import std/[hashes, strutils, sequtils, options]
-import std/htmlparser
-export htmlparser
+import pkg/openparser/html/ast
+export ast
 
 import pkg/openparser/json
 import pkg/voodoo/extensibles

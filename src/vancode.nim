@@ -7,9 +7,11 @@
 #          Made by Humans from OpenPeeps
 #          https://github.com/openpeeps/vancode
 
-import ./vancode/interpreter/[ast, codegen, chunk, value, vm, sym]
+import ./vancode/interpreter/[ast, codegen, chunk, value, vm, sym, policy, manager, resolver]
 import ./vancode/interpreter/stdlib/[syslib, utils]
+import ./vancode/interpreter/cache/fbe as fbeCache
 
+export policy, manager, resolver, fbeCache
 when defined(nimdocs):
   export ast, codegen, chunk, value, vm, sym
   export syslib, utils

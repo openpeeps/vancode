@@ -88,6 +88,8 @@ type
 
     # user-defined types
     ttyObject = "object"
+    ttyClass = "class"
+    ttyInterface = "interface"
     ttyCoroutine = "coroutine"
     ttyAlias = "alias"
     ttyCustom = "custom"
