@@ -6,7 +6,7 @@
 
 import pkg/openparser/fbe
 import ../ast
-import pkg/openparser/html/ast
+import pkg/openparser/html
 
 proc isFbeVersionCompatible*(got, expected: uint32): bool =
   ## Allow exact match or legacy version 1 (pre-versioned files) for smooth migration
