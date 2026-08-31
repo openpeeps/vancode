@@ -6,7 +6,6 @@
 
 import pkg/openparser/fbe
 import ../ast
-import pkg/openparser/html
 
 proc isFbeVersionCompatible*(got, expected: uint32): bool =
   ## Allow exact match or legacy version 1 (pre-versioned files) for smooth migration
@@ -101,8 +100,7 @@ proc writeNode(b: var Buffer, n: Node, version: uint32) =
     # But Tim extensions have custom fields; handle them before generic children
     when compiles(NodeKind.nkHtmlElement):
       if n.kind == nkHtmlElement:
-        writeField(b, 12'u16, proc(bb: var Buffer) = bb.writeInt32LE(int32(ord(n.tag))))
-        writeField(b, 13'u16, proc(bb: var Buffer) = bb.writeString(n.tagCustom))
+        writeField(b, 12'u16, proc(bb: var Buffer) = bb.writeString(n.tag))
         writeField(b, 14'u16, proc(bb: var Buffer) = writeNodeSeq(bb, n.attributes, version))
         writeField(b, 15'u16, proc(bb: var Buffer) = writeNodeSeq(bb, n.childElements, version))
       elif n.kind == nkHtmlAttribute:
@@ -143,8 +141,7 @@ proc readNode(b: var Buffer, expectedVersion: uint32): Node =
   var varType: Node
   var comment: string
   var children: seq[Node]
-  var tagOrd = 0
-  var tagCustom: string
+  var tag: string
   var attributes: seq[Node]
   var childElements: seq[Node]
   var attrTypeOrd = 0
@@ -169,8 +166,8 @@ proc readNode(b: var Buffer, expectedVersion: uint32): Node =
     of 9'u16: ident = readFieldValue[string](b, fsz, proc(bb: var Buffer): string = bb.readString())
     of 10'u16: varType = readFieldValue[Node](b, fsz, proc(bb: var Buffer): Node = readNode(bb, expectedVersion))
     of 11'u16: comment = readFieldValue[string](b, fsz, proc(bb: var Buffer): string = bb.readString())
-    of 12'u16: tagOrd = int(readFieldValue[int32](b, fsz, proc(bb: var Buffer): int32 = bb.readInt32LE()))
-    of 13'u16: tagCustom = readFieldValue[string](b, fsz, proc(bb: var Buffer): string = bb.readString())
+    of 12'u16: tag = readFieldValue[string](b, fsz, proc(bb: var Buffer): string = bb.readString())
+    of 13'u16: discard readFieldValue[string](b, fsz, proc(bb: var Buffer): string = bb.readString()) # obsolete tagCustom
     of 14'u16: attributes = readFieldValue[seq[Node]](b, fsz, proc(bb: var Buffer): seq[Node] = readNodeSeq(bb, expectedVersion))
     of 15'u16: childElements = readFieldValue[seq[Node]](b, fsz, proc(bb: var Buffer): seq[Node] = readNodeSeq(bb, expectedVersion))
     of 16'u16: attrTypeOrd = int(readFieldValue[int32](b, fsz, proc(bb: var Buffer): int32 = bb.readInt32LE()))
@@ -217,15 +214,8 @@ proc readNode(b: var Buffer, expectedVersion: uint32): Node =
   else:
     when compiles(NodeKind.nkHtmlElement):
       if k == nkHtmlElement:
-        let t = HtmlTag(tagOrd)
-        if t == tagUnknown:
-          n = newNode(k)
-          n.tag = t
-          n.tagCustom = tagCustom
-        else:
-          n = newNode(k)
-          n.tag = t
-          n.tagCustom = tagCustom
+        n = newNode(k)
+        n.tag = tag
         n.attributes = attributes
         n.childElements = childElements
         if children.len > 0:

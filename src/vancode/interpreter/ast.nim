@@ -25,9 +25,6 @@
 
 import std/[hashes, strutils, sequtils, options]
 
-import pkg/openparser/html
-export html
-
 import pkg/openparser/json
 import pkg/voodoo/extensibles
 

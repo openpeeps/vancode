@@ -366,10 +366,10 @@ proc genType*(kind: TypeKind, name: string, exportSym: bool,
     result.genericParams = genericParams
 
 when compiles(voidHtmlElements.len > 0):
-  proc genHtmlType*(kind: TypeKind, tag: HtmlTag): Sym =
+  proc genHtmlType*(kind: TypeKind, tag: string): Sym =
     ## Generate a new type symbol from a string name
     result = Sym(
-      name: newIdent($tag),
+      name: newIdent(tag),
       kind: skHtmlType,
       isVoidElement: tag in voidHtmlElements
     )
