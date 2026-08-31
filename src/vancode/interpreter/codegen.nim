@@ -199,10 +199,17 @@ proc initCodeGenLegacy*(script: Script, module: Module, chunk: Chunk,
 
 proc clone(gen: CodeGen, kind: GenKind): CodeGen =
   # Clone a code generator, using a different kind for the new one.
-  result = CodeGen(script: gen.script, module: gen.module, chunk: gen.chunk,
-                   scopes: gen.scopes, flowBlocks: gen.flowBlocks,
-                   ctxAllocator: gen.ctxAllocator, context: gen.context,
-                   kind: kind)
+  result = CodeGen(
+    script: gen.script, module: gen.module, chunk: gen.chunk,
+    scopes: gen.scopes, flowBlocks: gen.flowBlocks,
+    ctxAllocator: gen.ctxAllocator, context: gen.context,
+    includeBasePath: gen.includeBasePath,
+    resolver: gen.resolver, manager: gen.manager, pkgr: gen.pkgr,
+    parserCallback: gen.parserCallback, stdlibs: gen.stdlibs,
+    policy: gen.policy, counter: gen.counter,
+    triggerFromPath: gen.triggerFromPath,
+    allowExprResult: gen.allowExprResult,
+    kind: kind)
 
 template genGuard(body) =
   # Wraps ``body`` in a "guard" used for code generation. The guard sets the
