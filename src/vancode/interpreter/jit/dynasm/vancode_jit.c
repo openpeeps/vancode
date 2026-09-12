@@ -18,7 +18,7 @@
 #line 4 "vancode_jit.dasc"
 
 //|.actionlist vancode_actions
-static const unsigned char vancode_actions[430] = {
+static const unsigned char vancode_actions[511] = {
   254,0,85,72,137,229,83,65,84,72,137,252,251,255,252,255,179,233,255,72,199,
   192,237,80,255,106,1,255,106,0,255,88,72,137,131,233,255,72,252,255,131,233,
   255,72,252,255,139,233,255,88,65,92,76,1,224,80,255,65,92,88,76,41,224,80,
@@ -31,15 +31,19 @@ static const unsigned char vancode_actions[430] = {
   93,195,255,65,92,91,93,49,192,195,255,72,139,7,72,133,192,15,132,244,247,
   72,131,252,248,1,15,142,244,247,69,49,192,65,185,1,0,0,0,72,137,193,72,252,
   255,201,248,2,77,137,202,77,1,193,77,137,208,72,252,255,201,15,133,244,2,
-  76,137,200,195,248,1,195,255,72,199,199,237,72,199,192,237,252,255,208,80,
-  255,94,72,199,199,237,186,2,0,0,0,72,199,192,237,252,255,208,255,94,95,72,
-  199,192,237,252,255,208,80,255,89,94,95,72,199,192,237,252,255,208,255,89,
-  94,95,72,199,192,237,252,255,208,80,255,89,90,94,95,72,199,192,237,252,255,
-  208,80,255,72,129,252,236,239,255,88,72,137,132,253,36,233,255,72,137,230,
-  69,49,192,185,237,191,237,72,199,192,237,252,255,208,255,72,129,196,239,80,
-  255,72,129,252,236,239,185,237,133,201,15,132,244,248,248,1,88,72,137,132,
-  253,204,233,252,255,201,15,133,244,1,248,2,72,137,231,190,237,72,199,192,
-  237,252,255,208,72,129,196,239,80,255
+  76,137,200,195,248,1,195,255,83,72,137,227,72,131,228,252,240,72,191,237,
+  237,72,184,237,237,252,255,208,72,137,220,91,80,255,94,72,191,237,237,186,
+  2,0,0,0,72,184,237,237,252,255,208,255,94,83,72,137,227,72,131,228,252,240,
+  72,191,237,237,72,184,237,237,252,255,208,72,137,220,91,255,94,95,83,72,137,
+  227,72,131,228,252,240,72,184,237,237,252,255,208,72,137,220,91,80,255,89,
+  94,95,83,72,137,227,72,131,228,252,240,72,184,237,237,252,255,208,72,137,
+  220,91,255,89,94,95,83,72,137,227,72,131,228,252,240,72,184,237,237,252,255,
+  208,72,137,220,91,80,255,89,90,94,95,83,72,137,227,72,131,228,252,240,72,
+  184,237,237,252,255,208,72,137,220,91,80,255,72,129,252,236,239,255,72,139,
+  132,253,36,233,72,137,132,253,36,233,255,88,72,137,132,253,36,233,255,83,
+  72,137,227,72,131,228,252,240,72,141,115,8,186,237,49,201,191,237,72,184,
+  237,237,252,255,208,72,137,220,91,255,72,129,196,239,80,255,72,137,231,190,
+  237,72,184,237,237,252,255,208,255
 };
 
 #line 6 "vancode_jit.dasc"
@@ -333,125 +337,178 @@ void vancode_halt(dasm_State** Dst) {
 }
 
 // PushG: push global value by name string pointer
-void vancode_pushg(dasm_State** Dst, void* namePtr, void* bridgeFn) {
-  //| mov rdi, namePtr
-  //| mov rax, bridgeFn
+//
+// SysV requires rsp%16==0 before `call`, but the operand stack has
+// arbitrary parity (one push = 8 bytes). Align dynamically around every
+// outbound call: rbx is callee-saved, pushed/popped symmetrically so the
+// operand stack itself is untouched.
+void vancode_pushg(dasm_State** Dst, unsigned long long namePtr, unsigned long long bridgeFn) {
+  //| push rbx
+  //| mov rbx, rsp
+  //| and rsp, -16
+  //| mov64 rdi, namePtr
+  //| mov64 rax, bridgeFn
   //| call rax
+  //| mov rsp, rbx
+  //| pop rbx
   //| push rax
-  dasm_put(Dst, 265, namePtr, bridgeFn);
-#line 233 "vancode_jit.dasc"
+  dasm_put(Dst, 265, (unsigned int)(namePtr), (unsigned int)((namePtr)>>32), (unsigned int)(bridgeFn), (unsigned int)((bridgeFn)>>32));
+#line 243 "vancode_jit.dasc"
 }
 
 // PopG: pop int64 val from stack, store to global by name
-void vancode_popg(dasm_State** Dst, void* namePtr, void* bridgeFn) {
+void vancode_popg(dasm_State** Dst, unsigned long long namePtr, unsigned long long bridgeFn) {
   //| pop rsi        // val (from operand stack)
-  //| mov rdi, namePtr
+  //| mov64 rdi, namePtr
   //| mov edx, 2     // typeId = tyInt
-  //| mov rax, bridgeFn
+  //| mov64 rax, bridgeFn
   //| call rax
-  dasm_put(Dst, 278, namePtr, bridgeFn);
-#line 242 "vancode_jit.dasc"
+  dasm_put(Dst, 291, (unsigned int)(namePtr), (unsigned int)((namePtr)>>32), (unsigned int)(bridgeFn), (unsigned int)((bridgeFn)>>32));
+#line 252 "vancode_jit.dasc"
 }
 
-void vancode_bridge_2(dasm_State** Dst, void* fn) {
-  //| pop rsi
-  //| pop rdi
-  //| mov rax, fn
+// PopHost: pop one native-stack slot and hand it to a host bridge as
+// (namePtr, slot). Unlike popg the slot keeps its convention (raw int or
+// tagged ring index) for the host to unpack; nothing is pushed back.
+void vancode_pop_host(dasm_State** Dst, unsigned long long namePtr, unsigned long long bridgeFn) {
+  //| pop rsi        // slot (from operand stack)
+  //| push rbx
+  //| mov rbx, rsp
+  //| and rsp, -16
+  //| mov64 rdi, namePtr
+  //| mov64 rax, bridgeFn
   //| call rax
-  //| push rax
-  dasm_put(Dst, 296, fn);
-#line 250 "vancode_jit.dasc"
-}
-
-void vancode_bridge_3_void(dasm_State** Dst, void* fn) {
-  //| pop rcx
-  //| pop rsi
-  //| pop rdi
-  //| mov rax, fn
-  //| call rax
-  dasm_put(Dst, 307, fn);
-#line 258 "vancode_jit.dasc"
-}
-
-void vancode_bridge_3(dasm_State** Dst, void* fn) {
-  //| pop rcx
-  //| pop rsi
-  //| pop rdi
-  //| mov rax, fn
-  //| call rax
-  //| push rax
-  dasm_put(Dst, 318, fn);
+  //| mov rsp, rbx
+  //| pop rbx
+  dasm_put(Dst, 309, (unsigned int)(namePtr), (unsigned int)((namePtr)>>32), (unsigned int)(bridgeFn), (unsigned int)((bridgeFn)>>32));
 #line 267 "vancode_jit.dasc"
 }
 
-void vancode_bridge_4(dasm_State** Dst, void* fn) {
+void vancode_bridge_2(dasm_State** Dst, unsigned long long fn) {
+  //| pop rsi
+  //| pop rdi
+  //| push rbx
+  //| mov rbx, rsp
+  //| and rsp, -16
+  //| mov64 rax, fn
+  //| call rax
+  //| mov rsp, rbx
+  //| pop rbx
+  //| push rax
+  dasm_put(Dst, 335, (unsigned int)(fn), (unsigned int)((fn)>>32));
+#line 280 "vancode_jit.dasc"
+}
+
+void vancode_bridge_3_void(dasm_State** Dst, unsigned long long fn) {
+  //| pop rcx
+  //| pop rsi
+  //| pop rdi
+  //| push rbx
+  //| mov rbx, rsp
+  //| and rsp, -16
+  //| mov64 rax, fn
+  //| call rax
+  //| mov rsp, rbx
+  //| pop rbx
+  dasm_put(Dst, 359, (unsigned int)(fn), (unsigned int)((fn)>>32));
+#line 293 "vancode_jit.dasc"
+}
+
+void vancode_bridge_3(dasm_State** Dst, unsigned long long fn) {
+  //| pop rcx
+  //| pop rsi
+  //| pop rdi
+  //| push rbx
+  //| mov rbx, rsp
+  //| and rsp, -16
+  //| mov64 rax, fn
+  //| call rax
+  //| mov rsp, rbx
+  //| pop rbx
+  //| push rax
+  dasm_put(Dst, 383, (unsigned int)(fn), (unsigned int)((fn)>>32));
+#line 307 "vancode_jit.dasc"
+}
+
+void vancode_bridge_4(dasm_State** Dst, unsigned long long fn) {
   //| pop rcx
   //| pop rdx
   //| pop rsi
   //| pop rdi
-  //| mov rax, fn
+  //| push rbx
+  //| mov rbx, rsp
+  //| and rsp, -16
+  //| mov64 rax, fn
   //| call rax
+  //| mov rsp, rbx
+  //| pop rbx
   //| push rax
-  dasm_put(Dst, 330, fn);
-#line 277 "vancode_jit.dasc"
+  dasm_put(Dst, 408, (unsigned int)(fn), (unsigned int)((fn)>>32));
+#line 322 "vancode_jit.dasc"
 }
 
-// Allocate flatArgs array on stack: sub rsp, nArgs*8
+// Reserve a flatArgs array of nArgs int64s below the N stack operands:
+// operands live at [rsp, rsp+nArgs*8); the array at [rsp-nArgs*8, rsp).
 void vancode_call_alloc(dasm_State** Dst, int nArgs) {
   //| sub rsp, nArgs*8
-  dasm_put(Dst, 343, nArgs*8);
-#line 282 "vancode_jit.dasc"
+  dasm_put(Dst, 434, nArgs*8);
+#line 328 "vancode_jit.dasc"
 }
 
-// Pop rax, store at [rsp + slot*8] (for building flatArgs)
+// Move one operand down into the reserved array: operands shifted to
+// [rsp+nArgs*8, rsp+2nArgs*8) by call_alloc, array at [rsp, rsp+nArgs*8).
+// Unrolled per operand from the Nim side (no labels, safe for any arity).
+void vancode_call_move_one(dasm_State** Dst, int srcDisp, int dstDisp) {
+  //| mov rax, [rsp + srcDisp]
+  //| mov [rsp + dstDisp], rax
+  dasm_put(Dst, 440, srcDisp, dstDisp);
+#line 336 "vancode_jit.dasc"
+}
+
+// Pop rax, store at [rsp + slot*8] (legacy; superseded by call_move_one)
 void vancode_call_pop_slot(dasm_State** Dst, int slot) {
   //| pop rax
   //| mov [rsp + slot*8], rax
-  dasm_put(Dst, 349, slot*8);
-#line 288 "vancode_jit.dasc"
+  dasm_put(Dst, 453, slot*8);
+#line 342 "vancode_jit.dasc"
 }
 
-// Invoke bridge: jitCallProcBridgeFlat(procId, flatArgs, nArgs, null)
-// rdi=procId, rsi=flatArgs(rsp), rcx=nArgs, r8=null
-void vancode_call_invoke(dasm_State** Dst, int nArgs, int procId, void* bridgeFn) {
-  //| mov rsi, rsp
-  //| xor r8d, r8d
-  //| mov ecx, nArgs
+// Invoke bridge: bridge(procId, flatArgs, argc, argTypes)
+// x64 System V: rdi=procId, rsi=flatArgs(rsp), edx=argc, rcx=null
+void vancode_call_invoke(dasm_State** Dst, int nArgs, int procId, unsigned long long bridgeFn) {
+  //| push rbx
+  //| mov rbx, rsp
+  //| and rsp, -16
+  //| lea rsi, [rbx+8]   // flatArgs base = pre-push rsp (rbx is 8 low)
+  //| mov edx, nArgs
+  //| xor ecx, ecx
   //| mov edi, procId
-  //| mov rax, bridgeFn
+  //| mov64 rax, bridgeFn
   //| call rax
-  dasm_put(Dst, 357, nArgs, procId, bridgeFn);
-#line 299 "vancode_jit.dasc"
+  //| mov rsp, rbx
+  //| pop rbx
+  dasm_put(Dst, 461, nArgs, procId, (unsigned int)(bridgeFn), (unsigned int)((bridgeFn)>>32));
+#line 358 "vancode_jit.dasc"
 }
 
-// Cleanup flatArgs (add rsp, nArgs*8) and push result
-void vancode_call_finish(dasm_State** Dst, int nArgs) {
-  //| add rsp, nArgs*8
+// Drop the flatArgs array plus the (stale) operand slots above it
+// (dropBytes = 2*nArgs*8, passed from the Nim side) and push the result.
+void vancode_call_finish(dasm_State** Dst, int dropBytes) {
+  //| add rsp, dropBytes
   //| push rax
-  dasm_put(Dst, 375, nArgs*8);
-#line 305 "vancode_jit.dasc"
+  dasm_put(Dst, 492, dropBytes);
+#line 365 "vancode_jit.dasc"
 }
 
-// Self-recursion: call the current function directly
-// nArgs = paramCount (known at compile time)
-// selfAddr = address of the JIT function buffer (known at emit time via pre-allocated buf)
-void vancode_call_self(dasm_State** Dst, int nArgs, void* selfAddr) {
-  //| sub rsp, nArgs*8
-  //| mov ecx, nArgs
-  //| test ecx, ecx
-  //| jz >2
-  //|1:
-  //| pop rax
-  //| mov [rsp + rcx*8 - 8], rax
-  //| dec ecx
-  //| jnz <1
-  //|2:
+// Self-recursion: call the current function directly.
+// The flatArgs array of nArgs int64s is live at [rsp, rsp+nArgs*8),
+// prepared by call_alloc + call_move_one; selfAddr is the JIT buffer.
+// Post-call cleanup is done by call_finish (drops array + operands).
+void vancode_call_self(dasm_State** Dst, int nArgs, unsigned long long selfAddr) {
   //| mov rdi, rsp
   //| mov esi, nArgs
-  //| mov rax, selfAddr
+  //| mov64 rax, selfAddr
   //| call rax
-  //| add rsp, nArgs*8
-  //| push rax
-  dasm_put(Dst, 381, nArgs*8, nArgs, - 8, nArgs, selfAddr, nArgs*8);
-#line 327 "vancode_jit.dasc"
+  dasm_put(Dst, 498, nArgs, (unsigned int)(selfAddr), (unsigned int)((selfAddr)>>32));
+#line 376 "vancode_jit.dasc"
 }

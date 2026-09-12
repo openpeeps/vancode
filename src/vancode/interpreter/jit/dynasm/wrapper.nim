@@ -15,13 +15,13 @@ type
 
 # DynASM C API: Dst_DECL defaults to "dasm_State **Dst"
 # So all functions take pointer-to-pointer (ptr ptr dasm_State)
-proc dasm_init*(Dst: ptr ptr dasm_State; maxsection: cint) {.dynasm, importc: "dasm_init".}
-proc dasm_free*(Dst: ptr ptr dasm_State) {.dynasm, importc: "dasm_free".}
-proc dasm_setupglobal*(Dst: ptr ptr dasm_State; gl: ptr pointer; maxgl: cuint) {.dynasm, importc: "dasm_setupglobal".}
-proc dasm_setup*(Dst: ptr ptr dasm_State; actionlist: pointer) {.dynasm, importc: "dasm_setup".}
-proc dasm_growpc*(Dst: ptr ptr dasm_State; maxpc: cuint) {.dynasm, importc: "dasm_growpc".}
-proc dasm_link*(Dst: ptr ptr dasm_State; szp: ptr csize_t): cint {.dynasm, importc: "dasm_link".}
-proc dasm_encode*(Dst: ptr ptr dasm_State; buf: pointer): cint {.dynasm, importc: "dasm_encode".}
+proc dasm_init*(Dst: ptr ptr dasm_State; maxsection: cint) {.dynasm, importc: "vc_dasm_init".}
+proc dasm_free*(Dst: ptr ptr dasm_State) {.dynasm, importc: "vc_dasm_free".}
+proc dasm_setupglobal*(Dst: ptr ptr dasm_State; gl: ptr pointer; maxgl: cuint) {.dynasm, importc: "vc_dasm_setupglobal".}
+proc dasm_setup*(Dst: ptr ptr dasm_State; actionlist: pointer) {.dynasm, importc: "vc_dasm_setup".}
+proc dasm_growpc*(Dst: ptr ptr dasm_State; maxpc: cuint) {.dynasm, importc: "vc_dasm_growpc".}
+proc dasm_link*(Dst: ptr ptr dasm_State; szp: ptr csize_t): cint {.dynasm, importc: "vc_dasm_link".}
+proc dasm_encode*(Dst: ptr ptr dasm_State; buf: pointer): cint {.dynasm, importc: "vc_dasm_encode".}
 
 # Our emit functions also take dasm_State** per Dst_DECL convention
 proc vancode_prologue*(Dst: ptr ptr dasm_State) {.dynasm, importc: "vancode_prologue".}
@@ -58,8 +58,9 @@ proc vancode_bridge_3*(Dst: ptr ptr dasm_State; fnAddr: pointer) {.dynasm, impor
 proc vancode_bridge_4*(Dst: ptr ptr dasm_State; fnAddr: pointer) {.dynasm, importc: "vancode_bridge_4".}
 proc vancode_call_alloc*(Dst: ptr ptr dasm_State; nArgs: cint) {.dynasm, importc: "vancode_call_alloc".}
 proc vancode_call_pop_slot*(Dst: ptr ptr dasm_State; slot: cint) {.dynasm, importc: "vancode_call_pop_slot".}
+proc vancode_call_move_one*(Dst: ptr ptr dasm_State; srcDisp: cint; dstDisp: cint) {.dynasm, importc: "vancode_call_move_one".}
 proc vancode_call_invoke*(Dst: ptr ptr dasm_State; nArgs: cint; procId: cint; bridgeFn: pointer) {.dynasm, importc: "vancode_call_invoke".}
-proc vancode_call_finish*(Dst: ptr ptr dasm_State; nArgs: cint) {.dynasm, importc: "vancode_call_finish".}
+proc vancode_call_finish*(Dst: ptr ptr dasm_State; dropBytes: cint) {.dynasm, importc: "vancode_call_finish".}
 proc vancode_call_self*(Dst: ptr ptr dasm_State; nArgs: cint; selfAddr: pointer) {.dynasm, importc: "vancode_call_self".}
 proc vancode_guard_false*(Dst: ptr ptr dasm_State; exitLabel: cint) {.dynasm, importc: "vancode_guard_false".}
 proc vancode_guard_true*(Dst: ptr ptr dasm_State; exitLabel: cint) {.dynasm, importc: "vancode_guard_true".}
@@ -67,6 +68,7 @@ proc vancode_trace_exit*(Dst: ptr ptr dasm_State) {.dynasm, importc: "vancode_tr
 proc vancode_fib*(Dst: ptr ptr dasm_State) {.dynasm, importc: "vancode_fib".}
 proc vancode_pushg*(Dst: ptr ptr dasm_State; namePtr: pointer; bridgeFn: pointer) {.dynasm, importc: "vancode_pushg".}
 proc vancode_popg*(Dst: ptr ptr dasm_State; namePtr: pointer; bridgeFn: pointer) {.dynasm, importc: "vancode_popg".}
+proc vancode_pop_host*(Dst: ptr ptr dasm_State; namePtr: pointer; bridgeFn: pointer) {.dynasm, importc: "vancode_pop_host".}
 
 proc get_vancode_actions*(): pointer {.dynasm, importc: "get_vancode_actions".}
 proc vancode_setup*(d: ptr ptr dasm_State; gl: ptr pointer; maxgl: cuint): cint {.dynasm, importc: "vancode_setup".}

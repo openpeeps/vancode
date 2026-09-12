@@ -12,7 +12,22 @@
 ## the recompilation hook infrastructure, and exposes helper routines for the
 ## DynASM-generated code to interact with the VM (globals, callbacks, etc.).
 import std/[tables, sysatomics, critbits, hashes]
+import ./dynasm/wrapper
+import ./jit_values
+export jit_values
 import ../[vm, value, chunk]
+
+proc emitCallArgs*(d: ptr ptr dasm_State, nArgs: int) =
+  ## Move the top `nArgs` native-stack operands down into a reserved
+  ## flatArgs array in interpreter order (deepest first, matching
+  ## `stack{^n}`): `call_alloc` reserves below them, then the operand at
+  ## depth `i` from the bottom moves to `[rsp+i*8]`. Unrolled (no labels,
+  ## so any arity is safe). On return rsp points at the array base; the
+  ## stale operand slots above are dropped by `call_finish` (pass
+  ## `2*nArgs*8`).
+  vancode_call_alloc(d, nArgs.cint)
+  for i in 0 ..< nArgs:
+    vancode_call_move_one(d, (2 * nArgs * 8 - (i + 1) * 8).cint, (i * 8).cint)
 
 var jitFnTable*: array[65536, pointer]
 var jitProcTable*: array[65536, pointer]
@@ -27,6 +42,84 @@ var jitCallbackResult: Value = nil  # GC root for execCallback result
 
 var jitRecompileHook*: proc(theProc: Proc) {.nimcall.} = nil
 var compileProcHook*: proc(vm: Vm, theProc: Proc): ForeignProc {.nimcall.} = nil
+
+type JitForeignFast* = object
+  ## Fast path for a `CallD` to a foreign proc from JIT-compiled code.
+  ## The bridge has the same C ABI as `jitCallProcBridgeFlat` and receives
+  ## the raw native-stack int64s; plain ints/bools arrive as values while
+  ## `Value` payloads cross as GC-rooted ring indices (see `jitRootValue`).
+  arity*: int       ## exact argc served, or -1 for any arity
+  bridgeFn*: pointer
+
+var jitForeignFastTable = initTable[(string, int), JitForeignFast]()
+
+proc registerJitForeignFast*(name: string, desc: JitForeignFast) =
+  ## Hosts (e.g. bro) register per-builtin fast paths at startup, before the
+  ## first JIT compile. Keyed by (name, arity); arity -1 serves any arity.
+  ## Misses fall back to `jitCallProcBridgeFlat` (sound, slower).
+  jitForeignFastTable[(name, desc.arity)] = desc
+
+proc findJitForeignFast*(name: string, argc: int): pointer =
+  ## Returns the registered bridge for `name`/`argc`, or nil.
+  if (name, argc) in jitForeignFastTable:
+    return jitForeignFastTable[(name, argc)].bridgeFn
+  if (name, -1) in jitForeignFastTable:
+    return jitForeignFastTable[(name, -1)].bridgeFn
+  nil
+
+proc jitFillTmpBuf*(arr: ptr UncheckedArray[int64], argc: int32,
+    argTypes: ptr int32) =
+  ## Fill the shared bridge arg buffer from native-stack slots: untagged
+  ## slots box as `tyInt`, tagged slots resolve, explicitly typed bools
+  ## decode. Never a raw pointer cast (the old `else: cast[Value]` read
+  ## tagged indices as pointers).
+  if argTypes == nil:
+    for i in 0..<argc:
+      jitBridgeTmpBuf[i] = jitUnpackArg(arr[i])
+  else:
+    let types = cast[ptr UncheckedArray[int32]](argTypes)
+    for i in 0..<argc:
+      case types[i]
+      of tyInt: jitBridgeTmpBuf[i] = initValue(arr[i])
+      of tyBool: jitBridgeTmpBuf[i] = Value(typeId: tyBool, boolVal: arr[i] != 0)
+      else: jitBridgeTmpBuf[i] = jitUnpackArg(arr[i])
+
+var jitHostBridges = initTable[string, pointer]()
+
+proc registerJitHostBridge*(name: string, fn: pointer) =
+  ## Hosts (e.g. bro) register named bridge entry points here at startup.
+  ## Host-injected JIT emit branches call them through the existing
+  ## `vancode_pushg`/`vancode_call_invoke` DynASM actions; a missing entry
+  ## must make the host branch reject compilation (fall back to the VM).
+  jitHostBridges[name] = fn
+
+proc findJitHostBridge*(name: string): pointer =
+  result = jitHostBridges.getOrDefault(name, nil)
+
+var jitFloatConsts = initTable[float64, pointer]()
+
+proc jitImmortalFloat*(f: float64): pointer =
+  ## Immortal 8-byte double cache for baking float constants into JIT
+  ## code (mirrors `jitImmortalStr`). Bounded by unique constants.
+  if f in jitFloatConsts: return jitFloatConsts[f]
+  let p = allocShared0(8)
+  var tmp = f
+  copyMem(p, addr tmp, 8)
+  jitFloatConsts[f] = p
+  p
+
+var jitStrConsts = initTable[string, pointer]()
+
+proc jitImmortalStr*(s: string): pointer =
+  ## Immortal C string cache for baking string constants into JIT code.
+  ## Shared-alloc memory never moves and is never freed; bounded by the
+  ## number of unique constants compiled.
+  if s in jitStrConsts: return jitStrConsts[s]
+  let p = allocShared0(s.len + 1)
+  if s.len > 0:
+    copyMem(p, unsafeAddr s[0], s.len)
+  jitStrConsts[s] = p
+  p
 
 proc jitRecompileAtO3*(theProc: Proc) {.nimcall.} =
   ## JIT recompile `theProc` at -O3 optimization level if not already recompiled
@@ -116,6 +209,16 @@ proc jitBridgeConstrArray*(count: int32): int64 {.cdecl, exportc.} =
   result = cast[int64](arr)
 
 var jitProcCache: array[65536, pointer]
+
+proc resetJitTables*() =
+  ## Clear the process-global JIT caches (procId-keyed native code and proc
+  ## lookups). ProcIds are per-script, so hosts must call this when starting
+  ## a fresh compile in a long-lived process (embedders, test suites);
+  ## otherwise a new script reuses another script's compiled code.
+  zeroMem(addr jitFnTable[0], sizeof(jitFnTable))
+  zeroMem(addr jitProcTable[0], sizeof(jitProcTable))
+  zeroMem(addr jitParamCount[0], sizeof(jitParamCount))
+  zeroMem(addr jitProcCache[0], sizeof(jitProcCache))
 
 proc jitBridgeFastAdd*(listPtr: int64, itemVal: int64): int64 {.cdecl, exportc.} =
   ## JIT bridge: fast path for array.add(int), appends int64 item
@@ -208,17 +311,7 @@ proc jitBridgeCallI*(procRefVal: int64, flatArgs: ptr int64, argc: int32, argTyp
   let theProc = target.procs[pref.procId]
   if argc > 256: return 0
   let arr = cast[ptr UncheckedArray[int64]](flatArgs)
-  if argTypes == nil:
-    for i in 0..<argc:
-      jitBridgeTmpBuf[i] = Value(typeId: tyInt, intVal: arr[i])
-  else:
-    let types = cast[ptr UncheckedArray[int32]](argTypes)
-    for i in 0..<argc:
-      let t = types[i]
-      case t
-      of tyInt: jitBridgeTmpBuf[i] = Value(typeId: tyInt, intVal: arr[i])
-      of tyBool: jitBridgeTmpBuf[i] = Value(typeId: tyBool, boolVal: arr[i] != 0)
-      else: jitBridgeTmpBuf[i] = cast[Value](arr[i])
+  jitFillTmpBuf(arr, argc, argTypes)
   let callResult =
     if theProc.jitForeign != nil:
       theProc.jitForeign(cast[StackView](addr jitBridgeTmpBuf[0]), argc)
@@ -228,8 +321,7 @@ proc jitBridgeCallI*(procRefVal: int64, flatArgs: ptr int64, argc: int32, argTyp
       nil
   for i in 0..<argc:
     jitBridgeTmpBuf[i] = nil
-  if callResult == nil: return 0
-  result = cast[int64](callResult)
+  result = jitPackResult(callResult)
 
 proc jitCallProcBridgeFlat*(procId: int32, flatArgs: ptr int64, argc: int32, argTypes: ptr int32): int64 {.cdecl, exportc.} =
   ## JIT bridge: call a proc by procId with flat int64 args (used by opcCallD JIT codegen)
@@ -264,19 +356,7 @@ proc jitCallProcBridgeFlat*(procId: int32, flatArgs: ptr int64, argc: int32, arg
     return cast[JitFn](fnPtr2)(flatArgs, argc)
   if argc > 256: return 0
   let arr = cast[ptr UncheckedArray[int64]](flatArgs)
-  if argTypes == nil:
-    for i in 0..<argc:
-      jitBridgeTmpBuf[i] = Value(typeId: tyInt, intVal: arr[i])
-  else:
-    let types = cast[ptr UncheckedArray[int32]](argTypes)
-    for i in 0..<argc:
-      let t = types[i]
-      if t == tyInt:
-        jitBridgeTmpBuf[i] = Value(typeId: tyInt, intVal: arr[i])
-      elif t == tyBool:
-        jitBridgeTmpBuf[i] = Value(typeId: tyBool, boolVal: arr[i] != 0)
-      else:
-        jitBridgeTmpBuf[i] = cast[Value](arr[i])
+  jitFillTmpBuf(arr, argc, argTypes)
   when defined(vancodeJitLog):
     stderr.writeLine "[jit] bridge: calling proc " & theProc.name
   let callResult =
@@ -288,11 +368,7 @@ proc jitCallProcBridgeFlat*(procId: int32, flatArgs: ptr int64, argc: int32, arg
       nil
   for i in 0..<argc:
     jitBridgeTmpBuf[i] = nil
-  if callResult == nil: return 0
-  case callResult.typeId
-  of tyInt: return callResult.intVal
-  of tyBool: return callResult.boolVal.ord.int64
-  else: return 0
+  return jitPackResult(callResult)
 
 proc jitCallProcBridge*(procId: int32, stackIPtr: ptr int64, sp: int32, deltaPtr: ptr int32, resultIntPtr: ptr int64) {.cdecl, exportc.} =
   ## JIT bridge: call a proc by procId with stack-relative args (used by legacy JIT codegen)
@@ -364,23 +440,7 @@ proc execCallback*(procScript: cstring, procId: int32,
   let theProc = target.procs[procId]
   if argc > 256: return 0
   let arr = cast[ptr UncheckedArray[int64]](flatArgs)
-  if argTypes == nil:
-    for i in 0..<argc:
-      jitBridgeTmpBuf[i] = Value(typeId: tyInt, intVal: arr[i])
-  else:
-    let types = cast[ptr UncheckedArray[int32]](argTypes)
-    for i in 0..<argc:
-      let t = types[i]
-      if t == tyInt:
-        jitBridgeTmpBuf[i] = Value(typeId: tyInt, intVal: arr[i])
-      elif t == tyBool:
-        jitBridgeTmpBuf[i] = Value(typeId: tyBool, boolVal: arr[i] != 0)
-      elif t == tyString:
-        jitBridgeTmpBuf[i] = cast[Value](arr[i])
-      elif t == tyFloat:
-        jitBridgeTmpBuf[i] = Value(typeId: tyFloat, floatVal: cast[float64](arr[i]))
-      else:
-        jitBridgeTmpBuf[i] = cast[Value](arr[i])
+  jitFillTmpBuf(arr, argc, argTypes)
   if compileProcHook != nil and theProc.jitForeign == nil:
     let compiled = compileProcHook(jitGlobalVm, theProc)
     if compiled != nil:

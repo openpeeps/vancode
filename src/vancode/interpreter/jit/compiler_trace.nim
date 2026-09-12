@@ -12,8 +12,9 @@
 ## the hotness threshold. Compiled traces are cached in the `TraceCache` for
 ## reuse on subsequent iterations.
 import std/[tables, sysatomics]
+import pkg/voodoo/extensibles
 
-import ./trace_types, ./trace_cache, ./jit_mem
+import ./trace_types, ./trace_cache, ./jit_mem, ./compiler_bridge, ./host_emit
 import ./dynasm/wrapper
 import ../[vm, value, chunk]
 
@@ -133,93 +134,99 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
       definedLabels.add(labelForTarget[pc])
       vancode_define_label(addr d, labelForTarget[pc].cint)
 
-    case oc
-    of opcPushI:
-      vancode_push_i(addr d, cached.getArg1Int(pc).cint)
-    of opcPushTrue:
-      vancode_push_true(addr d)
-    of opcPushFalse:
-      vancode_push_false(addr d)
-    of opcPushNil:
-      vancode_push_nil(addr d)
-    of opcPushL:
-      vancode_push_l(addr d, cached.getArg1Int(pc).cint)
-    of opcPopL:
-      vancode_pop_l(addr d, cached.getArg1Int(pc).cint)
-    of opcIncL:
-      vancode_inc_l(addr d, cached.getArg1Int(pc).cint)
-    of opcDecL:
-      vancode_dec_l(addr d, cached.getArg1Int(pc).cint)
-    of opcAddI:
-      vancode_add_i(addr d)
-    of opcSubI:
-      vancode_sub_i(addr d)
-    of opcMultI:
-      vancode_mul_i(addr d)
-    of opcDivI:
-      vancode_div_i(addr d)
-    of opcNegI:
-      vancode_neg_i(addr d)
-    of opcEqI:
-      vancode_eq_i(addr d)
-    of opcLessI:
-      vancode_less_i(addr d)
-    of opcGreaterI:
-      vancode_greater_i(addr d)
-    of opcInvB:
-      vancode_inv_b(addr d)
-    of opcDiscard:
-      if pc in labelForTarget:
-        discard  # this discard is the target of a forward jump — the DynASM
-                  # jump_fwd_f already popped the condition from the native stack
-      else:
-        vancode_discard(addr d, cached.getArg1Int(pc).cint)
-    of opcPushG, opcPopG:
-      discard
-    of opcJumpFwd:
-      let tgt = jtTargets[pc]
-      if tgt >= 0 and tgt in labelForTarget:
-        vancode_jump_fwd(addr d, labelForTarget[tgt].cint)
-      else:
+    extendableCase "vmJitTraceEmitCase":
+      case oc
+      of opcPushI:
+        vancode_push_i(addr d, cached.getArg1Int(pc).cint)
+      of opcPushTrue:
+        vancode_push_true(addr d)
+      of opcPushFalse:
+        vancode_push_false(addr d)
+      of opcPushNil:
+        vancode_push_nil(addr d)
+      of opcPushL:
+        vancode_push_l(addr d, cached.getArg1Int(pc).cint)
+      of opcPopL:
+        vancode_pop_l(addr d, cached.getArg1Int(pc).cint)
+      of opcIncL:
+        vancode_inc_l(addr d, cached.getArg1Int(pc).cint)
+      of opcDecL:
+        vancode_dec_l(addr d, cached.getArg1Int(pc).cint)
+      of opcAddI:
+        vancode_add_i(addr d)
+      of opcSubI:
+        vancode_sub_i(addr d)
+      of opcMultI:
+        vancode_mul_i(addr d)
+      of opcDivI:
+        vancode_div_i(addr d)
+      of opcNegI:
+        vancode_neg_i(addr d)
+      of opcEqI:
+        vancode_eq_i(addr d)
+      of opcLessI:
+        vancode_less_i(addr d)
+      of opcGreaterI:
+        vancode_greater_i(addr d)
+      of opcInvB:
+        vancode_inv_b(addr d)
+      of opcDiscard:
+        if pc in labelForTarget:
+          discard  # this discard is the target of a forward jump — the DynASM
+                    # jump_fwd_f already popped the condition from the native stack
+        else:
+          vancode_discard(addr d, cached.getArg1Int(pc).cint)
+      of opcPushG, opcPopG:
         discard
-    of opcJumpFwdF:
-      let tgt = jtTargets[pc]
-      if tgt >= 0 and tgt in labelForTarget:
-        vancode_jump_fwd_f(addr d, labelForTarget[tgt].cint)
-      else:
-        vancode_jump_fwd_f(addr d, 1)
-    of opcJumpFwdT:
-      let tgt = jtTargets[pc]
-      if tgt >= 0 and tgt in labelForTarget:
-        vancode_jump_fwd_t(addr d, labelForTarget[tgt].cint)
-      else:
-        vancode_jump_fwd_t(addr d, 1)
-    of opcJumpBack:
-      let tgt = jtTargets[pc]
-      if tgt >= 0 and tgt in labelForTarget:
-        vancode_jump_back(addr d, labelForTarget[tgt].cint)
-      else:
-        vancode_jump_back(addr d, 0)
-    of opcCallD:
-      let targetProc = cached.arg2[pc].int
-      if selfAddr != nil and targetProc == trace.selfProcId:
-        if trace.selfParamCount > 0:
-          vancode_call_self(addr d, trace.selfParamCount.cint, selfAddr)
+      of opcJumpFwd:
+        let tgt = jtTargets[pc]
+        if tgt >= 0 and tgt in labelForTarget:
+          vancode_jump_fwd(addr d, labelForTarget[tgt].cint)
+        else:
+          discard
+      of opcJumpFwdF:
+        let tgt = jtTargets[pc]
+        if tgt >= 0 and tgt in labelForTarget:
+          vancode_jump_fwd_f(addr d, labelForTarget[tgt].cint)
+        else:
+          vancode_jump_fwd_f(addr d, 1)
+      of opcJumpFwdT:
+        let tgt = jtTargets[pc]
+        if tgt >= 0 and tgt in labelForTarget:
+          vancode_jump_fwd_t(addr d, labelForTarget[tgt].cint)
+        else:
+          vancode_jump_fwd_t(addr d, 1)
+      of opcJumpBack:
+        let tgt = jtTargets[pc]
+        if tgt >= 0 and tgt in labelForTarget:
+          vancode_jump_back(addr d, labelForTarget[tgt].cint)
+        else:
+          vancode_jump_back(addr d, 0)
+      of opcCallD:
+        let targetProc = cached.arg2[pc].int
+        if selfAddr != nil and targetProc == trace.selfProcId:
+          if trace.selfParamCount > 0:
+            emitCallArgs(addr d, trace.selfParamCount)
+            vancode_call_self(addr d, trace.selfParamCount.cint, selfAddr)
+            vancode_call_finish(addr d, (2 * trace.selfParamCount * 8).cint)
+          else:
+            vancode_call_self(addr d, 0, selfAddr)
+            vancode_call_finish(addr d, 0)
+        else:
+          freeJitCode(codeBuf, maxCodeSize)
+          dasm_free(addr d)
+          return nil
+      of opcReturnVal:
+        vancode_return_val(addr d)
+      of opcReturnVoid, opcHalt:
+        vancode_return_void(addr d)
+      of opcNoop:
+        discard
       else:
         freeJitCode(codeBuf, maxCodeSize)
         dasm_free(addr d)
         return nil
-    of opcReturnVal:
-      vancode_return_val(addr d)
-    of opcReturnVoid, opcHalt:
-      vancode_return_void(addr d)
-    of opcNoop:
       discard
-    else:
-      freeJitCode(codeBuf, maxCodeSize)
-      dasm_free(addr d)
-      return nil
-    discard
 
   vancode_define_label(addr d, 1)
   vancode_trace_exit(addr d)

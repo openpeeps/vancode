@@ -2,6 +2,21 @@
    Compiled once by Nim's {.compile.} pragma.
    Use -DNDEBUG to disable DASM_CHECKS in release builds. */
 
+/* vancode embeds its own DynASM runtime copy (openparser ships another one
+   for regex JIT). Rename this TU's runtime symbols so both can link into
+   one binary without duplicate-symbol errors. The generated vancode_jit.c
+   and the helpers below see the renamed symbols consistently. */
+#define dasm_init vc_dasm_init
+#define dasm_free vc_dasm_free
+#define dasm_setup vc_dasm_setup
+#define dasm_setupglobal vc_dasm_setupglobal
+#define dasm_growpc vc_dasm_growpc
+#define dasm_put vc_dasm_put
+#define dasm_link vc_dasm_link
+#define dasm_encode vc_dasm_encode
+#define dasm_getpclabel vc_dasm_getpclabel
+#define dasm_checkstep vc_dasm_checkstep
+
 #ifndef NDEBUG
 #define DASM_CHECKS
 #endif

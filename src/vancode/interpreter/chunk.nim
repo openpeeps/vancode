@@ -172,6 +172,9 @@ type
     jitMaxLocal*: int     ## Max local slots used by JIT code
     jitReturnBool*: bool   ## Whether the JIT-compiled proc returns bool
     jitReturnString*: bool ## Whether the JIT-compiled proc returns string
+    jitReturnRef*: bool    ## Whether it returns another ref type (array,
+                           ## object, host value): result travels as a tagged
+                           ## ring index, resolved by the JIT closure
     case kind*: ProcKind
     of pkNative:
       chunk*: Chunk          ## the chunk of bytecode of this procedure

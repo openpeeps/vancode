@@ -12,14 +12,33 @@
 ## native machine code via the DynASM assembler. Falls back to the interpreter
 ## for unsupported opcodes.
 import std/[tables, sysatomics, critbits, os]
+import pkg/voodoo/extensibles
 
-import ./compiler_bridge, ./jit_mem
+import ./compiler_bridge, ./jit_mem, ./host_emit
 import ./dynasm/wrapper
 import ../[vm, value, chunk]
 
 const DASM_MAXSECTION = 1
 
-proc compileProc*(vm: Vm, theProc: Proc): ForeignProc =
+proc jitDynasmSupported*(oc: Opcode): bool =
+  ## Allowlist for the DynASM proc compiler. Hosts (e.g. bro) admit their own
+  ## opcodes via `extendCaseStmt "vmJitDynasmAllowCase"`. Anything rejected
+  ## here falls back to the interpreter — never a compile error.
+  extendableCase "vmJitDynasmAllowCase":
+    case oc
+    of opcPushI, opcPushTrue, opcPushFalse,
+       opcPushL, opcPopL, opcIncL, opcDecL, opcPushNil,
+       opcAddI, opcSubI, opcMultI, opcDivI, opcNegI,
+       opcEqI, opcLessI, opcGreaterI,
+       opcInvB, opcDiscard,
+       opcJumpFwd, opcJumpFwdF, opcJumpFwdT, opcJumpBack,
+       opcReturnVal, opcReturnVoid, opcHalt,
+       opcNoop, opcCallD:
+      result = true
+    else:
+      result = false
+
+proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
   if theProc.kind != pkNative or theProc.chunk == nil: return nil
   let cached = vm.getCachedOps(theProc.chunk)
   let opCount = cached.opcodes.len
@@ -27,15 +46,7 @@ proc compileProc*(vm: Vm, theProc: Proc): ForeignProc =
   let jtTargets = cached.jumpTargets
 
   for oc in cached.opcodes:
-    if oc notin {opcPushI, opcPushTrue, opcPushFalse,
-                  opcPushL, opcPopL, opcIncL, opcDecL, opcPushNil,
-                  opcAddI, opcSubI, opcMultI, opcDivI, opcNegI,
-                  opcEqI, opcLessI, opcGreaterI,
-                  opcInvB, opcDiscard,
-                  opcJumpFwd, opcJumpFwdF, opcJumpFwdT, opcJumpBack,
-                  opcReturnVal, opcReturnVoid, opcHalt,
-                  opcNoop, opcCallD}:
-      return nil
+    if not jitDynasmSupported(oc): return nil
 
   var d: ptr dasm_State = nil
   dasm_init(addr d, DASM_MAXSECTION)
@@ -72,104 +83,107 @@ proc compileProc*(vm: Vm, theProc: Proc): ForeignProc =
     if pc in labelForTarget:
       vancode_define_label(addr d, labelForTarget[pc].cint)
 
-    case oc
-    of opcPushI:
-      vancode_push_i(addr d, cached.getArg1Int(pc).cint)
-    of opcPushTrue:
-      vancode_push_true(addr d)
-    of opcPushFalse:
-      vancode_push_false(addr d)
-    of opcPushNil:
-      vancode_push_nil(addr d)
-    of opcPushL:
-      vancode_push_l(addr d, cached.getArg1Int(pc).cint)
-    of opcPopL:
-      vancode_pop_l(addr d, cached.getArg1Int(pc).cint)
-    of opcIncL:
-      vancode_inc_l(addr d, cached.getArg1Int(pc).cint)
-    of opcDecL:
-      vancode_dec_l(addr d, cached.getArg1Int(pc).cint)
-    of opcAddI:
-      vancode_add_i(addr d)
-    of opcSubI:
-      vancode_sub_i(addr d)
-    of opcMultI:
-      vancode_mul_i(addr d)
-    of opcDivI:
-      vancode_div_i(addr d)
-    of opcNegI:
-      vancode_neg_i(addr d)
-    of opcEqI:
-      vancode_eq_i(addr d)
-    of opcLessI:
-      vancode_less_i(addr d)
-    of opcGreaterI:
-      vancode_greater_i(addr d)
-    of opcInvB:
-      vancode_inv_b(addr d)
-    of opcDiscard:
-      vancode_discard(addr d, cached.getArg1Int(pc).cint)
-    of opcJumpFwd:
-      vancode_jump_fwd(addr d, labelForTarget.getOrDefault(jtTargets[pc], 0).cint)
-    of opcJumpBack:
-      vancode_jump_back(addr d, labelForTarget.getOrDefault(jtTargets[pc], 0).cint)
-    of opcJumpFwdF:
-      vancode_jump_fwd_f(addr d, labelForTarget.getOrDefault(jtTargets[pc], 0).cint)
-    of opcJumpFwdT:
-      vancode_jump_fwd_t(addr d, labelForTarget.getOrDefault(jtTargets[pc], 0).cint)
-    of opcReturnVal:
-      vancode_return_val(addr d)
-    of opcReturnVoid, opcHalt:
-      vancode_return_void(addr d)
-    of opcNoop:
-      discard
-    of opcCallD:
-      let targetProcId = cached.arg2[pc].int
-      var nArgs = 0
-      if targetProcId == theProc.procId:
-        nArgs = theProc.paramCount
-        if preAllocBuf != nil and nArgs > 0:
-          vancode_call_self(addr d, nArgs.cint, preAllocBuf)
-        elif nArgs > 0:
-          vancode_call_alloc(addr d, nArgs.cint)
-          for i in countdown(nArgs - 1, 0):
-            vancode_call_pop_slot(addr d, i.cint)
-          vancode_call_invoke(addr d, nArgs.cint, targetProcId.cint,
-            cast[pointer](jitCallProcBridgeFlat))
-          vancode_call_finish(addr d, nArgs.cint)
+    extendableCase "vmJitDynasmEmitCase":
+      case oc
+      of opcPushI:
+        vancode_push_i(addr d, cached.getArg1Int(pc).cint)
+      of opcPushTrue:
+        vancode_push_true(addr d)
+      of opcPushFalse:
+        vancode_push_false(addr d)
+      of opcPushNil:
+        vancode_push_nil(addr d)
+      of opcPushL:
+        vancode_push_l(addr d, cached.getArg1Int(pc).cint)
+      of opcPopL:
+        vancode_pop_l(addr d, cached.getArg1Int(pc).cint)
+      of opcIncL:
+        vancode_inc_l(addr d, cached.getArg1Int(pc).cint)
+      of opcDecL:
+        vancode_dec_l(addr d, cached.getArg1Int(pc).cint)
+      of opcAddI:
+        vancode_add_i(addr d)
+      of opcSubI:
+        vancode_sub_i(addr d)
+      of opcMultI:
+        vancode_mul_i(addr d)
+      of opcDivI:
+        vancode_div_i(addr d)
+      of opcNegI:
+        vancode_neg_i(addr d)
+      of opcEqI:
+        vancode_eq_i(addr d)
+      of opcLessI:
+        vancode_less_i(addr d)
+      of opcGreaterI:
+        vancode_greater_i(addr d)
+      of opcInvB:
+        vancode_inv_b(addr d)
+      of opcDiscard:
+        vancode_discard(addr d, cached.getArg1Int(pc).cint)
+      of opcJumpFwd:
+        vancode_jump_fwd(addr d, labelForTarget.getOrDefault(jtTargets[pc], 0).cint)
+      of opcJumpBack:
+        vancode_jump_back(addr d, labelForTarget.getOrDefault(jtTargets[pc], 0).cint)
+      of opcJumpFwdF:
+        vancode_jump_fwd_f(addr d, labelForTarget.getOrDefault(jtTargets[pc], 0).cint)
+      of opcJumpFwdT:
+        vancode_jump_fwd_t(addr d, labelForTarget.getOrDefault(jtTargets[pc], 0).cint)
+      of opcReturnVal:
+        vancode_return_val(addr d)
+      of opcReturnVoid, opcHalt:
+        vancode_return_void(addr d)
+      of opcNoop:
+        discard
+      of opcCallD:
+        let targetProcId = cached.arg2[pc].int
+        var nArgs = 0
+        if targetProcId == theProc.procId:
+          nArgs = theProc.paramCount
+          if preAllocBuf != nil and nArgs > 0:
+            emitCallArgs(addr d, nArgs)
+            vancode_call_self(addr d, nArgs.cint, preAllocBuf)
+            vancode_call_finish(addr d, (2 * nArgs * 8).cint)
+          elif nArgs > 0:
+            emitCallArgs(addr d, nArgs)
+            vancode_call_invoke(addr d, nArgs.cint, targetProcId.cint,
+              cast[pointer](jitCallProcBridgeFlat))
+            vancode_call_finish(addr d, (2 * nArgs * 8).cint)
+          else:
+            vancode_call_alloc(addr d, 0)
+            vancode_call_invoke(addr d, 0, targetProcId.cint,
+              cast[pointer](jitCallProcBridgeFlat))
+            vancode_call_finish(addr d, 0)
         else:
-          vancode_call_alloc(addr d, 0)
-          vancode_call_invoke(addr d, 0, targetProcId.cint,
-            cast[pointer](jitCallProcBridgeFlat))
-          vancode_call_finish(addr d, 0)
-      else:
-        var tp: Proc = nil
-        let fpIdx = cached.arg1[pc].uint16
-        let cpStr = theProc.chunk.strings[fpIdx]
-        if cpStr in vm.importedModules:
-          let s2 = vm.importedModules[cpStr]
-          if targetProcId >= 0 and targetProcId < s2.procs.len:
-            tp = s2.procs[targetProcId]
-        if tp == nil:
-          for _, s2 in vm.importedModules:
+          var tp: Proc = nil
+          let fpIdx = cached.arg1[pc].uint16
+          let cpStr = theProc.chunk.strings[fpIdx]
+          if cpStr in vm.importedModules:
+            let s2 = vm.importedModules[cpStr]
             if targetProcId >= 0 and targetProcId < s2.procs.len:
-              tp = s2.procs[targetProcId]; break
-        if tp != nil:
-          nArgs = tp.paramCount
-        if nArgs > 0:
-          vancode_call_alloc(addr d, nArgs.cint)
-          for i in countdown(nArgs - 1, 0):
-            vancode_call_pop_slot(addr d, i.cint)
-          vancode_call_invoke(addr d, nArgs.cint, targetProcId.cint,
-            cast[pointer](jitCallProcBridgeFlat))
-          vancode_call_finish(addr d, nArgs.cint)
-        else:
-          vancode_call_alloc(addr d, 0)
-          vancode_call_invoke(addr d, 0, targetProcId.cint,
-            cast[pointer](jitCallProcBridgeFlat))
-          vancode_call_finish(addr d, 0)
-    else:
-      discard
+              tp = s2.procs[targetProcId]
+          if tp == nil:
+            for _, s2 in vm.importedModules:
+              if targetProcId >= 0 and targetProcId < s2.procs.len:
+                tp = s2.procs[targetProcId]; break
+          if tp != nil:
+            nArgs = tp.paramCount
+          # Host-registered fast path (e.g. bro builtins): same invoke
+          # sequence, alternate bridge. Misses keep the generic bridge.
+          var bridgeFn = cast[pointer](jitCallProcBridgeFlat)
+          if tp != nil:
+            let fastFn = findJitForeignFast(tp.name, nArgs)
+            if fastFn != nil: bridgeFn = fastFn
+          if nArgs > 0:
+            emitCallArgs(addr d, nArgs)
+            vancode_call_invoke(addr d, nArgs.cint, targetProcId.cint, bridgeFn)
+            vancode_call_finish(addr d, (2 * nArgs * 8).cint)
+          else:
+            vancode_call_alloc(addr d, 0)
+            vancode_call_invoke(addr d, 0, targetProcId.cint, bridgeFn)
+            vancode_call_finish(addr d, 0)
+      else:
+        discard
 
   var sz: csize_t
   let linkErr = dasm_link(addr d, addr sz)
@@ -192,7 +206,10 @@ proc compileProc*(vm: Vm, theProc: Proc): ForeignProc =
     dasm_free(addr d)
     return nil
 
-  let fnPtr = preAllocBuf
+  let fnPtr = buf
+  if not usePreAlloc:
+    # Encoded into the overflow buffer; release the unused pre-alloc.
+    freeJitCode(preAllocBuf, maxCodeSize)
   dasm_free(addr d)
 
   var maxLocal = theProc.paramCount
@@ -204,9 +221,12 @@ proc compileProc*(vm: Vm, theProc: Proc): ForeignProc =
 
   theProc.jitMaxLocal = maxLocal
   atomicStoreN(addr theProc.jitCodePtr, fnPtr, AtomicRelease)
-  jitFnTable[theProc.procId] = fnPtr
-  jitProcTable[theProc.procId] = cast[pointer](theProc)
-  jitParamCount[theProc.procId] = theProc.paramCount
+  if theProc.procId >= 0:
+    # Synthetic mains (procId -1) skip the process-global tables: they run
+    # once via their own closure, never through procId-keyed bridges.
+    jitFnTable[theProc.procId] = fnPtr
+    jitProcTable[theProc.procId] = cast[pointer](theProc)
+    jitParamCount[theProc.procId] = theProc.paramCount
 
   result = proc (args: StackView, argc: int): Value {.closure.} =
     let localFn = atomicLoadN(addr theProc.jitCodePtr, AtomicAcquire)
@@ -215,10 +235,14 @@ proc compileProc*(vm: Vm, theProc: Proc): ForeignProc =
     let localMaxLocal = theProc.jitMaxLocal
     var flatLocals = newSeq[int64](max(localMaxLocal, 1))
     for i in 0..<min(argc, localMaxLocal):
+      # Native-stack convention: raw int64 for ints/bools, tagged ring
+      # index for everything else (raw pointers are GC-invisible).
       if args[i].typeId == tyInt:
         flatLocals[i] = args[i].intVal
+      elif args[i].typeId == tyBool:
+        flatLocals[i] = args[i].boolVal.ord.int64
       else:
-        flatLocals[i] = cast[int64](args[i])
+        flatLocals[i] = jitRootValue(args[i])
     if localMaxLocal == 0 and argc > 0:
       flatLocals[0] = args[0].intVal
     type JitFn = proc (flatArgs: ptr int64, argc: int): int64 {.cdecl.}
@@ -226,8 +250,14 @@ proc compileProc*(vm: Vm, theProc: Proc): ForeignProc =
     for i in 0..<min(argc, localMaxLocal):
       if args[i].typeId == tyInt:
         args[i].intVal = flatLocals[i]
-    if theProc.jitReturnString:
-      result = cast[Value](resultI)
+    if isMain and vm.jit.getOutput != nil:
+      # Main chunks report through the host output buffer (the native
+      # Halt returns 0); interpret()-equivalent result comes from there.
+      return vm.jit.getOutput(cast[pointer](vm))
+    if theProc.jitReturnString or theProc.jitReturnRef:
+      # Non-int/bool results travel as tagged ring indices (bridges root
+      # them); resolve back to the Value for the interpreted caller.
+      result = jitUnrootValue(resultI)
     elif theProc.jitReturnBool:
       result = Value(typeId: tyBool, boolVal: resultI != 0)
     else:

@@ -225,103 +225,152 @@ void vancode_halt(dasm_State** Dst) {
 }
 
 // PushG: push global value by name string pointer
-void vancode_pushg(dasm_State** Dst, void* namePtr, void* bridgeFn) {
-  | mov rdi, namePtr
-  | mov rax, bridgeFn
+//
+// SysV requires rsp%16==0 before `call`, but the operand stack has
+// arbitrary parity (one push = 8 bytes). Align dynamically around every
+// outbound call: rbx is callee-saved, pushed/popped symmetrically so the
+// operand stack itself is untouched.
+void vancode_pushg(dasm_State** Dst, unsigned long long namePtr, unsigned long long bridgeFn) {
+  | push rbx
+  | mov rbx, rsp
+  | and rsp, -16
+  | mov64 rdi, namePtr
+  | mov64 rax, bridgeFn
   | call rax
+  | mov rsp, rbx
+  | pop rbx
   | push rax
 }
 
 // PopG: pop int64 val from stack, store to global by name
-void vancode_popg(dasm_State** Dst, void* namePtr, void* bridgeFn) {
+void vancode_popg(dasm_State** Dst, unsigned long long namePtr, unsigned long long bridgeFn) {
   | pop rsi        // val (from operand stack)
-  | mov rdi, namePtr
+  | mov64 rdi, namePtr
   | mov edx, 2     // typeId = tyInt
-  | mov rax, bridgeFn
+  | mov64 rax, bridgeFn
   | call rax
 }
 
-void vancode_bridge_2(dasm_State** Dst, void* fn) {
+// PopHost: pop one native-stack slot and hand it to a host bridge as
+// (namePtr, slot). Unlike popg the slot keeps its convention (raw int or
+// tagged ring index) for the host to unpack; nothing is pushed back.
+void vancode_pop_host(dasm_State** Dst, unsigned long long namePtr, unsigned long long bridgeFn) {
+  | pop rsi        // slot (from operand stack)
+  | push rbx
+  | mov rbx, rsp
+  | and rsp, -16
+  | mov64 rdi, namePtr
+  | mov64 rax, bridgeFn
+  | call rax
+  | mov rsp, rbx
+  | pop rbx
+}
+
+void vancode_bridge_2(dasm_State** Dst, unsigned long long fn) {
   | pop rsi
   | pop rdi
-  | mov rax, fn
+  | push rbx
+  | mov rbx, rsp
+  | and rsp, -16
+  | mov64 rax, fn
   | call rax
+  | mov rsp, rbx
+  | pop rbx
   | push rax
 }
 
-void vancode_bridge_3_void(dasm_State** Dst, void* fn) {
+void vancode_bridge_3_void(dasm_State** Dst, unsigned long long fn) {
   | pop rcx
   | pop rsi
   | pop rdi
-  | mov rax, fn
+  | push rbx
+  | mov rbx, rsp
+  | and rsp, -16
+  | mov64 rax, fn
   | call rax
+  | mov rsp, rbx
+  | pop rbx
 }
 
-void vancode_bridge_3(dasm_State** Dst, void* fn) {
+void vancode_bridge_3(dasm_State** Dst, unsigned long long fn) {
   | pop rcx
   | pop rsi
   | pop rdi
-  | mov rax, fn
+  | push rbx
+  | mov rbx, rsp
+  | and rsp, -16
+  | mov64 rax, fn
   | call rax
+  | mov rsp, rbx
+  | pop rbx
   | push rax
 }
 
-void vancode_bridge_4(dasm_State** Dst, void* fn) {
+void vancode_bridge_4(dasm_State** Dst, unsigned long long fn) {
   | pop rcx
   | pop rdx
   | pop rsi
   | pop rdi
-  | mov rax, fn
+  | push rbx
+  | mov rbx, rsp
+  | and rsp, -16
+  | mov64 rax, fn
   | call rax
+  | mov rsp, rbx
+  | pop rbx
   | push rax
 }
 
-// Allocate flatArgs array on stack: sub rsp, nArgs*8
+// Reserve a flatArgs array of nArgs int64s below the N stack operands:
+// operands live at [rsp, rsp+nArgs*8); the array at [rsp-nArgs*8, rsp).
 void vancode_call_alloc(dasm_State** Dst, int nArgs) {
   | sub rsp, nArgs*8
 }
 
-// Pop rax, store at [rsp + slot*8] (for building flatArgs)
+// Move one operand down into the reserved array: operands shifted to
+// [rsp+nArgs*8, rsp+2nArgs*8) by call_alloc, array at [rsp, rsp+nArgs*8).
+// Unrolled per operand from the Nim side (no labels, safe for any arity).
+void vancode_call_move_one(dasm_State** Dst, int srcDisp, int dstDisp) {
+  | mov rax, [rsp + srcDisp]
+  | mov [rsp + dstDisp], rax
+}
+
+// Pop rax, store at [rsp + slot*8] (legacy; superseded by call_move_one)
 void vancode_call_pop_slot(dasm_State** Dst, int slot) {
   | pop rax
   | mov [rsp + slot*8], rax
 }
 
-// Invoke bridge: jitCallProcBridgeFlat(procId, flatArgs, nArgs, null)
-// rdi=procId, rsi=flatArgs(rsp), rcx=nArgs, r8=null
-void vancode_call_invoke(dasm_State** Dst, int nArgs, int procId, void* bridgeFn) {
-  | mov rsi, rsp
-  | xor r8d, r8d
-  | mov ecx, nArgs
+// Invoke bridge: bridge(procId, flatArgs, argc, argTypes)
+// x64 System V: rdi=procId, rsi=flatArgs(rsp), edx=argc, rcx=null
+void vancode_call_invoke(dasm_State** Dst, int nArgs, int procId, unsigned long long bridgeFn) {
+  | push rbx
+  | mov rbx, rsp
+  | and rsp, -16
+  | lea rsi, [rbx+8]   // flatArgs base = pre-push rsp (rbx is 8 low)
+  | mov edx, nArgs
+  | xor ecx, ecx
   | mov edi, procId
-  | mov rax, bridgeFn
+  | mov64 rax, bridgeFn
   | call rax
+  | mov rsp, rbx
+  | pop rbx
 }
 
-// Cleanup flatArgs (add rsp, nArgs*8) and push result
-void vancode_call_finish(dasm_State** Dst, int nArgs) {
-  | add rsp, nArgs*8
+// Drop the flatArgs array plus the (stale) operand slots above it
+// (dropBytes = 2*nArgs*8, passed from the Nim side) and push the result.
+void vancode_call_finish(dasm_State** Dst, int dropBytes) {
+  | add rsp, dropBytes
   | push rax
 }
 
-// Self-recursion: call the current function directly
-// nArgs = paramCount (known at compile time)
-// selfAddr = address of the JIT function buffer (known at emit time via pre-allocated buf)
-void vancode_call_self(dasm_State** Dst, int nArgs, void* selfAddr) {
-  | sub rsp, nArgs*8
-  | mov ecx, nArgs
-  | test ecx, ecx
-  | jz >2
-  |1:
-  | pop rax
-  | mov [rsp + rcx*8 - 8], rax
-  | dec ecx
-  | jnz <1
-  |2:
+// Self-recursion: call the current function directly.
+// The flatArgs array of nArgs int64s is live at [rsp, rsp+nArgs*8),
+// prepared by call_alloc + call_move_one; selfAddr is the JIT buffer.
+// Post-call cleanup is done by call_finish (drops array + operands).
+void vancode_call_self(dasm_State** Dst, int nArgs, unsigned long long selfAddr) {
   | mov rdi, rsp
   | mov esi, nArgs
-  | mov rax, selfAddr
+  | mov64 rax, selfAddr
   | call rax
-  | add rsp, nArgs*8
-  | push rax
 }

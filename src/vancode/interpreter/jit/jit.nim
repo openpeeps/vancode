@@ -53,5 +53,12 @@ proc installJit*(vm: Vm) =
     setGlobalsPtr: setJitGlobalsPtr,
     compileTrace: proc (trace: pointer): pointer =
       let tb = cast[TraceBuffer](trace)
-      result = compileTrace(vm, tb)
+      result = compileTrace(vm, tb),
+    compileProcHook: proc (vmPtr: pointer, procPtr: pointer): ForeignProc {.nimcall.} =
+      compileProc(cast[Vm](vmPtr), cast[Proc](procPtr)),
+    compileMainHook: proc (vmPtr: pointer, scriptPtr: pointer,
+        chunkPtr: pointer): ForeignProc {.nimcall.} =
+      compileMainHookImpl(cast[Vm](vmPtr), cast[Script](scriptPtr),
+        cast[Chunk](chunkPtr)),
+    getOutput: nil
   )

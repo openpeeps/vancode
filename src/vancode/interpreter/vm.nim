@@ -23,7 +23,7 @@ import std/[strutils, tables, critbits, algorithm,
 
 import pkg/voodoo/extensibles
 import ./chunk, ./value
-import ./jit/trace_types, ./jit/trace_cache
+import ./jit/trace_types, ./jit/trace_cache, ./jit/jit_values
 
 when defined(hayaVmWriteStackOps):
   import pkg/kapsis/interactive/prompts
@@ -119,6 +119,11 @@ type
     jit*: JitHooks
     pendingCallback*: Value
     traceCache*: TraceCache
+
+# Host-injected helper procs (registered via voodoo `extendProc
+# "interpreter/vm.nim"`). Types above are visible to them; they must be
+# self-contained module-level procs (no access to interpret() locals).
+injectHandles()
 
 const
   VMInitialPreallocatedStackSize* {.intdefine.} = 64
@@ -383,7 +388,7 @@ template getArg1Int*(co: CachedOps, i: int): int =
 template getArg1Float*(co: CachedOps, i: int): float64 =
   cast[float64](co.arg1[i])
 
-template getArg1Str(co: CachedOps, i: int, currentChunk: Chunk): string =
+template getArg1Str*(co: CachedOps, i: int, currentChunk: Chunk): string =
   let id = co.arg1[i].uint16
   if id < uint16(currentChunk.strings.len):
     currentChunk.strings[id]
@@ -604,6 +609,17 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
 
   # Voodoo placeholder for injecting custom code at the start of the main loop
   conditionalPlaceholder "VanCodeVMBeforeMainLoop", false
+
+  when defined(vancodeJitDynasm):
+    # Main-chunk JIT: run natively instead of interpreting when the host
+    # enabled it (compileMainHook + getOutput) and the chunk compiles.
+    # Placed after the snippet so host state (globals, output alias) is
+    # initialized; nil = interpret normally.
+    if stepping == nil and vm.jit.compileMainHook != nil:
+      let mainFn = vm.jit.compileMainHook(cast[pointer](vm),
+        cast[pointer](script), cast[pointer](startChunk))
+      if mainFn != nil:
+        return mainFn(nil, 0)
 
   when defined(vancodeJitDynasm):
     template recordNotTakenPath(traceBuf: TraceBuffer, traceNumLocals: var int, co: CachedOps, pcIdx, tgt: int) =
@@ -1046,23 +1062,52 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
             stack.push(callResult)
           inc(pcIdx)
           continue
-        # Async JIT fast path — check atomically-set code pointer
+        # Async JIT fast path — check atomically-set code pointer.
+        # Same native-stack convention as the closure: raw int64 for
+        # ints/bools, tagged ring index for everything else.
         let jitFnPtr = atomicLoadN(addr p.jitCodePtr, AtomicAcquire)
         if jitFnPtr != nil:
           type AsyncJitFn = proc (flatArgs: ptr int64, argc: int): int64 {.cdecl.}
           let fn = cast[AsyncJitFn](jitFnPtr)
           var flatArgs = newSeq[int64](max(max(p.jitMaxLocal, p.paramCount), 1))
           for i in 0..<p.paramCount:
-            flatArgs[i] = stack[stack.len - p.paramCount + i].intVal
+            let a = stack[stack.len - p.paramCount + i]
+            if a.typeId == tyInt:
+              flatArgs[i] = a.intVal
+            elif a.typeId == tyBool:
+              flatArgs[i] = a.boolVal.ord.int64
+            else:
+              flatArgs[i] = jitRootValue(a)
           let resultI = fn(addr flatArgs[0], p.paramCount)
           restoreFrame()
           if p.hasResult:
             if p.jitReturnBool:
               stack.push(Value(typeId: tyBool, boolVal: resultI != 0))
+            elif p.jitReturnString or p.jitReturnRef:
+              stack.push(jitUnrootValue(resultI))
             else:
               stack.push(initValue(resultI))
           inc(pcIdx)
           continue
+        # Hot-proc JIT: compile callable native procs inline once hot.
+        # Fires exactly at the threshold (markHotProc counted this call);
+        # nil = unsupported shape, keep interpreting without retrying.
+        if p.kind == pkNative and p.jitForeign == nil and
+            vm.jit.compileProcHook != nil and
+            p.jitCallCount == vm.preferences.hotProcThreshold:
+          let hookFn = vm.jit.compileProcHook(cast[pointer](vm), cast[pointer](p))
+          if hookFn != nil:
+            p.jitForeign = hookFn
+            let callResult =
+              if p.paramCount > 0:
+                hookFn(stack{^p.paramCount}, p.paramCount)
+              else:
+                hookFn(nil, 0)
+            restoreFrame()
+            if p.hasResult:
+              stack.push(callResult)
+            inc(pcIdx)
+            continue
 
         when defined(hayaVmWriteStackOps):
           display(span("opc:", fgGreen), span("<" & $opcCallD & ">"),

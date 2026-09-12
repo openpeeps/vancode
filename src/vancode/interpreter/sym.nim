@@ -664,7 +664,6 @@ proc initSystemTypes*(module: Module) =
   module.add(genType(ttyAny, "stmt", true))
   module.add(genType(ttyJson, "json", true))
   module.add(genType(ttyObject, "object", true))
-  # module.add(genType(ttyObject, "tuple", true))
   module.add(genType(ttyPointer, "pointer", true))
   module.add(genType(ttyProc, "proc", true))
 

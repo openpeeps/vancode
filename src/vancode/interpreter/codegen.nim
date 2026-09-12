@@ -136,6 +136,21 @@ type
 
 var codegenCache* = CodeGenCache()
 var vanCodeStmtNodeKinds*: seq[NodeKind] = @[nkFor, nkWhile, nkIf, nkBlock]
+
+var classInterfaceMembers* = initTable[string, OrderedTable[string, Sym]]()
+
+proc registerMember*(typeName, fieldName: string, fieldSym: Sym) =
+  if not classInterfaceMembers.hasKey(typeName):
+    classInterfaceMembers[typeName] = initOrderedTable[string, Sym]()
+  classInterfaceMembers[typeName][fieldName] = fieldSym
+
+proc hasMember*(typeName, fieldName: string): bool =
+  classInterfaceMembers.hasKey(typeName) and classInterfaceMembers[typeName].hasKey(fieldName)
+
+proc getMember*(typeName, fieldName: string): Sym =
+  if hasMember(typeName, fieldName):
+    result = classInterfaceMembers[typeName][fieldName]
+
 proc count*(gen: CodeGen): uint =
   ## Get the current value of the codegen's counter, and increment it.
   result = gen.counter
@@ -354,7 +369,9 @@ proc newProc*(script: Script, name, impl: Node,
         paramCount: params.len,
         hasResult: hasReturnType,
         jitReturnBool: returnTy.kind == skType and returnTy.tyKind == ttyBool,
-        jitReturnString: returnTy.kind == skType and returnTy.tyKind == ttyString
+        jitReturnString: returnTy.kind == skType and returnTy.tyKind == ttyString,
+        jitReturnRef: returnTy.kind == skType and returnTy.tyKind notin
+          {ttyVoid, ttyBool, ttyString, ttyInt, ttyFloat}
       )
     sym = newSym(skProc, identName, impl)
   sym.procId = id
@@ -1356,6 +1373,33 @@ proc genGetField*(node: Node): Sym {.codegen.} =
   var valTy: Sym =
     if recvSym.kind in skVars: recvSym.varTy else: recvSym
 
+  # Non-type receivers (e.g., proc value like `console` when defined as `function console(): object`)
+  # have no tyKind field. Treat `a.b` / `a.b(x)` as UFCS `b(a, ...)` or fallback to generic field access for JS interop.
+  if valTy.kind != skType:
+    var
+      calleeNode: Node
+      argTypes: seq[Sym] = @[valTy]
+    case node[1].kind
+    of nkIdent, nkIndex:
+      calleeNode = node[1]
+    of nkCall:
+      calleeNode = node[1][0]
+      for arg in node[1].children[1..^1]:
+        argTypes.add(gen.genExpr(arg))
+    else:
+      node[1].error(ErrInvalidField % $node[1])
+    var fnSym: Sym
+    try:
+      fnSym = gen.lookup(calleeNode, quiet = true)
+    except CatchableError:
+      fnSym = nil
+    if fnSym == nil:
+      # JS-global fallback: allow `console.log(x)` etc. without strict type. Emit generic get and return any.
+      gen.chunk.emit(opcGetF)
+      gen.chunk.emit(0'u8)
+      return gen.module.sym"any"
+    return gen.callProc(fnSym, argTypes, node)
+
   # Pointers: try UFCS first, fall back to FFI
   if valTy.tyKind == ttyPointer:
     if node[1].kind == nkCall:
@@ -1380,6 +1424,7 @@ proc genGetField*(node: Node): Sym {.codegen.} =
   if valTy.tyKind notin {ttyObject, ttyClass, ttyInterface}:
     # Only objects/classes/interfaces can be accessed with dot/bracket
     # For non object/json receiver: treat `a.b` as `b(a)` and `a.b(x)` as `b(a, x)`.
+    # For JS interop (e.g., `var console: any`), allow unknown field as generic property.
     var
       calleeNode: Node
       argTypes: seq[Sym] = @[valTy]
@@ -1394,7 +1439,16 @@ proc genGetField*(node: Node): Sym {.codegen.} =
     else:
       node[1].error(ErrInvalidField % $node[1])
 
-    let fnSym = gen.lookup(calleeNode)
+    var fnSym: Sym
+    try:
+      fnSym = gen.lookup(calleeNode, quiet = true)
+    except CatchableError:
+      fnSym = nil
+    if fnSym == nil:
+      # JS interop fallback: treat `console.log` where console is any as dynamic property
+      gen.chunk.emit(opcGetF)
+      gen.chunk.emit(0'u8)
+      return gen.module.sym"any"
     return gen.callProc(fnSym, argTypes, node)
 
     # node[0].error(ErrTypeMismatch % [$valTy.name, "object|json"])
@@ -1406,11 +1460,35 @@ proc genGetField*(node: Node): Sym {.codegen.} =
   # Method call on receiver: item.fn(...)
   if node[1].kind == nkCall:
     let callee = node[1][0]
-    var fnSym = gen.lookup(callee)
-    var argTypes: seq[Sym] = @[valTy]  # receiver first; it's already on stack
-    for arg in node[1].children[1..^1]:
-      argTypes.add(gen.genExpr(arg))
-    return gen.callProc(fnSym, argTypes, node)
+    let mNameStrict = if callee.kind == nkIdent: callee.ident else: ""
+    if valTy.kind == skType and valTy.tyKind in {ttyClass, ttyInterface}:
+      if hasMember(valTy.name.ident, mNameStrict):
+        for arg in node[1].children[1..^1]: discard gen.genExpr(arg)
+        gen.chunk.emit(opcGetF)
+        gen.chunk.emit(0'u8)
+        let memberTy = getMember(valTy.name.ident, mNameStrict)
+        if memberTy != nil and memberTy.kind == skType and memberTy.tyKind != ttyVoid:
+          return memberTy
+        else: return gen.module.sym"any"
+      else:
+        node[1].error(ErrNonExistentField % [mNameStrict, $valTy])
+    var fnSym: Sym
+    try:
+      fnSym = gen.lookup(callee, quiet = true)
+    except CatchableError:
+      fnSym = nil
+    if fnSym != nil:
+      var argTypes: seq[Sym] = @[valTy]  # receiver first; it's already on stack
+      for arg in node[1].children[1..^1]:
+        argTypes.add(gen.genExpr(arg))
+      return gen.callProc(fnSym, argTypes, node)
+    else:
+      # JS interop fallback for any/object etc.
+      for arg in node[1].children[1..^1]:
+        discard gen.genExpr(arg)
+      gen.chunk.emit(opcGetF)
+      gen.chunk.emit(0'u8)
+      return gen.module.sym"any"
 
   if node[1].kind notin {nkIdent, nkBracket}:
     node[1].error(ErrInvalidField % $node[1])
@@ -1429,10 +1507,15 @@ proc genGetField*(node: Node): Sym {.codegen.} =
     gen.chunk.emit(opcGetF)
     gen.chunk.emit(field.id.uint8)
   elif valTy.tyKind in {ttyClass, ttyInterface}:
-    # validation stub for class/interface fields - return any
-    gen.chunk.emit(opcGetF)
-    gen.chunk.emit(0'u8)
-    result = gen.module.sym"any"
+    if hasMember(valTy.name.ident, fieldName):
+      let memberTy = getMember(valTy.name.ident, fieldName)
+      gen.chunk.emit(opcGetF)
+      gen.chunk.emit(0'u8)
+      if memberTy.kind == skType and memberTy.tyKind != ttyVoid:
+        result = memberTy
+      else: result = gen.module.sym"any"
+    else:
+      node[1].error(ErrNonExistentField % [fieldName, $valTy])
   else:
     let getter = gen.lookup(node[1], quiet = true)
     if getter != nil:

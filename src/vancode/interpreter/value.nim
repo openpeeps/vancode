@@ -305,3 +305,15 @@ type
       ## Set the pointer to the VM's globals CritBitTree for JIT bridge access.
     compileTrace*: proc (trace: pointer): pointer
       ## Compile a TraceBuffer into machine code. Returns code pointer or nil.
+    compileProcHook*: proc (vmPtr: pointer, procPtr: pointer): ForeignProc {.nimcall.}
+      ## Eagerly JIT-compile a Proc. Returns a ForeignProc closure or nil
+      ## (fall back to the interpreter). Proc/VM cross as pointers to
+      ## avoid a vm import; the closure itself travels by value (closures
+      ## are fat and must never be cast through pointer).
+    compileMainHook*: proc (vmPtr: pointer, scriptPtr: pointer,
+        chunkPtr: pointer): ForeignProc {.nimcall.}
+      ## Eagerly JIT-compile a main chunk. Returns a ForeignProc closure
+      ## run in place of interpret(), or nil to interpret normally.
+    getOutput*: proc (vmPtr: pointer): Value {.nimcall.}
+      ## Host-provided main-chunk result accessor (the JIT cannot see
+      ## interpret()'s `result` local). Nil = main-JIT stays disabled.
