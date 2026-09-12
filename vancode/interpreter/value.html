@@ -16,10 +16,10 @@
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA3XAAAN1wFCKJt4AAAAB3RJTUUH4QQQEwksSS9ZWwAAAk1JREFUWMPtll2ITVEUx39nn/O7Y5qR8f05wtCUUr6ZIS++8pEnkZInPImneaCQ5METNdOkeFBKUhMPRIkHKfEuUZSUlGlKPN2TrgfncpvmnntnmlEyq1Z7t89/rf9a6+y99oZxGZf/XeIq61EdtgKXgdXA0xrYAvBjOIF1AI9zvjcC74BSpndrJPkBWDScTF8Aa4E3wDlgHbASaANmVqlcCnwHvgDvgVfAJ+AikAAvgfVZwLnSVZHZaOuKoQi3ZOMi4NkYkpe1p4J7A8BpYAD49hfIy/oqG0+hLomiKP2L5L+1ubn5115S+3OAn4EnwBlgMzCjyt6ZAnQCJ4A7wOs88iRJHvw50HoujuPBoCKwHWiosy8MdfZnAdcHk8dxXFJ3VQbQlCTJvRBCGdRbD4M6uc5glpY3eAihpN5S5w12diSEcCCEcKUO4ljdr15T76ur1FDDLIQQ3qv71EdDOe3Kxj3leRXyk+pxdWnFWod6Wt2bY3de3aSuUHcPBVimHs7mK9WrmeOF6lR1o9qnzskh2ar2qm1qizpfXaPeVGdlmGN5pb09qMxz1Xb1kLqgzn1RyH7JUXW52lr5e/Kqi9qpto7V1atuUzfnARrV7jEib1T76gG2qxdGmXyiekkt1GswPTtek0aBfJp6YySGBfWg2tPQ0FAYgf1stUfdmdcjarbYJEniKIq6gY/Aw+zWHAC+p2labGpqiorFYgGYCEzN7oQdQClN07O1/EfDyGgC0ALMBdYAi4FyK+4H3gLPsxfR1zRNi+NP7nH5J+QntnXe5B5mpfQAAAAASUVORK5CYII=">
 
 <!-- CSS -->
-<link rel="stylesheet" type="text/css" href="../../nimdoc.out.css?v=2.2.10">
+<link rel="stylesheet" type="text/css" href="../../nimdoc.out.css?v=2.2.12">
 
 <!-- JS -->
-<script type="text/javascript" src="../../dochack.js?v=2.2.10"></script>
+<script type="text/javascript" src="../../dochack.js?v=2.2.12"></script>
 </head>
 <body>
   <div class="document" id="documentId">
@@ -68,7 +68,17 @@
   queueCompile*: proc (theProc: pointer) ## Queue a proc for async JIT compilation.
                                          ## Called from markHotProc. theProc is cast(pointer, Proc).
   setGlobalsPtr*: proc (p: pointer) ## Set the pointer to the VM's globals CritBitTree for JIT bridge access.
-  compileTrace*: proc (trace: pointer): pointer ## Compile a TraceBuffer into machine code. Returns code pointer or nil.">JitHooks</a></li>
+  compileTrace*: proc (trace: pointer): pointer ## Compile a TraceBuffer into machine code. Returns code pointer or nil.
+  compileProcHook*: proc (vmPtr: pointer; procPtr: pointer): ForeignProc {.
+      nimcall.} ## Eagerly JIT-compile a Proc. Returns a ForeignProc closure or nil
+                ## (fall back to the interpreter). Proc/VM cross as pointers to
+                ## avoid a vm import; the closure itself travels by value (closures
+                ## are fat and must never be cast through pointer).
+  compileMainHook*: proc (vmPtr: pointer; scriptPtr: pointer; chunkPtr: pointer): ForeignProc {.
+      nimcall.} ## Eagerly JIT-compile a main chunk. Returns a ForeignProc closure
+                ## run in place of interpret(), or nil to interpret normally.
+  getOutput*: proc (vmPtr: pointer): Value {.nimcall.} ## Host-provided main-chunk result accessor (the JIT cannot see
+                                                       ## interpret()'s `result` local). Nil = main-JIT stays disabled.">JitHooks</a></li>
 <li><a class="reference" href="#Object" title="Object {.acyclic.} = ref object
   case isForeign*: bool
   of true:
@@ -236,7 +246,17 @@
   <span class="Identifier">queueCompile</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">theProc</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span> <span class="Comment">## Queue a proc for async JIT compilation.</span>
                                          <span class="Comment">## Called from markHotProc. theProc is cast(pointer, Proc).</span>
   <span class="Identifier">setGlobalsPtr</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">p</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span> <span class="Comment">## Set the pointer to the VM's globals CritBitTree for JIT bridge access.</span>
-  <span class="Identifier">compileTrace</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">trace</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">pointer</span> <span class="Comment">## Compile a TraceBuffer into machine code. Returns code pointer or nil.</span></pre></dt>
+  <span class="Identifier">compileTrace</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">trace</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">pointer</span> <span class="Comment">## Compile a TraceBuffer into machine code. Returns code pointer or nil.</span>
+  <span class="Identifier">compileProcHook</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">vmPtr</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">;</span> <span class="Identifier">procPtr</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span><span class="Other">:</span> <a href="#ForeignProc"><span class="Identifier">ForeignProc</span></a> {.
+      <span class="Identifier">nimcall</span>.} <span class="Comment">## Eagerly JIT-compile a Proc. Returns a ForeignProc closure or nil</span>
+                <span class="Comment">## (fall back to the interpreter). Proc/VM cross as pointers to</span>
+                <span class="Comment">## avoid a vm import; the closure itself travels by value (closures</span>
+                <span class="Comment">## are fat and must never be cast through pointer).</span>
+  <span class="Identifier">compileMainHook</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">vmPtr</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">;</span> <span class="Identifier">scriptPtr</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">;</span> <span class="Identifier">chunkPtr</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span><span class="Other">:</span> <a href="#ForeignProc"><span class="Identifier">ForeignProc</span></a> {.
+      <span class="Identifier">nimcall</span>.} <span class="Comment">## Eagerly JIT-compile a main chunk. Returns a ForeignProc closure</span>
+                <span class="Comment">## run in place of interpret(), or nil to interpret normally.</span>
+  <span class="Identifier">getOutput</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">vmPtr</span><span class="Other">:</span> <span class="Identifier">pointer</span><span class="Other">)</span><span class="Other">:</span> <a href="#Value"><span class="Identifier">Value</span></a> {.<span class="Identifier">nimcall</span>.} <span class="Comment">## Host-provided main-chunk result accessor (the JIT cannot see</span>
+                                                       <span class="Comment">## interpret()'s `result` local). Nil = main-JIT stays disabled.</span></pre></dt>
   <dd>
     
     JIT hooks installed into the VM. Uses raw pointer to avoid circular deps between vm and jit modules.
@@ -654,7 +674,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-08-31 19:39:53 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-09-12 06:55:17 UTC</small>
       </div>
     </div>
   </div>

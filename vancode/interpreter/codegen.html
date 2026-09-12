@@ -16,10 +16,10 @@
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA3XAAAN1wFCKJt4AAAAB3RJTUUH4QQQEwksSS9ZWwAAAk1JREFUWMPtll2ITVEUx39nn/O7Y5qR8f05wtCUUr6ZIS++8pEnkZInPImneaCQ5METNdOkeFBKUhMPRIkHKfEuUZSUlGlKPN2TrgfncpvmnntnmlEyq1Z7t89/rf9a6+y99oZxGZf/XeIq61EdtgKXgdXA0xrYAvBjOIF1AI9zvjcC74BSpndrJPkBWDScTF8Aa4E3wDlgHbASaANmVqlcCnwHvgDvgVfAJ+AikAAvgfVZwLnSVZHZaOuKoQi3ZOMi4NkYkpe1p4J7A8BpYAD49hfIy/oqG0+hLomiKP2L5L+1ubn5115S+3OAn4EnwBlgMzCjyt6ZAnQCJ4A7wOs88iRJHvw50HoujuPBoCKwHWiosy8MdfZnAdcHk8dxXFJ3VQbQlCTJvRBCGdRbD4M6uc5glpY3eAihpN5S5w12diSEcCCEcKUO4ljdr15T76ur1FDDLIQQ3qv71EdDOe3Kxj3leRXyk+pxdWnFWod6Wt2bY3de3aSuUHcPBVimHs7mK9WrmeOF6lR1o9qnzskh2ar2qm1qizpfXaPeVGdlmGN5pb09qMxz1Xb1kLqgzn1RyH7JUXW52lr5e/Kqi9qpto7V1atuUzfnARrV7jEib1T76gG2qxdGmXyiekkt1GswPTtek0aBfJp6YySGBfWg2tPQ0FAYgf1stUfdmdcjarbYJEniKIq6gY/Aw+zWHAC+p2labGpqiorFYgGYCEzN7oQdQClN07O1/EfDyGgC0ALMBdYAi4FyK+4H3gLPsxfR1zRNi+NP7nH5J+QntnXe5B5mpfQAAAAASUVORK5CYII=">
 
 <!-- CSS -->
-<link rel="stylesheet" type="text/css" href="../../nimdoc.out.css?v=2.2.10">
+<link rel="stylesheet" type="text/css" href="../../nimdoc.out.css?v=2.2.12">
 
 <!-- JS -->
-<script type="text/javascript" src="../../dochack.js?v=2.2.10"></script>
+<script type="text/javascript" src="../../dochack.js?v=2.2.12"></script>
 </head>
 <body>
   <div class="document" id="documentId">
@@ -90,7 +90,8 @@
   <details open>
     <summary><a class="reference reference-toplevel" href="#8" id="58">Vars</a></summary>
     <ul class="simple simple-toc-section">
-      <li><a class="reference" href="#codegenCache_2" title="codegenCache = CodeGenCache()">codegenCache</a></li>
+      <li><a class="reference" href="#classInterfaceMembers" title="classInterfaceMembers = initTable(32)">classInterfaceMembers</a></li>
+<li><a class="reference" href="#codegenCache_2" title="codegenCache = CodeGenCache()">codegenCache</a></li>
 <li><a class="reference" href="#globalTypeCounter" title="globalTypeCounter {.global.}: int = 0">globalTypeCounter</a></li>
 <li><a class="reference" href="#vanCodeStmtNodeKinds" title="vanCodeStmtNodeKinds: seq[NodeKind] = @[nkFor, nkWhile, nkIf, nkBlock]">vanCodeStmtNodeKinds</a></li>
 
@@ -261,6 +262,14 @@
   <li><a class="reference" href="#getDefaultSym%2CCodeGen%2CNodeKind" title="getDefaultSym(gen: CodeGen; kind: NodeKind): Sym">getDefaultSym(gen: CodeGen; kind: NodeKind): Sym</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">getMember
+  <li><a class="reference" href="#getMember%2Cstring%2Cstring" title="getMember(typeName, fieldName: string): Sym">getMember(typeName, fieldName: string): Sym</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">hasMember
+  <li><a class="reference" href="#hasMember%2Cstring%2Cstring" title="hasMember(typeName, fieldName: string): bool">hasMember(typeName, fieldName: string): bool</a></li>
+
+</ul>
 <ul class="simple nested-toc-section">infix
   <li><a class="reference" href="#infix%2CCodeGen%2CNode" title="infix(gen: CodeGen; node: Node): Sym">infix(gen: CodeGen; node: Node): Sym</a></li>
 
@@ -335,6 +344,10 @@
 </ul>
 <ul class="simple nested-toc-section">pushConst
   <li><a class="reference" href="#pushConst%2CCodeGen%2CNode" title="pushConst(gen: CodeGen; node: Node): Sym">pushConst(gen: CodeGen; node: Node): Sym</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">registerMember
+  <li><a class="reference" href="#registerMember%2Cstring%2Cstring%2CSym" title="registerMember(typeName, fieldName: string; fieldSym: Sym)">registerMember(typeName, fieldName: string; fieldSym: Sym)</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">resolveGenerics
@@ -459,7 +472,15 @@
 <div class="section" id="8">
   <h1><a class="toc-backref" href="#8">Vars</a></h1>
   <dl class="item">
-    <div id="codegenCache_2">
+    <div id="classInterfaceMembers">
+  <dt><pre><a href="#classInterfaceMembers"><span class="Identifier">classInterfaceMembers</span></a> <span class="Other">=</span> <span class="Identifier">initTable</span><span class="Other">(</span><span class="DecNumber">32</span><span class="Other">)</span></pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+<div id="codegenCache_2">
   <dt><pre><a href="#codegenCache"><span class="Identifier">codegenCache</span></a> <span class="Other">=</span> <a href="#CodeGenCache"><span class="Identifier">CodeGenCache</span></a><span class="Other">(</span><span class="Other">)</span></pre></dt>
   <dd>
     
@@ -781,9 +802,9 @@
 </div>
 <div id="genGetField-procs-all">
   <div id="genGetField,CodeGen,Node">
-  <dt><pre><span class="Keyword">proc</span> <a href="#genGetField%2CCodeGen%2CNode"><span class="Identifier">genGetField</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.
-    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
-    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#genGetField%2CCodeGen%2CNode"><span class="Identifier">genGetField</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">,</span>
+    <span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     
@@ -971,6 +992,30 @@
 </div>
 
 </div>
+<div id="getMember-procs-all">
+  <div id="getMember,string,string">
+  <dt><pre><span class="Keyword">proc</span> <a href="#getMember%2Cstring%2Cstring"><span class="Identifier">getMember</span></a><span class="Other">(</span><span class="Identifier">typeName</span><span class="Other">,</span> <span class="Identifier">fieldName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
+<div id="hasMember-procs-all">
+  <div id="hasMember,string,string">
+  <dt><pre><span class="Keyword">proc</span> <a href="#hasMember%2Cstring%2Cstring"><span class="Identifier">hasMember</span></a><span class="Other">(</span><span class="Identifier">typeName</span><span class="Other">,</span> <span class="Identifier">fieldName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
 <div id="infix-procs-all">
   <div id="infix,CodeGen,Node">
   <dt><pre><span class="Keyword">proc</span> <a href="#infix%2CCodeGen%2CNode"><span class="Identifier">infix</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.
@@ -1114,6 +1159,18 @@
 </div>
 
 </div>
+<div id="registerMember-procs-all">
+  <div id="registerMember,string,string,Sym">
+  <dt><pre><span class="Keyword">proc</span> <a href="#registerMember%2Cstring%2Cstring%2CSym"><span class="Identifier">registerMember</span></a><span class="Other">(</span><span class="Identifier">typeName</span><span class="Other">,</span> <span class="Identifier">fieldName</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span> <span class="Identifier">fieldSym</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
 <div id="resolveGenerics-procs-all">
   <div id="resolveGenerics,CodeGen,Sym,seq[Sym],Node">
   <dt><pre><span class="Keyword">proc</span> <a href="#resolveGenerics%2CCodeGen%2CSym%2Cseq%5BSym%5D%2CNode"><span class="Identifier">resolveGenerics</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">callable</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">;</span> <span class="Identifier">callArgTypes</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">;</span>
@@ -1199,7 +1256,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-08-31 19:39:54 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-09-12 06:55:18 UTC</small>
       </div>
     </div>
   </div>

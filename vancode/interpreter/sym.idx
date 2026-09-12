@@ -55,7 +55,7 @@ nim	sym	vancode/interpreter/sym.html#sym,Module,string	proc sym(module: Module; 
 nim	load	vancode/interpreter/sym.html#load,Module,Module,staticbool	proc load(module: Module; other: Module; fromOtherModule: static bool = false): bool		628
 nim	newModule	vancode/interpreter/sym.html#newModule,string,Option[string]	proc newModule(name: string; src: Option[string] = none(string)): Module		647
 nim	initSystemTypes	vancode/interpreter/sym.html#initSystemTypes,Module	proc initSystemTypes(module: Module)		651
-nim	genPtr	vancode/interpreter/sym.html#genPtr,Module,TypeId,string	proc genPtr(module: Module; typeId: TypeId; name: string): Sym		676
-nim	getModuleName	vancode/interpreter/sym.html#getModuleName,Module	proc getModuleName(module: Module): string		683
+nim	genPtr	vancode/interpreter/sym.html#genPtr,Module,TypeId,string	proc genPtr(module: Module; typeId: TypeId; name: string): Sym		675
+nim	getModuleName	vancode/interpreter/sym.html#getModuleName,Module	proc getModuleName(module: Module): string		682
 nimgrp	$	vancode/interpreter/sym.html#$-procs-all	proc		238
 nimgrp	sameparams	vancode/interpreter/sym.html#sameParams-procs-all	proc		455
