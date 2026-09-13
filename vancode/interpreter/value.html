@@ -157,7 +157,7 @@
 
 </ul>
 <ul class="simple nested-toc-section">=destroy
-  <li><a class="reference" href="#%3Ddestroy%2CForeignData" title="`=destroy`(fd: ForeignData)">`=destroy`(fd: ForeignData)</a></li>
+  <li><a class="reference" href="#%3Ddestroy%2CForeignData" title="`=destroy`(fd: var ForeignData)">`=destroy`(fd: var ForeignData)</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">dumpHook
@@ -492,11 +492,11 @@
 </div>
 <div id="=destroy-procs-all">
   <div id="=destroy,ForeignData">
-  <dt><pre><span class="Keyword">proc</span> <a href="#%3Ddestroy%2CForeignData"><span class="Identifier">`=destroy`</span></a><span class="Other">(</span><span class="Identifier">fd</span><span class="Other">:</span> <a href="#ForeignData"><span class="Identifier">ForeignData</span></a><span class="Other">)</span> {.<span class="Identifier">nimcall</span><span class="Other">,</span> <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
-                                   <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#%3Ddestroy%2CForeignData"><span class="Identifier">`=destroy`</span></a><span class="Other">(</span><span class="Identifier">fd</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="#ForeignData"><span class="Identifier">ForeignData</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+                                       <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    
+    Lifespan hook for foreign payloads. NOTE: this must stay textually before the <tt class="docutils literal"><span class="pre"><span class="Keyword">Object</span></span></tt>/<tt class="docutils literal"><span class="pre"><span class="Identifier">Value</span></span></tt> definitions below: the generated <tt class="docutils literal"><span class="pre"><span class="Operator">=</span><span class="Identifier">destroy</span></span></tt> for the containing <tt class="docutils literal"><span class="pre"><span class="Keyword">Object</span></span></tt> case branch binds field destruction at the type definition, so a hook declared later is silently ignored and every payload leaks once per constructed value. A custom hook replaces field-wise destruction entirely, so it must release every field itself: the payload via its destructor and the tag string by clearing it (otherwise the tag leaks instead).
     
   </dd>
 </div>
@@ -674,7 +674,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-09-12 06:55:17 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-09-13 07:27:43 UTC</small>
       </div>
     </div>
   </div>

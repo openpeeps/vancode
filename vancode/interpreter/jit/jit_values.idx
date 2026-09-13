@@ -3,5 +3,7 @@ nim	jitValueRingSize	vancode/interpreter/jit/jit_values.html#jitValueRingSize	co
 nim	jitRootValue	vancode/interpreter/jit/jit_values.html#jitRootValue,Value	proc jitRootValue(v: Value): int64		28
 nim	jitUnrootValue	vancode/interpreter/jit/jit_values.html#jitUnrootValue,int64	proc jitUnrootValue(idx: int64): Value		38
 nim	jitTryUnroot	vancode/interpreter/jit/jit_values.html#jitTryUnroot,int64	proc jitTryUnroot(slot: int64): tuple[v: Value, ok: bool]		42
-nim	jitUnpackArg	vancode/interpreter/jit/jit_values.html#jitUnpackArg,int64	proc jitUnpackArg(slot: int64): Value		53
-nim	jitPackResult	vancode/interpreter/jit/jit_values.html#jitPackResult,Value	proc jitPackResult(callResult: Value): int64		60
+nim	jitRingOccupancy	vancode/interpreter/jit/jit_values.html#jitRingOccupancy	proc jitRingOccupancy(): int		53
+nim	jitClearRing	vancode/interpreter/jit/jit_values.html#jitClearRing	proc jitClearRing()		58
+nim	jitUnpackArg	vancode/interpreter/jit/jit_values.html#jitUnpackArg,int64	proc jitUnpackArg(slot: int64): Value		70
+nim	jitPackResult	vancode/interpreter/jit/jit_values.html#jitPackResult,Value	proc jitPackResult(callResult: Value): int64		77

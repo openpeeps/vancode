@@ -21,10 +21,12 @@ nim	newVm	vancode/interpreter/vm.html#newVm	proc newVm(): Vm		136
 nim	getHotProcCount	vancode/interpreter/vm.html#getHotProcCount,Vm,string	proc getHotProcCount(vm: Vm; procName: string): int		139
 nim	getHotChunkCount	vancode/interpreter/vm.html#getHotChunkCount,Vm,Chunk	proc getHotChunkCount(vm: Vm; chunk: Chunk): int		142
 nim	newVirtualMachine	vancode/interpreter/vm.html#newVirtualMachine,VMPreferences	proc newVirtualMachine(prefs: VMPreferences): Vm		145
-nim	getCachedOps	vancode/interpreter/vm.html#getCachedOps,Vm,Chunk	proc getCachedOps(vm: Vm; currentChunk: Chunk): CachedOps		372
-nim	getArg1Int	vancode/interpreter/vm.html#getArg1Int.t,CachedOps,int	template getArg1Int(co: CachedOps; i: int): int		385
-nim	getArg1Float	vancode/interpreter/vm.html#getArg1Float.t,CachedOps,int	template getArg1Float(co: CachedOps; i: int): float64		388
-nim	getArg1Str	vancode/interpreter/vm.html#getArg1Str.t,CachedOps,int,Chunk	template getArg1Str(co: CachedOps; i: int; currentChunk: Chunk): string		391
-nim	prewarmScriptOps	vancode/interpreter/vm.html#prewarmScriptOps,Vm,Script	proc prewarmScriptOps(vm: Vm; s: Script)		433
-nim	interpret	vancode/interpreter/vm.html#interpret,Vm,Script,Chunk,openArray[Value],Option[string],Coroutine	proc interpret(vm: Vm; script: Script; startChunk: Chunk;\n          args: openArray[Value] = [];\n          staticString: Option[string] = none(string);\n          globaldata = newJObject(); localData = newJObject();\n          stepping: Coroutine = nil): Value		440
-nim	stepCoroutine	vancode/interpreter/vm.html#stepCoroutine,Vm,Coroutine	proc stepCoroutine(vm: Vm; coro: Coroutine): CoroutineResult		1433
+nim	getGlobalHotChunkCount	vancode/interpreter/vm.html#getGlobalHotChunkCount,Chunk	proc getGlobalHotChunkCount(c: Chunk): int		239
+nim	resetGlobalHotChunkCounts	vancode/interpreter/vm.html#resetGlobalHotChunkCounts	proc resetGlobalHotChunkCounts()		244
+nim	getCachedOps	vancode/interpreter/vm.html#getCachedOps,Vm,Chunk	proc getCachedOps(vm: Vm; currentChunk: Chunk): CachedOps		397
+nim	getArg1Int	vancode/interpreter/vm.html#getArg1Int.t,CachedOps,int	template getArg1Int(co: CachedOps; i: int): int		410
+nim	getArg1Float	vancode/interpreter/vm.html#getArg1Float.t,CachedOps,int	template getArg1Float(co: CachedOps; i: int): float64		413
+nim	getArg1Str	vancode/interpreter/vm.html#getArg1Str.t,CachedOps,int,Chunk	template getArg1Str(co: CachedOps; i: int; currentChunk: Chunk): string		416
+nim	prewarmScriptOps	vancode/interpreter/vm.html#prewarmScriptOps,Vm,Script	proc prewarmScriptOps(vm: Vm; s: Script)		458
+nim	interpret	vancode/interpreter/vm.html#interpret,Vm,Script,Chunk,openArray[Value],Option[string],Coroutine	proc interpret(vm: Vm; script: Script; startChunk: Chunk;\n          args: openArray[Value] = [];\n          staticString: Option[string] = none(string);\n          globaldata = newJObject(); localData = newJObject();\n          stepping: Coroutine = nil): Value		465
+nim	stepCoroutine	vancode/interpreter/vm.html#stepCoroutine,Vm,Coroutine	proc stepCoroutine(vm: Vm; coro: Coroutine): CoroutineResult		1465

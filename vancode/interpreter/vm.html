@@ -130,6 +130,10 @@
   <li><a class="reference" href="#getCachedOps%2CVm%2CChunk" title="getCachedOps(vm: Vm; currentChunk: Chunk): CachedOps">getCachedOps(vm: Vm; currentChunk: Chunk): CachedOps</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">getGlobalHotChunkCount
+  <li><a class="reference" href="#getGlobalHotChunkCount%2CChunk" title="getGlobalHotChunkCount(c: Chunk): int">getGlobalHotChunkCount(c: Chunk): int</a></li>
+
+</ul>
 <ul class="simple nested-toc-section">getHotChunkCount
   <li><a class="reference" href="#getHotChunkCount%2CVm%2CChunk" title="getHotChunkCount(vm: Vm; chunk: Chunk): int">getHotChunkCount(vm: Vm; chunk: Chunk): int</a></li>
 
@@ -160,6 +164,10 @@
 </ul>
 <ul class="simple nested-toc-section">prewarmScriptOps
   <li><a class="reference" href="#prewarmScriptOps%2CVm%2CScript" title="prewarmScriptOps(vm: Vm; s: Script)">prewarmScriptOps(vm: Vm; s: Script)</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">resetGlobalHotChunkCounts
+  <li><a class="reference" href="#resetGlobalHotChunkCounts" title="resetGlobalHotChunkCounts()">resetGlobalHotChunkCounts()</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">stepCoroutine
@@ -351,6 +359,18 @@
 </div>
 
 </div>
+<div id="getGlobalHotChunkCount-procs-all">
+  <div id="getGlobalHotChunkCount,Chunk">
+  <dt><pre><span class="Keyword">proc</span> <a href="#getGlobalHotChunkCount%2CChunk"><span class="Identifier">getGlobalHotChunkCount</span></a><span class="Other">(</span><span class="Identifier">c</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    How many times the entry behind <tt class="docutils literal"><span class="pre"><span class="Identifier">c</span></span></tt> has run in this process.
+    
+  </dd>
+</div>
+
+</div>
 <div id="getHotChunkCount-procs-all">
   <div id="getHotChunkCount,Vm,Chunk">
   <dt><pre><span class="Keyword">proc</span> <a href="#getHotChunkCount%2CVm%2CChunk"><span class="Identifier">getHotChunkCount</span></a><span class="Other">(</span><span class="Identifier">vm</span><span class="Other">:</span> <a href="#Vm"><span class="Identifier">Vm</span></a><span class="Other">;</span> <span class="Identifier">chunk</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span>
@@ -426,6 +446,17 @@
 </div>
 
 </div>
+<div id="resetGlobalHotChunkCounts-procs-all">
+  <div id="resetGlobalHotChunkCounts">
+  <dt><pre><span class="Keyword">proc</span> <a href="#resetGlobalHotChunkCounts"><span class="Identifier">resetGlobalHotChunkCounts</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    Clear the process-wide run counts (test isolation).
+    
+  </dd>
+</div>
+
+</div>
 <div id="stepCoroutine-procs-all">
   <div id="stepCoroutine,Vm,Coroutine">
   <dt><pre><span class="Keyword">proc</span> <a href="#stepCoroutine%2CVm%2CCoroutine"><span class="Identifier">stepCoroutine</span></a><span class="Other">(</span><span class="Identifier">vm</span><span class="Other">:</span> <a href="#Vm"><span class="Identifier">Vm</span></a><span class="Other">;</span> <span class="Identifier">coro</span><span class="Other">:</span> <a href="#Coroutine"><span class="Identifier">Coroutine</span></a><span class="Other">)</span><span class="Other">:</span> <a href="#CoroutineResult"><span class="Identifier">CoroutineResult</span></a> {.
@@ -487,7 +518,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-09-12 06:55:18 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-09-13 07:27:44 UTC</small>
       </div>
     </div>
   </div>

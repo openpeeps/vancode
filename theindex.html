@@ -57,7 +57,7 @@
           </ul></dd>
 <dt><a name="%60%3Ddestroy%60" href="#%60%3Ddestroy%60"><span>`=destroy`:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="value: proc `=destroy`(fd: ForeignData)" href="vancode/interpreter/value.html#%3Ddestroy%2CForeignData">value: proc `=destroy`(fd: ForeignData)</a></li>
+          data-doc-search-tag="value: proc `=destroy`(fd: var ForeignData)" href="vancode/interpreter/value.html#%3Ddestroy%2CForeignData">value: proc `=destroy`(fd: var ForeignData)</a></li>
           </ul></dd>
 <dt><a name="%60%5B%5D%3D%60" href="#%60%5B%5D%3D%60"><span>`[]=`:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -767,6 +767,10 @@
 <li><a class="reference external"
           data-doc-search-tag="chunk: proc getFloat(chunk: Chunk; i: int): float64" href="vancode/interpreter/chunk.html#getFloat%2CChunk%2Cint">chunk: proc getFloat(chunk: Chunk; i: int): float64</a></li>
           </ul></dd>
+<dt><a name="getGlobalHotChunkCount" href="#getGlobalHotChunkCount"><span>getGlobalHotChunkCount:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: proc getGlobalHotChunkCount(c: Chunk): int" href="vancode/interpreter/vm.html#getGlobalHotChunkCount%2CChunk">vm: proc getGlobalHotChunkCount(c: Chunk): int</a></li>
+          </ul></dd>
 <dt><a name="getHotChunkCount" href="#getHotChunkCount"><span>getHotChunkCount:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="vm: proc getHotChunkCount(vm: Vm; chunk: Chunk): int" href="vancode/interpreter/vm.html#getHotChunkCount%2CVm%2CChunk">vm: proc getHotChunkCount(vm: Vm; chunk: Chunk): int</a></li>
@@ -1049,6 +1053,10 @@
 <li><a class="reference external"
           data-doc-search-tag="ast: iterator items(node: Node): Node" href="vancode/interpreter/ast.html#items.i%2CNode">ast: iterator items(node: Node): Node</a></li>
           </ul></dd>
+<dt><a name="jitClearRing" href="#jitClearRing"><span>jitClearRing:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="jit_values: proc jitClearRing()" href="vancode/interpreter/jit/jit_values.html#jitClearRing">jit_values: proc jitClearRing()</a></li>
+          </ul></dd>
 <dt><a name="JitHooks" href="#JitHooks"><span>JitHooks:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="value: object JitHooks" href="vancode/interpreter/value.html#JitHooks">value: object JitHooks</a></li>
@@ -1056,6 +1064,10 @@
 <dt><a name="jitPackResult" href="#jitPackResult"><span>jitPackResult:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="jit_values: proc jitPackResult(callResult: Value): int64" href="vancode/interpreter/jit/jit_values.html#jitPackResult%2CValue">jit_values: proc jitPackResult(callResult: Value): int64</a></li>
+          </ul></dd>
+<dt><a name="jitRingOccupancy" href="#jitRingOccupancy"><span>jitRingOccupancy:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="jit_values: proc jitRingOccupancy(): int" href="vancode/interpreter/jit/jit_values.html#jitRingOccupancy">jit_values: proc jitRingOccupancy(): int</a></li>
           </ul></dd>
 <dt><a name="jitRootValue" href="#jitRootValue"><span>jitRootValue:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1455,6 +1467,10 @@
 <li><a class="reference external"
           data-doc-search-tag="ast: proc render(node: Node): string" href="vancode/interpreter/ast.html#render%2CNode">ast: proc render(node: Node): string</a></li>
           </ul></dd>
+<dt><a name="resetGlobalHotChunkCounts" href="#resetGlobalHotChunkCounts"><span>resetGlobalHotChunkCounts:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="vm: proc resetGlobalHotChunkCounts()" href="vancode/interpreter/vm.html#resetGlobalHotChunkCounts">vm: proc resetGlobalHotChunkCounts()</a></li>
+          </ul></dd>
 <dt><a name="resolveFile" href="#resolveFile"><span>resolveFile:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="resolver: proc resolveFile(resolver: var FileResolver; aFile, bFile: string)" href="vancode/interpreter/resolver.html#resolveFile%2CFileResolver%2Cstring%2Cstring">resolver: proc resolveFile(resolver: var FileResolver; aFile, bFile: string)</a></li>
@@ -1823,7 +1839,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-09-12 06:55:18 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-09-13 07:27:44 UTC</small>
       </div>
     </div>
   </div>
