@@ -50,6 +50,23 @@ proc jitTryUnroot*(slot: int64): tuple[v: Value, ok: bool] =
   else:
     result = (nil, false)
 
+proc jitRingOccupancy*(): int =
+  ## TEMP DEBUG (remove before commit): count of non-nil ring slots.
+  for i in 0 ..< jitValueRingSize:
+    if jitValueRing[i] != nil: inc result
+
+proc jitClearRing*() =
+  ## Release every rooted Value. Call at generation boundaries, when no
+  ## native code from this generation can still run: afterwards any stale
+  ## tagged index resolves as invalid (slot epochs are zeroed too).
+  ## The epoch counter stays monotonic across clears.
+  ## NOTE: plain assignment, never `zeroMem`, here: zeroing traced refs
+  ## orphans them without running destructors, leaking every rooted Value.
+  for i in 0 ..< jitValueRingSize:
+    jitValueRing[i] = nil
+  zeroMem(addr jitRingEpoch[0], sizeof(jitRingEpoch))
+  jitValueRingPos = 0
+
 proc jitUnpackArg*(slot: int64): Value =
   ## Bridge argument convention: tagged slots resolve to their `Value`,
   ## untagged raw int64s box as `tyInt`. Total (never raises, never nil).

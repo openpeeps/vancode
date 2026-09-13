@@ -51,6 +51,21 @@ type
     tag*: string
     destructor*: proc (data: pointer) {.nimcall.}
 
+proc `=destroy`*(fd: var ForeignData) =
+  ## Lifespan hook for foreign payloads. NOTE: this must stay textually
+  ## before the `Object`/`Value` definitions below: the generated
+  ## `=destroy` for the containing `Object` case branch binds field
+  ## destruction at the type definition, so a hook declared later is
+  ## silently ignored and every payload leaks once per constructed value.
+  ## A custom hook replaces field-wise destruction entirely, so it must
+  ## release every field itself: the payload via its destructor and the
+  ## tag string by clearing it (otherwise the tag leaks instead).
+  if fd.destructor != nil and fd.data != nil:
+    fd.destructor(fd.data)
+    fd.data = nil
+  fd.tag = ""
+
+type
   ProcRef* = object
     procId*: int
     procScript*: string
@@ -123,10 +138,6 @@ proc toStorage*(v: Value): ValueStorage {.inline.} =
   of tyBool: ValueStorage(typeId: tyBool, boolVal: v.boolVal)
   of tyFloat: ValueStorage(typeId: tyFloat, floatVal: v.floatVal)
   else: ValueStorage(typeId: v.typeId, refVal: v)
-
-proc `=destroy`*(fd: ForeignData) {.nimcall.} =
-  if fd.destructor != nil and fd.data != nil:
-    fd.destructor(fd.data)
 
 proc dumpHook*(s: var string, val: Value) =
   ## OpenParser JSON dumping hook for Values

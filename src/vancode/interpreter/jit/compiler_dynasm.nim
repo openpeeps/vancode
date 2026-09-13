@@ -68,9 +68,13 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
   if nextLabel > 0:
     dasm_growpc(addr d, nextLabel.cuint)
 
-  # Pre-allocate code buffer for self-recursion fast path
+  # Pre-allocate code buffer for self-recursion fast path, reusing the
+  # spare retained by the previous generation's reset when one survived.
   const maxCodeSize = 128 * 1024
-  var preAllocBuf = allocJitCode(maxCodeSize)
+  static: assert maxCodeSize == jitCodeBufReuseSize
+  var preAllocBuf = jitTakeSpareCodeBuf(maxCodeSize)
+  if preAllocBuf == nil:
+    preAllocBuf = allocJitCode(maxCodeSize)
 
   vancode_prologue(addr d)
 
@@ -210,6 +214,9 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
   if not usePreAlloc:
     # Encoded into the overflow buffer; release the unused pre-alloc.
     freeJitCode(preAllocBuf, maxCodeSize)
+    jitTrackCodeBuf(fnPtr, sz.int)
+  else:
+    jitTrackCodeBuf(fnPtr, maxCodeSize)
   dasm_free(addr d)
 
   var maxLocal = theProc.paramCount
@@ -228,11 +235,19 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
     jitProcTable[theProc.procId] = cast[pointer](theProc)
     jitParamCount[theProc.procId] = theProc.paramCount
 
+  # Capture raw pointers, not refs: this closure is stored back into the
+  # proc (`p.jitForeign`) and reachable from the VM, so capturing refs
+  # would close a cycle ARC never collects (`Vm`/`Proc` are `{.acyclic.}`),
+  # leaking the whole VM per generation. Lifetimes still match: the
+  # closure dies with its owning proc, the buffer with `resetJitState`.
+  let theProcPtr = cast[pointer](theProc)
+  let vmPtr = cast[pointer](vm)
   result = proc (args: StackView, argc: int): Value {.closure.} =
-    let localFn = atomicLoadN(addr theProc.jitCodePtr, AtomicAcquire)
+    let tp = cast[Proc](theProcPtr)
+    let localFn = atomicLoadN(addr tp.jitCodePtr, AtomicAcquire)
     if localFn == nil:
       return Value(typeId: tyNil)
-    let localMaxLocal = theProc.jitMaxLocal
+    let localMaxLocal = tp.jitMaxLocal
     var flatLocals = newSeq[int64](max(localMaxLocal, 1))
     for i in 0..<min(argc, localMaxLocal):
       # Native-stack convention: raw int64 for ints/bools, tagged ring
@@ -250,15 +265,17 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
     for i in 0..<min(argc, localMaxLocal):
       if args[i].typeId == tyInt:
         args[i].intVal = flatLocals[i]
-    if isMain and vm.jit.getOutput != nil:
-      # Main chunks report through the host output buffer (the native
-      # Halt returns 0); interpret()-equivalent result comes from there.
-      return vm.jit.getOutput(cast[pointer](vm))
-    if theProc.jitReturnString or theProc.jitReturnRef:
+    if isMain:
+      let vx = cast[Vm](vmPtr)
+      if vx.jit.getOutput != nil:
+        # Main chunks report through the host output buffer (the native
+        # Halt returns 0); interpret()-equivalent result comes from there.
+        return vx.jit.getOutput(vmPtr)
+    if tp.jitReturnString or tp.jitReturnRef:
       # Non-int/bool results travel as tagged ring indices (bridges root
       # them); resolve back to the Value for the interpreted caller.
       result = jitUnrootValue(resultI)
-    elif theProc.jitReturnBool:
+    elif tp.jitReturnBool:
       result = Value(typeId: tyBool, boolVal: resultI != 0)
     else:
       result = initValue(resultI)

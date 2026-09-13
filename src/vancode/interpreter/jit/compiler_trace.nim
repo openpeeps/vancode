@@ -19,7 +19,9 @@ import ./dynasm/wrapper
 import ../[vm, value, chunk]
 
 const DASM_MAXSECTION = 1
-const maxCodeSize = 128 * 1024
+const maxCodeSize = jitCodeBufReuseSize
+  ## Same size class as every other JIT code buffer so `resetJitState`
+  ## can retain any of them as the next pre-allocation spare.
 
 proc hasBinaryRecursiveArith*(cached: CachedOps): bool =
   if cached == nil or cached.opcodes.len < 10: return false
@@ -52,6 +54,7 @@ proc compileRecursiveIterative*(cached: CachedOps): pointer =
   let encodeErr = dasm_encode(addr d, codeBuf)
   if encodeErr != 0: freeJitCode(codeBuf, maxCodeSize); dasm_free(addr d); return nil
   dasm_free(addr d)
+  jitTrackCodeBuf(codeBuf, maxCodeSize)
   result = codeBuf
 
 proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
@@ -250,4 +253,5 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
     return nil
 
   dasm_free(addr d)
+  jitTrackCodeBuf(codeBuf, maxCodeSize)
   result = codeBuf

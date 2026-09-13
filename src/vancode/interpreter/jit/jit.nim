@@ -51,9 +51,14 @@ proc installJit*(vm: Vm) =
     getForeign: nil,
     queueCompile: nil,
     setGlobalsPtr: setJitGlobalsPtr,
+    # No captured refs in these hooks: `compileTrace` goes through the
+    # process-global VM handle (same pattern as the generic bridge's
+    # `setJitVm` fallback). Capturing `vm` here would close a cycle
+    # ARC never collects (`Vm` is `{.acyclic.}`), leaking the whole VM
+    # per generation.
     compileTrace: proc (trace: pointer): pointer =
       let tb = cast[TraceBuffer](trace)
-      result = compileTrace(vm, tb),
+      result = compileTrace(globalVm, tb),
     compileProcHook: proc (vmPtr: pointer, procPtr: pointer): ForeignProc {.nimcall.} =
       compileProc(cast[Vm](vmPtr), cast[Proc](procPtr)),
     compileMainHook: proc (vmPtr: pointer, scriptPtr: pointer,

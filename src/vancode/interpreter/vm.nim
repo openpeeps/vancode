@@ -220,6 +220,31 @@ proc markHotProc(vm: Vm, theProc: Proc) =
         if jitFn != nil:
           theProc.jitForeign = jitFn
 
+var globalHotChunkCounts {.global.}: Table[string, int]
+  ## Process-wide main-chunk run counts, keyed by chunk file path. Per-VM
+  ## `hotCounts` cannot observe watch-mode recompiles: each save builds a
+  ## fresh Chunk (new id) on a fresh VM, so a per-VM counter never passes 1.
+  ## The file path is stable across saves of the same entry.
+
+proc hotChunkKey(c: Chunk): string =
+  if c == nil: return ""
+  if c.file.len > 0: return c.file
+  $c
+
+proc markHotChunkGlobal(c: Chunk) =
+  ## Record one interpreted run of the main chunk `c` in the process table.
+  if c == nil: return
+  globalHotChunkCounts.mgetOrPut(hotChunkKey(c), 0).inc
+
+proc getGlobalHotChunkCount*(c: Chunk): int =
+  ## How many times the entry behind `c` has run in this process.
+  if c == nil: return 0
+  globalHotChunkCounts.getOrDefault(hotChunkKey(c))
+
+proc resetGlobalHotChunkCounts*() =
+  ## Clear the process-wide run counts (test isolation).
+  globalHotChunkCounts.clear()
+
 proc parseChunk(currentChunk: Chunk): CachedOps =
   # Parsing raw bytecode into operations
   var pc = currentChunk.code{0}
@@ -612,10 +637,17 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
 
   when defined(vancodeJitDynasm):
     # Main-chunk JIT: run natively instead of interpreting when the host
-    # enabled it (compileMainHook + getOutput) and the chunk compiles.
-    # Placed after the snippet so host state (globals, output alias) is
-    # initialized; nil = interpret normally.
-    if stepping == nil and vm.jit.compileMainHook != nil:
+    # enabled it (compileMainHook + getOutput), the entry ran hot, and the
+    # chunk compiles. Placed after the snippet so host state (globals,
+    # output alias) is initialized; nil = interpret normally.
+    # The run is counted before the gate so threshold N means native from
+    # the Nth run of the same entry file.
+    if stepping == nil and vm.preferences.enableHotCodeDetection:
+      vm.markHot(startChunk)
+      markHotChunkGlobal(startChunk)
+    if stepping == nil and vm.jit.compileMainHook != nil and
+        vm.preferences.enableHotCodeDetection and
+        getGlobalHotChunkCount(startChunk) >= vm.preferences.hotChunkThreshold:
       let mainFn = vm.jit.compileMainHook(cast[pointer](vm),
         cast[pointer](script), cast[pointer](startChunk))
       if mainFn != nil:

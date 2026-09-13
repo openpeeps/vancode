@@ -21,24 +21,9 @@ import ./dynasm/wrapper
 import ./compiler_bridge
 import ../[vm, value, chunk]
 
-type JitHostMeta* = object
-  ## Per-site metadata baked at JIT-compile time, referenced by int32 id
-  ## smuggled in the call_invoke procId slot. Hosts reset per compile
-  ## (`resetJitHostMeta`); ids never outlive the compile that made them.
-  ints*: seq[int64]
-  strs*: seq[string]
-
-var jitHostMetaTable: seq[JitHostMeta] = @[]
-
-proc registerJitHostMeta*(m: JitHostMeta): int32 =
-  result = jitHostMetaTable.len.int32
-  jitHostMetaTable.add(m)
-
-proc resetJitHostMeta*() =
-  jitHostMetaTable.setLen(0)
-
-proc getJitHostMeta*(id: int32): JitHostMeta =
-  result = jitHostMetaTable[id]
+## Re-exported from `compiler_bridge`, which owns the table so the
+## shared `resetJitState` can clear it without an import cycle.
+export JitHostMeta, registerJitHostMeta, resetJitHostMeta, getJitHostMeta
 
 injectExtendedModule() # extra code injected via voodoo
 

@@ -24,4 +24,12 @@ proc compileMainHookImpl*(vm: Vm, script: Script, main: Chunk): ForeignProc =
   let fake = Proc(name: "$main", kind: pkNative, chunk: main,
     paramCount: 0, hasResult: true, jitReturnString: true)
   fake.procId = -1
+  # Lifetime anchor: the compiled closure captures `fake` as a raw pointer
+  # (capturing the ref would be harmless here, but every other JIT closure
+  # uses raw captures to avoid ARC-untraced cycles, so this one does too).
+  # `fake` is owned by no table (procId -1 skips them) and its only other
+  # owner is this frame, which returns before the caller runs the closure;
+  # without an anchor the pointer would dangle. `Script.mainProc` exists
+  # for exactly this and outlives the interpret() call using the closure.
+  script.mainProc = fake
   compiler_dynasm.compileProc(vm, fake, isMain = true)

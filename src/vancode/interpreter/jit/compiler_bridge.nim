@@ -13,6 +13,7 @@
 ## DynASM-generated code to interact with the VM (globals, callbacks, etc.).
 import std/[tables, sysatomics, critbits, hashes]
 import ./dynasm/wrapper
+import ./jit_mem
 import ./jit_values
 export jit_values
 import ../[vm, value, chunk]
@@ -95,6 +96,26 @@ proc registerJitHostBridge*(name: string, fn: pointer) =
 
 proc findJitHostBridge*(name: string): pointer =
   result = jitHostBridges.getOrDefault(name, nil)
+
+type JitHostMeta* = object
+  ## Per-site metadata baked at JIT-compile time, referenced by int32 id
+  ## smuggled in the call_invoke procId slot. Ids never outlive the
+  ## compile that made them: `resetJitState` clears the table at every
+  ## generation boundary.
+  ints*: seq[int64]
+  strs*: seq[string]
+
+var jitHostMetaTable: seq[JitHostMeta] = @[]
+
+proc registerJitHostMeta*(m: JitHostMeta): int32 =
+  result = jitHostMetaTable.len.int32
+  jitHostMetaTable.add(m)
+
+proc resetJitHostMeta*() =
+  jitHostMetaTable.setLen(0)
+
+proc getJitHostMeta*(id: int32): JitHostMeta =
+  result = jitHostMetaTable[id]
 
 var jitFloatConsts = initTable[float64, pointer]()
 
@@ -215,10 +236,80 @@ proc resetJitTables*() =
   ## lookups). ProcIds are per-script, so hosts must call this when starting
   ## a fresh compile in a long-lived process (embedders, test suites);
   ## otherwise a new script reuses another script's compiled code.
+  ## Prefer `resetJitState`: tables alone orphan the native code buffers.
   zeroMem(addr jitFnTable[0], sizeof(jitFnTable))
   zeroMem(addr jitProcTable[0], sizeof(jitProcTable))
   zeroMem(addr jitParamCount[0], sizeof(jitParamCount))
   zeroMem(addr jitProcCache[0], sizeof(jitProcCache))
+
+const jitCodeBufReuseSize* = 128 * 1024
+  ## Size class shared by every JIT code buffer, so one retained spare
+  ## always fits the next pre-allocation.
+
+var jitLiveCodeBufs: seq[tuple[p: pointer, size: int]] = @[]
+var jitSpareCodeBuf: pointer = nil
+
+proc jitTrackCodeBuf*(p: pointer, size: int) =
+  ## Register a live native code buffer of the current generation.
+  ## Compilers call this exactly once per buffer they hand out; buffers
+  ## freed inline on compile failure are never tracked.
+  if p == nil: return
+  for (q, _) in jitLiveCodeBufs:
+    if q == p: return
+  jitLiveCodeBufs.add((p, size))
+
+proc jitTakeSpareCodeBuf*(size: int): pointer =
+  ## Take the retained spare buffer when it fits, else nil (caller mmaps).
+  if jitSpareCodeBuf != nil and size <= jitCodeBufReuseSize:
+    result = jitSpareCodeBuf
+    jitSpareCodeBuf = nil
+
+proc jitDebugCounts*(meta, strs, floats, live: var int) =
+  ## TEMP DEBUG (remove before commit): census of per-generation tables.
+  meta = jitHostMetaTable.len
+  strs = jitStrConsts.len
+  floats = jitFloatConsts.len
+  live = jitLiveCodeBufs.len
+
+proc resetJitState*() =
+  ## Generation boundary for long-lived hosts (watch mode, embedders,
+  ## test suites): call before compiling a fresh script, never while
+  ## native code from this generation can still run.
+  ## Frees every tracked code buffer but retains one 128KB spare, clears
+  ## the procId tables, immortal constant caches (with their shared-heap
+  ## memory), the root ring, and bridge scratch state.
+  ## Detector state (hot counts, proc call counts) intentionally survives
+  ## so the next generation keeps climbing toward its thresholds.
+  var keptSpare = false
+  for (p, size) in jitLiveCodeBufs:
+    if not keptSpare and size == jitCodeBufReuseSize:
+      if jitSpareCodeBuf != nil and jitSpareCodeBuf != p:
+        freeJitCode(jitSpareCodeBuf, jitCodeBufReuseSize)
+      jitSpareCodeBuf = p
+      keptSpare = true
+    else:
+      freeJitCode(p, size)
+  jitLiveCodeBufs.setLen(0)
+  resetJitTables()
+  resetJitHostMeta()
+  for _, p in jitFloatConsts:
+    deallocShared(p)
+  jitFloatConsts.clear()
+  for _, p in jitStrConsts:
+    deallocShared(p)
+  jitStrConsts.clear()
+  jitClearRing()
+  jitCallbackResult = nil
+  # Plain assignment, never `zeroMem`: the scratch buffer holds traced
+  # `Value` refs and zeroing would orphan them without destructors (same
+  # leak class as the ring; see `jitClearRing`). Pointer/int tables above
+  # are untraced, so `zeroMem` stays safe for those.
+  for i in 0 ..< len(jitBridgeTmpBuf):
+    jitBridgeTmpBuf[i] = nil
+  jitGlobalsCount = 0
+  zeroMem(addr jitGlobalsKeys[0], sizeof(jitGlobalsKeys))
+  zeroMem(addr jitGlobalsVals[0], sizeof(jitGlobalsVals))
+  zeroMem(addr jitGlobalsTypes[0], sizeof(jitGlobalsTypes))
 
 proc jitBridgeFastAdd*(listPtr: int64, itemVal: int64): int64 {.cdecl, exportc.} =
   ## JIT bridge: fast path for array.add(int), appends int64 item
