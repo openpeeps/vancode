@@ -55,7 +55,7 @@ type JitForeignFast* = object
 var jitForeignFastTable = initTable[(string, int), JitForeignFast]()
 
 proc registerJitForeignFast*(name: string, desc: JitForeignFast) =
-  ## Hosts (e.g. bro) register per-builtin fast paths at startup, before the
+  ## Hosts (e.g. bowdy) register per-builtin fast paths at startup, before the
   ## first JIT compile. Keyed by (name, arity); arity -1 serves any arity.
   ## Misses fall back to `jitCallProcBridgeFlat` (sound, slower).
   jitForeignFastTable[(name, desc.arity)] = desc
@@ -88,7 +88,7 @@ proc jitFillTmpBuf*(arr: ptr UncheckedArray[int64], argc: int32,
 var jitHostBridges = initTable[string, pointer]()
 
 proc registerJitHostBridge*(name: string, fn: pointer) =
-  ## Hosts (e.g. bro) register named bridge entry points here at startup.
+  ## Hosts (e.g. bowdy) register named bridge entry points here at startup.
   ## Host-injected JIT emit branches call them through the existing
   ## `vancode_pushg`/`vancode_call_invoke` DynASM actions; a missing entry
   ## must make the host branch reject compilation (fall back to the VM).

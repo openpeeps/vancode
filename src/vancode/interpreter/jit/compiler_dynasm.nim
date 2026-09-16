@@ -21,7 +21,7 @@ import ../[vm, value, chunk]
 const DASM_MAXSECTION = 1
 
 proc jitDynasmSupported*(oc: Opcode): bool =
-  ## Allowlist for the DynASM proc compiler. Hosts (e.g. bro) admit their own
+  ## Allowlist for the DynASM proc compiler. Hosts (e.g. bowdy) admit their own
   ## opcodes via `extendCaseStmt "vmJitDynasmAllowCase"`. Anything rejected
   ## here falls back to the interpreter — never a compile error.
   extendableCase "vmJitDynasmAllowCase":
@@ -172,7 +172,7 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
                 tp = s2.procs[targetProcId]; break
           if tp != nil:
             nArgs = tp.paramCount
-          # Host-registered fast path (e.g. bro builtins): same invoke
+          # Host-registered fast path (e.g. bowdy builtins): same invoke
           # sequence, alternate bridge. Misses keep the generic bridge.
           var bridgeFn = cast[pointer](jitCallProcBridgeFlat)
           if tp != nil:
