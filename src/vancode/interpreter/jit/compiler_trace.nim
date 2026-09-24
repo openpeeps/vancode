@@ -213,7 +213,7 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
           if trace.selfParamCount > 0:
             emitCallArgs(addr d, trace.selfParamCount)
             vancode_call_self(addr d, trace.selfParamCount.cint, selfAddr)
-            vancode_call_finish(addr d, (2 * trace.selfParamCount * 8).cint)
+            vancode_call_finish(addr d, jitCallDropBytes(trace.selfParamCount).cint)
           else:
             vancode_call_self(addr d, 0, selfAddr)
             vancode_call_finish(addr d, 0)

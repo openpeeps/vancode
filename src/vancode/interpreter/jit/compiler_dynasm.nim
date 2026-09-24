@@ -147,12 +147,12 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
           if preAllocBuf != nil and nArgs > 0:
             emitCallArgs(addr d, nArgs)
             vancode_call_self(addr d, nArgs.cint, preAllocBuf)
-            vancode_call_finish(addr d, (2 * nArgs * 8).cint)
+            vancode_call_finish(addr d, jitCallDropBytes(nArgs).cint)
           elif nArgs > 0:
             emitCallArgs(addr d, nArgs)
             vancode_call_invoke(addr d, nArgs.cint, targetProcId.cint,
               cast[pointer](jitCallProcBridgeFlat))
-            vancode_call_finish(addr d, (2 * nArgs * 8).cint)
+            vancode_call_finish(addr d, jitCallDropBytes(nArgs).cint)
           else:
             vancode_call_alloc(addr d, 0)
             vancode_call_invoke(addr d, 0, targetProcId.cint,
@@ -181,7 +181,7 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
           if nArgs > 0:
             emitCallArgs(addr d, nArgs)
             vancode_call_invoke(addr d, nArgs.cint, targetProcId.cint, bridgeFn)
-            vancode_call_finish(addr d, (2 * nArgs * 8).cint)
+            vancode_call_finish(addr d, jitCallDropBytes(nArgs).cint)
           else:
             vancode_call_alloc(addr d, 0)
             vancode_call_invoke(addr d, 0, targetProcId.cint, bridgeFn)

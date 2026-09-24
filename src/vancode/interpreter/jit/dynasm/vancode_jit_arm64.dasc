@@ -22,6 +22,7 @@ void vancode_load_param(dasm_State** Dst, int slot) {
 void vancode_push_i(dasm_State** Dst, int value) {
   | movz x9, #(value & 0xFFFF)
   | movk x9, #((value >> 16) & 0xFFFF), lsl #16
+  | sxtw x9, w9
   | str x9, [sp, #-16]!
 }
 
@@ -126,7 +127,8 @@ void vancode_inv_b(dasm_State** Dst) {
 }
 
 void vancode_discard(dasm_State** Dst, int n) {
-  | add sp, sp, #(n*16)
+  | mov x9, #(n*16)
+  | add sp, sp, x9
 }
 
 void vancode_jump_fwd(dasm_State** Dst, int label) {
@@ -294,8 +296,17 @@ void vancode_bridge_4(dasm_State** Dst, unsigned long long fn) {
 }
 
 void vancode_call_alloc(dasm_State** Dst, int nArgs) {
+  // Reserve a packed flatArgs array of nArgs int64s below the operand
+  // stack. Operands live in 16-byte slots (str [sp,#-16]!) while the
+  // array is 8-byte packed for the bridge ABI, so the Nim side copies
+  // with src = allocSize + (n-1-i)*16, dst = i*8. Round the reservation
+  // up to 16 bytes: Apple Silicon faults (SIGBUS) on misaligned sp at
+  // blr, which the old nArgs*8 reservation caused for odd arities.
   | mov x9, #nArgs
   | lsl x9, x9, #3
+  | add x9, x9, #15
+  | lsr x9, x9, #4
+  | lsl x9, x9, #4
   | sub sp, sp, x9
 }
 
@@ -324,7 +335,12 @@ void vancode_call_invoke(dasm_State** Dst, int nArgs, int procId,
 }
 
 void vancode_call_finish(dasm_State** Dst, int dropBytes) {
-  | add sp, sp, #dropBytes
+  // Drop the flatArgs array plus the stale 16-byte operand slots above
+  // it (dropBytes = allocSize + nArgs*16, passed from the Nim side) and
+  // push the bridge result. Via register to avoid the 12-bit limit on
+  // add-immediates for large arities.
+  | mov x9, #dropBytes
+  | add sp, sp, x9
   | str x0, [sp, #-16]!
 }
 

@@ -18,6 +18,26 @@ import ./jit_values
 export jit_values
 import ../[vm, value, chunk]
 
+const jitArm64* = defined(arm64) or defined(aarch64)
+  ## True when the JIT host is ARM64. The ARM64 operand stack uses 16-byte
+  ## slots while flatArgs arrays stay 8-byte packed (bridge ABI).
+
+proc jitCallAllocSize*(nArgs: int): int =
+  ## Bytes `call_alloc` reserves for the flatArgs array: nArgs*8 on x64,
+  ## rounded up to 16 on ARM64 (misaligned sp faults at blr on Apple Silicon).
+  when jitArm64:
+    ((nArgs * 8 + 15) div 16) * 16
+  else:
+    nArgs * 8
+
+proc jitCallDropBytes*(nArgs: int): int =
+  ## Bytes `call_finish` drops after the bridge returns: array plus the
+  ## stale operand slots above it (8 bytes each on x64, 16 on ARM64).
+  when jitArm64:
+    jitCallAllocSize(nArgs) + nArgs * 16
+  else:
+    2 * nArgs * 8
+
 proc emitCallArgs*(d: ptr ptr dasm_State, nArgs: int) =
   ## Move the top `nArgs` native-stack operands down into a reserved
   ## flatArgs array in interpreter order (deepest first, matching
@@ -25,10 +45,21 @@ proc emitCallArgs*(d: ptr ptr dasm_State, nArgs: int) =
   ## depth `i` from the bottom moves to `[rsp+i*8]`. Unrolled (no labels,
   ## so any arity is safe). On return rsp points at the array base; the
   ## stale operand slots above are dropped by `call_finish` (pass
-  ## `2*nArgs*8`).
+  ## `jitCallDropBytes(nArgs)`).
+  ##
+  ## ARM64 note: the native operand stack uses 16-byte slots
+  ## (`str x9,[sp,#-16]!`) while the flatArgs array stays 8-byte packed
+  ## for the bridge ABI, and `call_alloc` rounds its reservation up to 16
+  ## (Apple Silicon SIGBUS on misaligned sp at blr). Source offsets must
+  ## therefore use the 16-byte stride: src = allocSize + (n-1-i)*16.
   vancode_call_alloc(d, nArgs.cint)
-  for i in 0 ..< nArgs:
-    vancode_call_move_one(d, (2 * nArgs * 8 - (i + 1) * 8).cint, (i * 8).cint)
+  when defined(arm64) or defined(aarch64):
+    let alloc = jitCallAllocSize(nArgs)
+    for i in 0 ..< nArgs:
+      vancode_call_move_one(d, (alloc + (nArgs - 1 - i) * 16).cint, (i * 8).cint)
+  else:
+    for i in 0 ..< nArgs:
+      vancode_call_move_one(d, (2 * nArgs * 8 - (i + 1) * 8).cint, (i * 8).cint)
 
 var jitFnTable*: array[65536, pointer]
 var jitProcTable*: array[65536, pointer]

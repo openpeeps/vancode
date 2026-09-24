@@ -86,7 +86,7 @@ proc emitHostCallValue*(d: ptr ptr dasm_State, nArgs: int,
   if fn == nil: return false
   emitCallArgs(d, nArgs)
   vancode_call_invoke(d, nArgs.cint, metaId, fn)
-  vancode_call_finish(d, (2 * nArgs * 8).cint)
+  vancode_call_finish(d, jitCallDropBytes(nArgs).cint)
   true
 
 proc emitHostCallVoid*(d: ptr ptr dasm_State, nArgs: int,
@@ -97,6 +97,6 @@ proc emitHostCallVoid*(d: ptr ptr dasm_State, nArgs: int,
   if fn == nil: return false
   emitCallArgs(d, nArgs)
   vancode_call_invoke(d, nArgs.cint, metaId, fn)
-  vancode_call_finish(d, (2 * nArgs * 8).cint)
+  vancode_call_finish(d, jitCallDropBytes(nArgs).cint)
   vancode_discard(d, 1)
   true
