@@ -65,8 +65,7 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
         labelForTarget[target] = nextLabel
         inc nextLabel
 
-  if nextLabel > 0:
-    dasm_growpc(addr d, nextLabel.cuint)
+  dasm_growpc(addr d, max(nextLabel, 1).cuint)
 
   # Pre-allocate code buffer for self-recursion fast path, reusing the
   # spare retained by the previous generation's reset when one survived.
