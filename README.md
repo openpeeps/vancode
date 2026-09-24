@@ -1,5 +1,4 @@
 <p align="center">
-  <img src="https://github.com/openpeeps/vancode/blob/main/.github/vancode.png" width="200px"><br>
   A flexible AST, Codegen and VM + JIT framework library<br>
   for building your own toy language, scripting engines and DSLs.
 </p>
