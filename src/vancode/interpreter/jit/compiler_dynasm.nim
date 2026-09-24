@@ -191,6 +191,9 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
   var sz: csize_t
   let linkErr = dasm_link(addr d, addr sz)
   if linkErr != 0 or sz == 0:
+    when defined(vancodeJitLog):
+      stderr.writeLine "[jit] dynasm link failed: err=", linkErr, " size=", sz,
+        " proc=", theProc.name, " ops=", opCount
     freeJitCode(preAllocBuf, maxCodeSize)
     dasm_free(addr d)
     return nil
@@ -198,6 +201,9 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
   let usePreAlloc = sz <= maxCodeSize
   let buf = if usePreAlloc: preAllocBuf else: allocJitCode(sz.int)
   if buf == nil:
+    when defined(vancodeJitLog):
+      stderr.writeLine "[jit] dynasm allocation failed: proc=", theProc.name,
+        " ops=", opCount
     freeJitCode(preAllocBuf, maxCodeSize)
     dasm_free(addr d)
     return nil
@@ -206,6 +212,9 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
   let encodeErr = dasm_encode(addr d, buf)
   makeJitCodeExecutable(buf)
   if encodeErr != 0:
+    when defined(vancodeJitLog):
+      stderr.writeLine "[jit] dynasm encode failed: err=", encodeErr,
+        " proc=", theProc.name, " ops=", opCount
     if not usePreAlloc: freeJitCode(buf, sz.int)
     else: freeJitCode(preAllocBuf, maxCodeSize)
     dasm_free(addr d)

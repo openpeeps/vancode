@@ -18,3 +18,4 @@ jobs:
     with:
       nim-version: stable
       os: '[{"os":"ubuntu-latest"},{"os":"macos-15"},{"os":"macos-15-intel"}]'
+      test-flags: -d:vancodeJitLog
