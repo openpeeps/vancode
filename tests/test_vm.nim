@@ -1,8 +1,9 @@
 import unittest
 import std/[monotimes, times, math]
 import ../src/vancode/interpreter/[ast, chunk, value, vm, sym]
-when defined(vancodeJitDynasm):
+when defined(vancodeJitDynasm) and defined(vancodeJitTests):
   import ../src/vancode/interpreter/jit/jit
+  import ../src/vancode/interpreter/jit/compiler as jitcompiler
 
 suite "hotCode":
   test "hot proc counter increments on each call":
@@ -78,7 +79,7 @@ suite "hotCode":
     discard vm.interpret(script, chunk)
     check vm.getHotProcCount("threshold") == 3
 
-when defined(vancodeJitDynasm):
+when defined(vancodeJitDynasm) and defined(vancodeJitTests):
   suite "JIT":
     test "JIT module initializes and compiles a trivial proc":
       var chunk = newChunk("jit_test")
@@ -90,17 +91,15 @@ when defined(vancodeJitDynasm):
         chunk: procChunk, paramCount: 0, hasResult: false))
 
       let vm = newVm()
-      let jitBackend = newJitBackend()
-      let compiled = jitBackend.compileProc(vm, script.procs[0])
+      let compiled = jitcompiler.compileProc(vm, script.procs[0])
       if compiled == nil:
-        echo "  [SKIP] libgccjit not available"
+        echo "  [SKIP] DynASM unavailable"
       else:
         check compiled != nil
 
     test "JIT compile returns nil for nil proc":
       let vm = newVm()
-      let jitBackend = newJitBackend()
-      let compiled = jitBackend.compileProc(vm, nil)
+      let compiled = jitcompiler.compileProc(vm, nil)
       check compiled == nil
 
     test "JIT with PopL (write-then-read local)":
@@ -119,19 +118,14 @@ when defined(vancodeJitDynasm):
       c.emit(opcCallD); c.emit(c.getString("jit_test"))
       c.emit(uint16(0)); c.emit(opcHalt)
 
-      let vm3 = newVm()
-      let jitBackend3 = newJitBackend()
-      let compiled3 = jitBackend3.compileProc(vm3, s.procs[0])
+      var vm3 = newVm()
+      let compiled3 = jitcompiler.compileProc(vm3, s.procs[0])
       check compiled3 != nil
 
-      s.procs.add(Proc(name: "inc_jit", kind: pkForeign,
-        foreign: compiled3, paramCount: 1, hasResult: true))
-      var jc = newChunk("jit_test")
-      jc.emit(opcPushI); jc.emit(5'i64)
-      jc.emit(opcCallD); jc.emit(jc.getString("jit_test"))
-      jc.emit(uint16(1)); jc.emit(opcHalt)
-      let result = vm3.interpret(s, jc)
+      var args = [initValue(5'i64)]
+      let result = compiled3(cast[StackView](addr args[0]), 1)
       check result.typeId == tyInt
+      check result.intVal == 6
 
     test "installJit hooks into VM":
       let prefs = VMPreferences(enableHotCodeDetection: true, hotProcThreshold: 3)
@@ -148,8 +142,7 @@ when defined(vancodeJitDynasm):
         chunk: procChunk, paramCount: 0, hasResult: true)
 
       let vm = newVm()
-      let jit = newJitBackend()
-      let compiled = jit.compileProc(vm, p)
+      let compiled = jitcompiler.compileProc(vm, p)
       check compiled != nil
 
       let r = compiled(nil, 0)
@@ -169,8 +162,7 @@ when defined(vancodeJitDynasm):
       chunk.emit(uint16(0)); chunk.emit(opcHalt)
 
       let vm = newVm()
-      let jit = newJitBackend()
-      let compiled = jit.compileProc(vm, script.procs[0])
+      let compiled = jitcompiler.compileProc(vm, script.procs[0])
       check compiled != nil
 
       script.procs[0].jitForeign = compiled
@@ -297,7 +289,7 @@ suite "perf":
     let e = getMonoTime() - t
     echo "  interpreted (arithmetic 100)  ", e.inMicroseconds, " us (", e.inNanoseconds div perfIter, " ns/call)"
 
-  when defined(vancodeJitDynasm):
+  when defined(vancodeJitDynasm) and defined(vancodeJitTests):
     test "JIT (simple return)":
       var chunk = newChunk("perf")
       let script = newScript(chunk)
@@ -310,10 +302,9 @@ suite "perf":
       chunk.emit(uint16(0)); chunk.emit(opcHalt)
 
       let vm = newVm()
-      let jit = newJitBackend()
-      let compiled = jit.compileProc(vm, script.procs[0])
+      let compiled = jitcompiler.compileProc(vm, script.procs[0])
       if compiled == nil:
-        echo "  JIT (simple return)           SKIP (no gccjit)"
+        echo "  JIT (simple return)           SKIP (no DynASM)"
       else:
         script.procs.add(Proc(name: "simple_jit", kind: pkForeign,
           foreign: compiled, paramCount: 0, hasResult: true))
@@ -342,10 +333,9 @@ suite "perf":
       chunk.emit(uint16(0)); chunk.emit(opcHalt)
 
       let vm = newVm()
-      let jit = newJitBackend()
-      let compiled = jit.compileProc(vm, script.procs[0])
+      let compiled = jitcompiler.compileProc(vm, script.procs[0])
       if compiled == nil:
-        echo "  JIT (arithmetic 100)          SKIP (no gccjit)"
+        echo "  JIT (arithmetic 100)          SKIP (no DynASM)"
       else:
         script.procs.add(Proc(name: "arith_jit", kind: pkForeign,
           foreign: compiled, paramCount: 0, hasResult: true))

@@ -203,7 +203,9 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
     dasm_free(addr d)
     return nil
 
+  makeJitCodeWritable(buf)
   let encodeErr = dasm_encode(addr d, buf)
+  makeJitCodeExecutable(buf)
   if encodeErr != 0:
     if not usePreAlloc: freeJitCode(buf, sz.int)
     else: freeJitCode(preAllocBuf, maxCodeSize)

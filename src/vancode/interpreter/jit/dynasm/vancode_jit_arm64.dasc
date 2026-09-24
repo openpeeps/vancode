@@ -1,0 +1,340 @@
+|.arch arm64
+
+|.section code
+
+|.actionlist vancode_actions
+
+|.globals lbl_
+
+void vancode_prologue(dasm_State** Dst) {
+  | stp x29, x30, [sp, #-48]!
+  | mov x29, sp
+  | str x19, [sp, #16]
+  | str x20, [sp, #24]
+  | mov x19, x0
+}
+
+void vancode_load_param(dasm_State** Dst, int slot) {
+  | ldr x9, [x19, #(slot*8)]
+  | str x9, [sp, #-16]!
+}
+
+void vancode_push_i(dasm_State** Dst, int value) {
+  | movz x9, #value
+  | movk x9, #value, lsl #16
+  | str x9, [sp, #-16]!
+}
+
+void vancode_push_true(dasm_State** Dst) {
+  | mov x9, #1
+  | str x9, [sp, #-16]!
+}
+
+void vancode_push_false(dasm_State** Dst) {
+  | str xzr, [sp, #-16]!
+}
+
+void vancode_push_nil(dasm_State** Dst) {
+  | str xzr, [sp, #-16]!
+}
+
+void vancode_push_l(dasm_State** Dst, int slot) {
+  | ldr x9, [x19, #(slot*8)]
+  | str x9, [sp, #-16]!
+}
+
+void vancode_pop_l(dasm_State** Dst, int slot) {
+  | ldr x9, [sp], #16
+  | str x9, [x19, #(slot*8)]
+}
+
+void vancode_inc_l(dasm_State** Dst, int slot) {
+  | ldr x9, [x19, #(slot*8)]
+  | add x9, x9, #1
+  | str x9, [x19, #(slot*8)]
+}
+
+void vancode_dec_l(dasm_State** Dst, int slot) {
+  | ldr x9, [x19, #(slot*8)]
+  | sub x9, x9, #1
+  | str x9, [x19, #(slot*8)]
+}
+
+void vancode_add_i(dasm_State** Dst) {
+  | ldr x9, [sp], #16
+  | ldr x10, [sp], #16
+  | add x10, x10, x9
+  | str x10, [sp, #-16]!
+}
+
+void vancode_sub_i(dasm_State** Dst) {
+  | ldr x9, [sp], #16
+  | ldr x10, [sp], #16
+  | sub x10, x10, x9
+  | str x10, [sp, #-16]!
+}
+
+void vancode_mul_i(dasm_State** Dst) {
+  | ldr x9, [sp], #16
+  | ldr x10, [sp], #16
+  | mul x10, x10, x9
+  | str x10, [sp, #-16]!
+}
+
+void vancode_div_i(dasm_State** Dst) {
+  | ldr x9, [sp], #16
+  | ldr x10, [sp], #16
+  | sdiv x10, x10, x9
+  | str x10, [sp, #-16]!
+}
+
+void vancode_neg_i(dasm_State** Dst) {
+  | ldr x9, [sp], #16
+  | neg x9, x9
+  | str x9, [sp, #-16]!
+}
+
+void vancode_eq_i(dasm_State** Dst) {
+  | ldr x9, [sp], #16
+  | ldr x10, [sp], #16
+  | cmp x10, x9
+  | cset w9, eq
+  | str x9, [sp, #-16]!
+}
+
+void vancode_less_i(dasm_State** Dst) {
+  | ldr x9, [sp], #16
+  | ldr x10, [sp], #16
+  | cmp x10, x9
+  | cset w9, lt
+  | str x9, [sp, #-16]!
+}
+
+void vancode_greater_i(dasm_State** Dst) {
+  | ldr x9, [sp], #16
+  | ldr x10, [sp], #16
+  | cmp x10, x9
+  | cset w9, gt
+  | str x9, [sp, #-16]!
+}
+
+void vancode_inv_b(dasm_State** Dst) {
+  | ldr x9, [sp], #16
+  | cmp x9, #0
+  | cset w9, eq
+  | str x9, [sp, #-16]!
+}
+
+void vancode_discard(dasm_State** Dst, int n) {
+  | add sp, sp, #(n*16)
+}
+
+void vancode_jump_fwd(dasm_State** Dst, int label) {
+  | b =>label
+}
+
+void vancode_jump_back(dasm_State** Dst, int label) {
+  | b =>label
+}
+
+void vancode_jump_fwd_f(dasm_State** Dst, int label) {
+  | ldr x9, [sp], #16
+  | cmp x9, #0
+  | beq =>label
+  | str x9, [sp, #-16]!
+}
+
+void vancode_jump_fwd_t(dasm_State** Dst, int label) {
+  | ldr x9, [sp], #16
+  | cmp x9, #0
+  | bne =>label
+  | str x9, [sp, #-16]!
+}
+
+void vancode_define_label(dasm_State** Dst, int label) {
+  |=>label:
+}
+
+void vancode_return_val(dasm_State** Dst) {
+  | ldr x0, [sp], #16
+  | ldp x19, x20, [sp, #16]
+  | ldp x29, x30, [sp], #48
+  | ret
+}
+
+void vancode_return_void(dasm_State** Dst) {
+  | mov x0, #0
+  | ldp x19, x20, [sp, #16]
+  | ldp x29, x30, [sp], #48
+  | ret
+}
+
+void vancode_trace_exit(dasm_State** Dst) {
+  | mov x0, #0
+  | ldp x19, x20, [sp, #16]
+  | ldp x29, x30, [sp], #48
+  | ret
+}
+
+void vancode_fib(dasm_State** Dst) {
+  | ldr x0, [x0]
+  | cmp x0, #0
+  | ble =>1
+  | mov x8, xzr
+  | mov x9, #1
+  | mov x10, x0
+  | sub x10, x10, #1
+  |=>2:
+  | mov x11, x9
+  | add x9, x9, x8
+  | mov x8, x11
+  | sub x10, x10, #1
+  | bne =>2
+  | mov x0, x9
+  | ret
+  |=>1:
+  | ret
+}
+
+void vancode_halt(dasm_State** Dst) {
+  | mov x0, #0
+  | ldp x19, x20, [sp, #16]
+  | ldp x29, x30, [sp], #48
+  | ret
+}
+
+void vancode_pushg(dasm_State** Dst, unsigned long long namePtr,
+                   unsigned long long bridgeFn) {
+  | movz x0, #namePtr
+  | movk x0, #namePtr, lsl #16
+  | movk x0, #namePtr, lsl #32
+  | movk x0, #namePtr, lsl #48
+  | movz x16, #bridgeFn
+  | movk x16, #bridgeFn, lsl #16
+  | movk x16, #bridgeFn, lsl #32
+  | movk x16, #bridgeFn, lsl #48
+  | blr x16
+  | str x0, [sp, #-16]!
+}
+
+void vancode_popg(dasm_State** Dst, unsigned long long namePtr,
+                  unsigned long long bridgeFn) {
+  | ldr x1, [sp], #16
+  | movz x0, #namePtr
+  | movk x0, #namePtr, lsl #16
+  | movk x0, #namePtr, lsl #32
+  | movk x0, #namePtr, lsl #48
+  | mov x2, #2
+  | movz x16, #bridgeFn
+  | movk x16, #bridgeFn, lsl #16
+  | movk x16, #bridgeFn, lsl #32
+  | movk x16, #bridgeFn, lsl #48
+  | blr x16
+}
+
+void vancode_pop_host(dasm_State** Dst, unsigned long long namePtr,
+                      unsigned long long bridgeFn) {
+  | ldr x1, [sp], #16
+  | movz x0, #namePtr
+  | movk x0, #namePtr, lsl #16
+  | movk x0, #namePtr, lsl #32
+  | movk x0, #namePtr, lsl #48
+  | movz x16, #bridgeFn
+  | movk x16, #bridgeFn, lsl #16
+  | movk x16, #bridgeFn, lsl #32
+  | movk x16, #bridgeFn, lsl #48
+  | blr x16
+}
+
+void vancode_bridge_2(dasm_State** Dst, unsigned long long fn) {
+  | ldr x1, [sp], #16
+  | ldr x0, [sp], #16
+  | movz x16, #fn
+  | movk x16, #fn, lsl #16
+  | movk x16, #fn, lsl #32
+  | movk x16, #fn, lsl #48
+  | blr x16
+  | str x0, [sp, #-16]!
+}
+
+void vancode_bridge_3_void(dasm_State** Dst, unsigned long long fn) {
+  | ldr x2, [sp], #16
+  | ldr x1, [sp], #16
+  | ldr x0, [sp], #16
+  | movz x16, #fn
+  | movk x16, #fn, lsl #16
+  | movk x16, #fn, lsl #32
+  | movk x16, #fn, lsl #48
+  | blr x16
+}
+
+void vancode_bridge_3(dasm_State** Dst, unsigned long long fn) {
+  | ldr x2, [sp], #16
+  | ldr x1, [sp], #16
+  | ldr x0, [sp], #16
+  | movz x16, #fn
+  | movk x16, #fn, lsl #16
+  | movk x16, #fn, lsl #32
+  | movk x16, #fn, lsl #48
+  | blr x16
+  | str x0, [sp, #-16]!
+}
+
+void vancode_bridge_4(dasm_State** Dst, unsigned long long fn) {
+  | ldr x3, [sp], #16
+  | ldr x2, [sp], #16
+  | ldr x1, [sp], #16
+  | ldr x0, [sp], #16
+  | movz x16, #fn
+  | movk x16, #fn, lsl #16
+  | movk x16, #fn, lsl #32
+  | movk x16, #fn, lsl #48
+  | blr x16
+  | str x0, [sp, #-16]!
+}
+
+void vancode_call_alloc(dasm_State** Dst, int nArgs) {
+  | mov x9, #nArgs
+  | lsl x9, x9, #3
+  | sub sp, sp, x9
+}
+
+void vancode_call_move_one(dasm_State** Dst, int srcDisp, int dstDisp) {
+  | ldr x9, [sp, #srcDisp]
+  | str x9, [sp, #dstDisp]
+}
+
+void vancode_call_pop_slot(dasm_State** Dst, int slot) {
+  | ldr x9, [sp], #16
+  | str x9, [sp, #(slot*8)]
+}
+
+void vancode_call_invoke(dasm_State** Dst, int nArgs, int procId,
+                         unsigned long long bridgeFn) {
+  | mov x20, sp
+  | mov x2, #nArgs
+  | mov x3, #0
+  | mov x0, #procId
+  | mov x1, x20
+  | movz x16, #bridgeFn
+  | movk x16, #bridgeFn, lsl #16
+  | movk x16, #bridgeFn, lsl #32
+  | movk x16, #bridgeFn, lsl #48
+  | blr x16
+}
+
+void vancode_call_finish(dasm_State** Dst, int dropBytes) {
+  | add sp, sp, #dropBytes
+  | str x0, [sp, #-16]!
+}
+
+void vancode_call_self(dasm_State** Dst, int nArgs,
+                       unsigned long long selfAddr) {
+  | mov x0, sp
+  | mov x1, #nArgs
+  | movz x16, #selfAddr
+  | movk x16, #selfAddr, lsl #16
+  | movk x16, #selfAddr, lsl #32
+  | movk x16, #selfAddr, lsl #48
+  | blr x16
+}

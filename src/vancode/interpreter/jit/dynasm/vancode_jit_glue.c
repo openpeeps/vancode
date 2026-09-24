@@ -22,8 +22,15 @@
 #endif
 
 #include "dasm_proto.h"
+#if defined(__x86_64__)
 #include "dasm_x86.h"
 #include "vancode_jit.c"
+#elif defined(__aarch64__)
+#include "dasm_arm64.h"
+#include "vancode_jit_arm64.c"
+#else
+#error "unsupported DynASM JIT architecture"
+#endif
 
 /* Re-export the action list pointer (the generated vancode_actions[] is
    static within the included file, so we provide a non-static accessor). */

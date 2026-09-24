@@ -13,7 +13,7 @@ import ../[chunk, vm, value]
 import ./compiler_dynasm
 
 proc compileProc*(vm: Vm, theProc: Proc): ForeignProc =
-  if theProc.kind != pkNative or theProc.chunk == nil: return nil
+  if theProc == nil or theProc.kind != pkNative or theProc.chunk == nil: return nil
   compiler_dynasm.compileProc(vm, theProc)
 
 proc compileMainHookImpl*(vm: Vm, script: Script, main: Chunk): ForeignProc =

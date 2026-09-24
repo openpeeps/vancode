@@ -14,17 +14,7 @@ on:
       - .github/workflows
 jobs:
   test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        nim-version:
-          - 'stable'
-    steps:
-      - uses: actions/checkout@v3
-      - uses: jiro4989/setup-nim-action@v1
-        with:
-          nim-version: ${{ matrix.nim-version }}
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: nimble install -Y
-      - run: nim c -r src/${{ github.event.repository.name }}.nim
-      - run: nimble test
+    uses: nimbase/setup-nim-action/.github/workflows/test_clue.yml@main
+    with:
+      nim-version: stable
+      os: '[{"os":"ubuntu-latest"},{"os":"macos-15"},{"os":"macos-15-intel"}]'
