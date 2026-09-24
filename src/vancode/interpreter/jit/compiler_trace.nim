@@ -53,6 +53,7 @@ proc compileRecursiveIterative*(cached: CachedOps): pointer =
   if sz > maxCodeSize: freeJitCode(codeBuf, maxCodeSize); dasm_free(addr d); return nil
   makeJitCodeWritable(codeBuf)
   let encodeErr = dasm_encode(addr d, codeBuf)
+  flushJitCodeCache(codeBuf, maxCodeSize)
   makeJitCodeExecutable(codeBuf)
   if encodeErr != 0: freeJitCode(codeBuf, maxCodeSize); dasm_free(addr d); return nil
   dasm_free(addr d)
@@ -250,6 +251,7 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
 
   makeJitCodeWritable(codeBuf)
   let encodeErr = dasm_encode(addr d, codeBuf)
+  flushJitCodeCache(codeBuf, maxCodeSize)
   makeJitCodeExecutable(codeBuf)
   if encodeErr != 0:
     freeJitCode(codeBuf, maxCodeSize)

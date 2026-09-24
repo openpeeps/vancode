@@ -211,6 +211,7 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
 
   makeJitCodeWritable(buf)
   let encodeErr = dasm_encode(addr d, buf)
+  flushJitCodeCache(buf, if usePreAlloc: maxCodeSize else: sz.int)
   makeJitCodeExecutable(buf)
   if encodeErr != 0:
     when defined(vancodeJitLog):

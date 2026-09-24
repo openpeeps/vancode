@@ -40,6 +40,19 @@ static inline void vc_jit_code_make_executable(void* p) {
 #endif
 }
 
+static inline void vc_jit_code_flush_cache(void* p, size_t size) {
+  // ARM64 has a non-coherent instruction cache: after writing machine
+  // code the CPU may execute stale bytes (e.g. a previous generation's
+  // code in a reused buffer) until the icache is invalidated. Missing
+  // flush shows up as nondeterministic crashes/stale execution on
+  // Apple Silicon while x86_64 (coherent icache) is unaffected.
+#if defined(__aarch64__)
+  __builtin___clear_cache((char*)p, (char*)p + size);
+#else
+  (void)p; (void)size;
+#endif
+}
+
 static inline void vc_free_jit_code(void* p, size_t size) {
   munmap(p, size);
 }

@@ -15,5 +15,6 @@ import std/os
 
 proc allocJitCode*(size: int): pointer {.importc: "vc_alloc_jit_code", header: "vc_jit_mem.h".}
 proc makeJitCodeWritable*(p: pointer) {.importc: "vc_jit_code_make_writable", header: "vc_jit_mem.h".}
+proc flushJitCodeCache*(p: pointer, size: int) {.importc: "vc_jit_code_flush_cache", header: "vc_jit_mem.h".}
 proc makeJitCodeExecutable*(p: pointer) {.importc: "vc_jit_code_make_executable", header: "vc_jit_mem.h".}
 proc freeJitCode*(p: pointer, size: int) {.importc: "vc_free_jit_code", header: "vc_jit_mem.h".}
