@@ -22,7 +22,6 @@ proc dasm_setup*(Dst: ptr ptr dasm_State; actionlist: pointer) {.dynasm, importc
 proc dasm_growpc*(Dst: ptr ptr dasm_State; maxpc: cuint) {.dynasm, importc: "vc_dasm_growpc".}
 proc dasm_link*(Dst: ptr ptr dasm_State; szp: ptr csize_t): cint {.dynasm, importc: "vc_dasm_link".}
 proc dasm_encode*(Dst: ptr ptr dasm_State; buf: pointer): cint {.dynasm, importc: "vc_dasm_encode".}
-proc dasmStatus*(Dst: ptr ptr dasm_State): cint {.dynasm, importc: "vc_dasm_status".}
 
 # Our emit functions also take dasm_State** per Dst_DECL convention
 proc vancode_prologue*(Dst: ptr ptr dasm_State) {.dynasm, importc: "vancode_prologue".}

@@ -65,7 +65,8 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
         labelForTarget[target] = nextLabel
         inc nextLabel
 
-  dasm_growpc(addr d, max(nextLabel, 1).cuint)
+  if nextLabel > 0:
+    dasm_growpc(addr d, nextLabel.cuint)
 
   # Pre-allocate code buffer for self-recursion fast path, reusing the
   # spare retained by the previous generation's reset when one survived.
@@ -76,9 +77,6 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
     preAllocBuf = allocJitCode(maxCodeSize)
 
   vancode_prologue(addr d)
-  when defined(vancodeJitLog):
-    stderr.writeLine "[jit] status after prologue: ", dasmStatus(addr d),
-      " proc=", theProc.name
 
   for i in 0..<theProc.paramCount:
     vancode_load_param(addr d, i.cint)
@@ -191,9 +189,6 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
       else:
         discard
 
-  when defined(vancodeJitLog):
-    stderr.writeLine "[jit] status before link: ", dasmStatus(addr d),
-      " proc=", theProc.name
   var sz: csize_t
   let linkErr = dasm_link(addr d, addr sz)
   if linkErr != 0 or sz == 0:

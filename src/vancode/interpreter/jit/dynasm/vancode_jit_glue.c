@@ -38,11 +38,6 @@ const void* get_vancode_actions(void) {
   return (const void*)vancode_actions;
 }
 
-int vc_dasm_status(dasm_State** Dst) {
-  if (Dst == NULL || *Dst == NULL) return -1;
-  return (*Dst)->status;
-}
-
 /* Helper: set up a dasm_State with our action list.
    Returns 0 on success, non-zero on failure. */
 int vancode_setup(dasm_State** d, void** globals, unsigned int maxgl) {
