@@ -163,6 +163,10 @@
 <li><a class="reference external"
           data-doc-search-tag="sym: proc canAdd(choice, sym: Sym): bool" href="vancode/interpreter/sym.html#canAdd%2CSym%2CSym">sym: proc canAdd(choice, sym: Sym): bool</a></li>
           </ul></dd>
+<dt><a name="checkTypes" href="#checkTypes"><span>checkTypes:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="codegen: template checkTypes(gen: CodeGen): bool" href="vancode/interpreter/codegen.html#checkTypes.t%2CCodeGen">codegen: template checkTypes(gen: CodeGen): bool</a></li>
+          </ul></dd>
 <dt><a name="Chunk" href="#Chunk"><span>Chunk:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="chunk: type Chunk" href="vancode/interpreter/chunk.html#Chunk">chunk: type Chunk</a></li>
@@ -414,6 +418,10 @@
 <dt><a name="ErrInvalidField" href="#ErrInvalidField"><span>ErrInvalidField:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="errors: const ErrInvalidField" href="vancode/interpreter/errors.html#ErrInvalidField">errors: const ErrInvalidField</a></li>
+          </ul></dd>
+<dt><a name="ErrInvalidReceiver" href="#ErrInvalidReceiver"><span>ErrInvalidReceiver:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="errors: const ErrInvalidReceiver" href="vancode/interpreter/errors.html#ErrInvalidReceiver">errors: const ErrInvalidReceiver</a></li>
           </ul></dd>
 <dt><a name="ErrInvalidSymName" href="#ErrInvalidSymName"><span>ErrInvalidSymName:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1111,6 +1119,10 @@
 <li><a class="reference external"
           data-doc-search-tag="packager: proc loadPackages[C](pkgr: Packager[C])" href="vancode/manager/packager.html#loadPackages%2CPackager%5BC%5D">packager: proc loadPackages[C](pkgr: Packager[C])</a></li>
           </ul></dd>
+<dt><a name="lowerName" href="#lowerName"><span>lowerName:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="codegen: proc lowerName(s: string): string" href="vancode/interpreter/codegen.html#lowerName%2Cstring">codegen: proc lowerName(s: string): string</a></li>
+          </ul></dd>
 <dt><a name="Module" href="#Module"><span>Module:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="sym: type Module" href="vancode/interpreter/sym.html#Module">sym: type Module</a></li>
@@ -1198,10 +1210,14 @@
 <dt><a name="newProc" href="#newProc"><span>newProc:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="codegen: proc newProc(script: Script; name, impl: Node; params: seq[ProcParam]; returnTy: Sym;
-        kind: ProcKind; exported = false; genKind: GenKind = gkToplevel): (Sym,
-    Proc)" href="vancode/interpreter/codegen.html#newProc%2CScript%2CNode%2CNode%2Cseq%5BProcParam%5D%2CSym%2CProcKind%2CGenKind">codegen: proc newProc(script: Script; name, impl: Node; params: seq[ProcParam]; returnTy: Sym;
-        kind: ProcKind; exported = false; genKind: GenKind = gkToplevel): (Sym,
-    Proc)</a></li>
+        kind: ProcKind; exported = false; genKind: GenKind = gkToplevel;
+        caseSensitive = false): (Sym, Proc)" href="vancode/interpreter/codegen.html#newProc%2CScript%2CNode%2CNode%2Cseq%5BProcParam%5D%2CSym%2CProcKind%2CGenKind">codegen: proc newProc(script: Script; name, impl: Node; params: seq[ProcParam]; returnTy: Sym;
+        kind: ProcKind; exported = false; genKind: GenKind = gkToplevel;
+        caseSensitive = false): (Sym, Proc)</a></li>
+          </ul></dd>
+<dt><a name="newRegexLit" href="#newRegexLit"><span>newRegexLit:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="ast: proc newRegexLit(val: string): Node" href="vancode/interpreter/ast.html#newRegexLit%2Cstring">ast: proc newRegexLit(val: string): Node</a></li>
           </ul></dd>
 <dt><a name="newScript" href="#newScript"><span>newScript:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1250,6 +1266,14 @@
 <dt><a name="NodeKind" href="#NodeKind"><span>NodeKind:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="ast: enum NodeKind" href="vancode/interpreter/ast.html#NodeKind">ast: enum NodeKind</a></li>
+          </ul></dd>
+<dt><a name="normLower" href="#normLower"><span>normLower:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="codegen: template normLower(gen: CodeGen; s: string): string" href="vancode/interpreter/codegen.html#normLower.t%2CCodeGen%2Cstring">codegen: template normLower(gen: CodeGen; s: string): string</a></li>
+          </ul></dd>
+<dt><a name="normName" href="#normName"><span>normName:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="codegen: template normName(gen: CodeGen; s: string): string" href="vancode/interpreter/codegen.html#normName.t%2CCodeGen%2Cstring">codegen: template normName(gen: CodeGen; s: string): string</a></li>
           </ul></dd>
 <dt><a name="objConstr" href="#objConstr"><span>objConstr:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1506,6 +1530,10 @@
 <dt><a name="Script" href="#Script"><span>Script:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="chunk: type Script" href="vancode/interpreter/chunk.html#Script">chunk: type Script</a></li>
+          </ul></dd>
+<dt><a name="sensitive" href="#sensitive"><span>sensitive:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="codegen: template sensitive(gen: CodeGen): bool" href="vancode/interpreter/codegen.html#sensitive.t%2CCodeGen">codegen: template sensitive(gen: CodeGen): bool</a></li>
           </ul></dd>
 <dt><a name="setDependencies" href="#setDependencies"><span>setDependencies:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1839,7 +1867,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-09-24 18:31:58 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-09-27 12:10:13 UTC</small>
       </div>
     </div>
   </div>

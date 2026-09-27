@@ -76,7 +76,17 @@
   pkgr*: Packager[PackageConfig]
   parserCallback*: ParserCallback ## a callback used to parse custom nodes
   allowExprResult*: bool
-  policy*: CompilationPolicy ## Compilation policy controlling which features are allowed">CodeGen</a></li>
+  policy*: CompilationPolicy ## Compilation policy controlling which features are allowed
+  when defined(vancodeGradualTypes):
+    strictTypes*: bool = true ## Gradual typing switch (mixed builds only). When false, the
+                              ## type checker degrades: unknown names resolve to `any` and
+                              ## type mismatches coerce instead of raising. Typed-only builds
+                              ## (flag absent) always check.
+    caseSensitive*: bool = false ## Case-sensitive symbol names (mixed builds only). JS-like
+                                 ## frontends set this so `maxValue` survives validation with
+                                 ## its spelling (otherwise names mangle to first-letter case
+                                 ## and the emitted code breaks). Typed-only builds keep today's
+                                 ## case-insensitive behavior.">CodeGen</a></li>
 <li><a class="reference" href="#CodeGenCache" title="CodeGenCache = object
   cachedAst*: Table[string, Ast]">CodeGenCache</a></li>
 <li><a class="reference" href="#ModuleLibrary" title="ModuleLibrary = proc (script: Script; systemModule: Module): Module">ModuleLibrary</a></li>
@@ -322,12 +332,16 @@
                    policy: CompilationPolicy = CompilationPolicy()): CodeGen</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">lowerName
+  <li><a class="reference" href="#lowerName%2Cstring" title="lowerName(s: string): string">lowerName(s: string): string</a></li>
+
+</ul>
 <ul class="simple nested-toc-section">newProc
   <li><a class="reference" href="#newProc%2CScript%2CNode%2CNode%2Cseq%5BProcParam%5D%2CSym%2CProcKind%2CGenKind" title="newProc(script: Script; name, impl: Node; params: seq[ProcParam]; returnTy: Sym;
-        kind: ProcKind; exported = false; genKind: GenKind = gkToplevel): (Sym,
-    Proc)">newProc(script: Script; name, impl: Node; params: seq[ProcParam]; returnTy: Sym;
-        kind: ProcKind; exported = false; genKind: GenKind = gkToplevel): (Sym,
-    Proc)</a></li>
+        kind: ProcKind; exported = false; genKind: GenKind = gkToplevel;
+        caseSensitive = false): (Sym, Proc)">newProc(script: Script; name, impl: Node; params: seq[ProcParam]; returnTy: Sym;
+        kind: ProcKind; exported = false; genKind: GenKind = gkToplevel;
+        caseSensitive = false): (Sym, Proc)</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">objConstr
@@ -384,7 +398,23 @@
   <details open>
     <summary><a class="reference reference-toplevel" href="#18" id="68">Templates</a></summary>
     <ul class="simple simple-toc-section">
-      <ul class="simple nested-toc-section">withBlock
+      <ul class="simple nested-toc-section">checkTypes
+  <li><a class="reference" href="#checkTypes.t%2CCodeGen" title="checkTypes(gen: CodeGen): bool">checkTypes(gen: CodeGen): bool</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">normLower
+  <li><a class="reference" href="#normLower.t%2CCodeGen%2Cstring" title="normLower(gen: CodeGen; s: string): string">normLower(gen: CodeGen; s: string): string</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">normName
+  <li><a class="reference" href="#normName.t%2CCodeGen%2Cstring" title="normName(gen: CodeGen; s: string): string">normName(gen: CodeGen; s: string): string</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">sensitive
+  <li><a class="reference" href="#sensitive.t%2CCodeGen" title="sensitive(gen: CodeGen): bool">sensitive(gen: CodeGen): bool</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">withBlock
   <li><a class="reference" href="#withBlock.t%2CNode%2Cbool%2Cuntyped" title="withBlock(node: Node; isStmt: bool = false; body: untyped)">withBlock(node: Node; isStmt: bool = false; body: untyped)</a></li>
 
 </ul>
@@ -426,7 +456,17 @@
   <span class="Identifier">pkgr</span><span class="Operator">*</span><span class="Other">:</span> <a href="../manager/packager.html#Packager"><span class="Identifier">Packager</span></a><span class="Other">[</span><a href="../manager/configurator.html#PackageConfig"><span class="Identifier">PackageConfig</span></a><span class="Other">]</span>
   <span class="Identifier">parserCallback</span><span class="Operator">*</span><span class="Other">:</span> <a href="#ParserCallback"><span class="Identifier">ParserCallback</span></a> <span class="Comment">## a callback used to parse custom nodes</span>
   <span class="Identifier">allowExprResult</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>
-  <span class="Identifier">policy</span><span class="Operator">*</span><span class="Other">:</span> <a href="policy.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a> <span class="Comment">## Compilation policy controlling which features are allowed</span></pre></dt>
+  <span class="Identifier">policy</span><span class="Operator">*</span><span class="Other">:</span> <a href="policy.html#CompilationPolicy"><span class="Identifier">CompilationPolicy</span></a> <span class="Comment">## Compilation policy controlling which features are allowed</span>
+  <span class="Keyword">when</span> <span class="Identifier">defined</span><span class="Other">(</span><span class="Identifier">vancodeGradualTypes</span><span class="Other">)</span><span class="Other">:</span>
+    <span class="Identifier">strictTypes</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span> <span class="Other">=</span> <span class="Identifier">true</span> <span class="Comment">## Gradual typing switch (mixed builds only). When false, the</span>
+                              <span class="Comment">## type checker degrades: unknown names resolve to `any` and</span>
+                              <span class="Comment">## type mismatches coerce instead of raising. Typed-only builds</span>
+                              <span class="Comment">## (flag absent) always check.</span>
+    <span class="Identifier">caseSensitive</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span> <span class="Other">=</span> <span class="Identifier">false</span> <span class="Comment">## Case-sensitive symbol names (mixed builds only). JS-like</span>
+                                 <span class="Comment">## frontends set this so `maxValue` survives validation with</span>
+                                 <span class="Comment">## its spelling (otherwise names mangle to first-letter case</span>
+                                 <span class="Comment">## and the emitted code breaks). Typed-only builds keep today's</span>
+                                 <span class="Comment">## case-insensitive behavior.</span></pre></dt>
   <dd>
     
     a code generator for a module or proc.
@@ -603,7 +643,8 @@
   <div id="declareVar,CodeGen,Node,SymKind,Sym">
   <dt><pre><span class="Keyword">proc</span> <a href="#declareVar%2CCodeGen%2CNode%2CSymKind%2CSym"><span class="Identifier">declareVar</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">name</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">kind</span><span class="Other">:</span> <a href="sym.html#SymKind"><span class="Identifier">SymKind</span></a><span class="Other">;</span> <span class="Identifier">ty</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">;</span>
                 <span class="Identifier">isMagic</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">;</span> <span class="Identifier">varExport</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.<span class="Identifier">discardable</span><span class="Other">,</span>
-    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     
@@ -791,7 +832,7 @@
 <div id="genFor-procs-all">
   <div id="genFor,CodeGen,Node">
   <dt><pre><span class="Keyword">proc</span> <a href="#genFor%2CCodeGen%2CNode"><span class="Identifier">genFor</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span>
-    <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+    <span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     
@@ -1094,15 +1135,26 @@
 </div>
 
 </div>
+<div id="lowerName-procs-all">
+  <div id="lowerName,string">
+  <dt><pre><span class="Keyword">proc</span> <a href="#lowerName%2Cstring"><span class="Identifier">lowerName</span></a><span class="Other">(</span><span class="Identifier">s</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span class="Identifier">inline</span><span class="Other">,</span> <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    Canonical first-letter-case symbol form (tim-like languages).
+    
+  </dd>
+</div>
+
+</div>
 <div id="newProc-procs-all">
   <div id="newProc,Script,Node,Node,seq[ProcParam],Sym,ProcKind,GenKind">
   <dt><pre><span class="Keyword">proc</span> <a href="#newProc%2CScript%2CNode%2CNode%2Cseq%5BProcParam%5D%2CSym%2CProcKind%2CGenKind"><span class="Identifier">newProc</span></a><span class="Other">(</span><span class="Identifier">script</span><span class="Other">:</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a><span class="Other">;</span> <span class="Identifier">name</span><span class="Other">,</span> <span class="Identifier">impl</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">params</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="sym.html#ProcParam"><span class="Identifier">ProcParam</span></a><span class="Other">]</span><span class="Other">;</span>
              <span class="Identifier">returnTy</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">;</span> <span class="Identifier">kind</span><span class="Other">:</span> <a href="chunk.html#ProcKind"><span class="Identifier">ProcKind</span></a><span class="Other">;</span> <span class="Identifier">exported</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">;</span>
-             <span class="Identifier">genKind</span><span class="Other">:</span> <span class="Identifier">GenKind</span> <span class="Other">=</span> <span class="Identifier">gkToplevel</span><span class="Other">)</span><span class="Other">:</span> <span class="Other">(</span><a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">,</span> <a href="chunk.html#Proc"><span class="Identifier">Proc</span></a><span class="Other">)</span> {.
+             <span class="Identifier">genKind</span><span class="Other">:</span> <span class="Identifier">GenKind</span> <span class="Other">=</span> <span class="Identifier">gkToplevel</span><span class="Other">;</span> <span class="Identifier">caseSensitive</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">)</span><span class="Other">:</span> <span class="Other">(</span><a href="sym.html#Sym"><span class="Identifier">Sym</span></a><span class="Other">,</span> <a href="chunk.html#Proc"><span class="Identifier">Proc</span></a><span class="Other">)</span> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    Creates a procedure for the given script. Returns its symbol and Proc object. This does not add the procedure to the script!
+    Creates a procedure for the given script. Returns its symbol and Proc object. This does not add the procedure to the script! <tt class="docutils literal"><span class="pre"><span class="Identifier">caseSensitive</span></span></tt> keeps the declared spelling (JS-like frontends); otherwise names mangle to first-letter case as before.
     
   </dd>
 </div>
@@ -1235,7 +1287,51 @@
 <div class="section" id="18">
   <h1><a class="toc-backref" href="#18">Templates</a></h1>
   <dl class="item">
-    <div id="withBlock-templates-all">
+    <div id="checkTypes-templates-all">
+  <div id="checkTypes.t,CodeGen">
+  <dt><pre><span class="Keyword">template</span> <a href="#checkTypes.t%2CCodeGen"><span class="Identifier">checkTypes</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span></pre></dt>
+  <dd>
+    
+    Gradual-typing gate: true when static type errors must raise. In mixed builds (<tt class="docutils literal"><span class="pre"><span class="Operator">-</span><span class="Identifier">d</span><span class="Punctuation">:</span><span class="Identifier">vancodeGradualTypes</span></span></tt>) this reads the per-generator <tt class="docutils literal"><span class="pre"><span class="Identifier">strictTypes</span></span></tt> switch; in typed-only builds the field doesn't exist and this folds to constant <tt class="docutils literal"><span class="pre"><span class="Identifier">true</span></span></tt>, so other languages pay nothing for the untyped path.
+    
+  </dd>
+</div>
+
+</div>
+<div id="normLower-templates-all">
+  <div id="normLower.t,CodeGen,string">
+  <dt><pre><span class="Keyword">template</span> <a href="#normLower.t%2CCodeGen%2Cstring"><span class="Identifier">normLower</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">s</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span></pre></dt>
+  <dd>
+    
+    Fully-lowered variant of <tt class="docutils literal"><span class="pre"><span class="Identifier">normName</span></span></tt> (for forward-declaration keys).
+    
+  </dd>
+</div>
+
+</div>
+<div id="normName-templates-all">
+  <div id="normName.t,CodeGen,string">
+  <dt><pre><span class="Keyword">template</span> <a href="#normName.t%2CCodeGen%2Cstring"><span class="Identifier">normName</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">s</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span></pre></dt>
+  <dd>
+    
+    Canonical symbol-name form: tim-like languages are case-insensitive (first letter kept, rest lowered); case-sensitive frontends (JS) keep the spelling. Folds to today's expression in typed-only builds.
+    
+  </dd>
+</div>
+
+</div>
+<div id="sensitive-templates-all">
+  <div id="sensitive.t,CodeGen">
+  <dt><pre><span class="Keyword">template</span> <a href="#sensitive.t%2CCodeGen"><span class="Identifier">sensitive</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span></pre></dt>
+  <dd>
+    
+    True when symbol names keep their spelling (case-sensitive frontend). Folds to constant <tt class="docutils literal"><span class="pre"><span class="Identifier">false</span></span></tt> in typed-only builds.
+    
+  </dd>
+</div>
+
+</div>
+<div id="withBlock-templates-all">
   <div id="withBlock.t,Node,bool,untyped">
   <dt><pre><span class="Keyword">template</span> <a href="#withBlock.t%2CNode%2Cbool%2Cuntyped"><span class="Identifier">withBlock</span></a><span class="Other">(</span><span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">isStmt</span><span class="Other">:</span> <span class="Identifier">bool</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">;</span> <span class="Identifier">body</span><span class="Other">:</span> <span class="Identifier">untyped</span><span class="Other">)</span></pre></dt>
   <dd>
@@ -1256,7 +1352,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-09-24 18:31:57 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-09-27 12:10:13 UTC</small>
       </div>
     </div>
   </div>

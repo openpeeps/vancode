@@ -77,6 +77,8 @@
     floatVal*: float64       ## The float value
   of nkString:
     stringVal*: string       ## The string value
+  of nkRegex:
+    regexVal*: string        ## The raw regex source (`/pattern/flags`)
   of nkIdent:
     ident*: string           ## The identifier name
   of nkVarTy:
@@ -87,8 +89,8 @@
     children*: seq[Node]     ## Child nodes used to build the AST tree
                              ## Used for all other node kinds not listed above">Node</a></li>
 <li><a class="reference" href="#NodeKind" title="NodeKind {..} = enum
-  nkEmpty, nkBool, nkInt, nkFloat, nkString, nkIdent, nkVarTy, nkNil, nkScript,
-  nkIdentDefs, nkFormalParams, nkGenericParams, nkRecFields, nkPrefix,
+  nkEmpty, nkBool, nkInt, nkFloat, nkString, nkRegex, nkIdent, nkVarTy, nkNil,
+  nkScript, nkIdentDefs, nkFormalParams, nkGenericParams, nkRecFields, nkPrefix,
   nkPostfix, nkInfix, nkDot, nkBracket, nkColon, nkIndex, nkCall, nkIf,
   nkAssign, nkProcTy, nkTypeDef, nkVar = &quot;var&quot;, nkLet = &quot;let&quot;,
   nkConst = &quot;const&quot;, nkWhile, nkFor, nkBreak, nkDiscard, nkContinue, nkReturn,
@@ -186,6 +188,10 @@
   <li><a class="reference" href="#newNode%2CNodeKind" title="newNode(kind: NodeKind): Node">newNode(kind: NodeKind): Node</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">newRegexLit
+  <li><a class="reference" href="#newRegexLit%2Cstring" title="newRegexLit(val: string): Node">newRegexLit(val: string): Node</a></li>
+
+</ul>
 <ul class="simple nested-toc-section">newStringLit
   <li><a class="reference" href="#newStringLit%2Cstring" title="newStringLit(val: string): Node">newStringLit(val: string): Node</a></li>
 
@@ -275,6 +281,8 @@
     <span class="Identifier">floatVal</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">float64</span>       <span class="Comment">## The float value</span>
   <span class="Keyword">of</span> <span class="Identifier">nkString</span><span class="Other">:</span>
     <span class="Identifier">stringVal</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>       <span class="Comment">## The string value</span>
+  <span class="Keyword">of</span> <span class="Identifier">nkRegex</span><span class="Other">:</span>
+    <span class="Identifier">regexVal</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>        <span class="Comment">## The raw regex source (`/pattern/flags`)</span>
   <span class="Keyword">of</span> <span class="Identifier">nkIdent</span><span class="Other">:</span>
     <span class="Identifier">ident</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>           <span class="Comment">## The identifier name</span>
   <span class="Keyword">of</span> <span class="Identifier">nkVarTy</span><span class="Other">:</span>
@@ -292,8 +300,8 @@
 </div>
 <div id="NodeKind">
   <dt><pre><a href="#NodeKind"><span class="Identifier">NodeKind</span></a> {..} <span class="Other">=</span> <span class="Keyword">enum</span>
-  <span class="Identifier">nkEmpty</span><span class="Other">,</span> <span class="Identifier">nkBool</span><span class="Other">,</span> <span class="Identifier">nkInt</span><span class="Other">,</span> <span class="Identifier">nkFloat</span><span class="Other">,</span> <span class="Identifier">nkString</span><span class="Other">,</span> <span class="Identifier">nkIdent</span><span class="Other">,</span> <span class="Identifier">nkVarTy</span><span class="Other">,</span> <span class="Identifier">nkNil</span><span class="Other">,</span> <span class="Identifier">nkScript</span><span class="Other">,</span>
-  <span class="Identifier">nkIdentDefs</span><span class="Other">,</span> <span class="Identifier">nkFormalParams</span><span class="Other">,</span> <span class="Identifier">nkGenericParams</span><span class="Other">,</span> <span class="Identifier">nkRecFields</span><span class="Other">,</span> <span class="Identifier">nkPrefix</span><span class="Other">,</span>
+  <span class="Identifier">nkEmpty</span><span class="Other">,</span> <span class="Identifier">nkBool</span><span class="Other">,</span> <span class="Identifier">nkInt</span><span class="Other">,</span> <span class="Identifier">nkFloat</span><span class="Other">,</span> <span class="Identifier">nkString</span><span class="Other">,</span> <span class="Identifier">nkRegex</span><span class="Other">,</span> <span class="Identifier">nkIdent</span><span class="Other">,</span> <span class="Identifier">nkVarTy</span><span class="Other">,</span> <span class="Identifier">nkNil</span><span class="Other">,</span>
+  <span class="Identifier">nkScript</span><span class="Other">,</span> <span class="Identifier">nkIdentDefs</span><span class="Other">,</span> <span class="Identifier">nkFormalParams</span><span class="Other">,</span> <span class="Identifier">nkGenericParams</span><span class="Other">,</span> <span class="Identifier">nkRecFields</span><span class="Other">,</span> <span class="Identifier">nkPrefix</span><span class="Other">,</span>
   <span class="Identifier">nkPostfix</span><span class="Other">,</span> <span class="Identifier">nkInfix</span><span class="Other">,</span> <span class="Identifier">nkDot</span><span class="Other">,</span> <span class="Identifier">nkBracket</span><span class="Other">,</span> <span class="Identifier">nkColon</span><span class="Other">,</span> <span class="Identifier">nkIndex</span><span class="Other">,</span> <span class="Identifier">nkCall</span><span class="Other">,</span> <span class="Identifier">nkIf</span><span class="Other">,</span>
   <span class="Identifier">nkAssign</span><span class="Other">,</span> <span class="Identifier">nkProcTy</span><span class="Other">,</span> <span class="Identifier">nkTypeDef</span><span class="Other">,</span> <span class="Identifier">nkVar</span> <span class="Other">=</span> <span class="StringLit">&quot;var&quot;</span><span class="Other">,</span> <span class="Identifier">nkLet</span> <span class="Other">=</span> <span class="StringLit">&quot;let&quot;</span><span class="Other">,</span>
   <span class="Identifier">nkConst</span> <span class="Other">=</span> <span class="StringLit">&quot;const&quot;</span><span class="Other">,</span> <span class="Identifier">nkWhile</span><span class="Other">,</span> <span class="Identifier">nkFor</span><span class="Other">,</span> <span class="Identifier">nkBreak</span><span class="Other">,</span> <span class="Identifier">nkDiscard</span><span class="Other">,</span> <span class="Identifier">nkContinue</span><span class="Other">,</span> <span class="Identifier">nkReturn</span><span class="Other">,</span>
@@ -556,6 +564,17 @@
 </div>
 
 </div>
+<div id="newRegexLit-procs-all">
+  <div id="newRegexLit,string">
+  <dt><pre><span class="Keyword">proc</span> <a href="#newRegexLit%2Cstring"><span class="Identifier">newRegexLit</span></a><span class="Other">(</span><span class="Identifier">val</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    Construct a new regex literal (raw <tt class="docutils literal"><span class="pre"><span class="Operator">/</span><span class="Identifier">pattern</span><span class="Operator">/</span><span class="Identifier">flags</span></span></tt> source).
+    
+  </dd>
+</div>
+
+</div>
 <div id="newStringLit-procs-all">
   <div id="newStringLit,string">
   <dt><pre><span class="Keyword">proc</span> <a href="#newStringLit%2Cstring"><span class="Identifier">newStringLit</span></a><span class="Other">(</span><span class="Identifier">val</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="#Node"><span class="Identifier">Node</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
@@ -652,7 +671,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-09-24 18:31:56 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-09-27 12:10:12 UTC</small>
       </div>
     </div>
   </div>
