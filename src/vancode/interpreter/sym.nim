@@ -382,6 +382,10 @@ proc unwrapType*(ty: Sym): Sym =
 
 proc sameType*(a, b: Sym): bool =
   ## Returns ``true`` if ``a`` and ``b`` are compatible types.
+  if a.isNil or b.isNil:
+    # nil never matches: callers that propagate nil get a clean
+    # mismatch instead of a segfault on `.kind` below.
+    return false
   # Unwrap variables to their types
   var (a, b) = (a, b)
   if a.kind in skVars: a = a.varTy

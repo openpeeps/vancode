@@ -49,6 +49,7 @@ const
   ErrTypeMismatchChoice* = "type mismatch: got <$1>, but expected one of:$2"
   ErrNotAProc* = "'$1' is not a procedure"
   ErrInvalidField* = "'$1' is not a valid field"
+  ErrInvalidReceiver* = "'$1' is not a valid receiver"
   ErrNonExistentField* = "field '$1' does not exist for <$2>"
   ErrInvalidAssignment* = "cannot assign to '$1'"
   ErrTypeIsNotAnObject* = "'$1' is not an object type"

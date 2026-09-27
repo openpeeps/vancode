@@ -125,6 +125,18 @@ type
       # avoid name collisions when generating code for things like loops and if statements
     policy*: CompilationPolicy
       ## Compilation policy controlling which features are allowed
+    when defined(vancodeGradualTypes):
+      strictTypes*: bool = true
+      ## Gradual typing switch (mixed builds only). When false, the
+      ## type checker degrades: unknown names resolve to `any` and
+      ## type mismatches coerce instead of raising. Typed-only builds
+      ## (flag absent) always check.
+      caseSensitive*: bool = false
+      ## Case-sensitive symbol names (mixed builds only). JS-like
+      ## frontends set this so `maxValue` survives validation with
+      ## its spelling (otherwise names mangle to first-letter case
+      ## and the emitted code breaks). Typed-only builds keep today's
+      ## case-insensitive behavior.
     fwdDecl: seq[Node]
     # instantiationCache: Table[Hash, Sym]
 
@@ -165,6 +177,47 @@ proc error*(node: Node, msg: string) =
           msg: ErrorFmt % ["", $node.ln, $node.col, msg]
         )
 
+template checkTypes*(gen: CodeGen): bool =
+  ## Gradual-typing gate: true when static type errors must raise.
+  ## In mixed builds (`-d:vancodeGradualTypes`) this reads the
+  ## per-generator `strictTypes` switch; in typed-only builds the
+  ## field doesn't exist and this folds to constant `true`, so
+  ## other languages pay nothing for the untyped path.
+  when defined(vancodeGradualTypes):
+    gen.strictTypes
+  else:
+    true
+
+proc lowerName*(s: string): string {.inline.} =
+  ## Canonical first-letter-case symbol form (tim-like languages).
+  if s.len > 1: s[0] & s[1..^1].toLowerAscii() else: s
+
+template normName*(gen: CodeGen, s: string): string =
+  ## Canonical symbol-name form: tim-like languages are case-insensitive
+  ## (first letter kept, rest lowered); case-sensitive frontends (JS)
+  ## keep the spelling. Folds to today's expression in typed-only builds.
+  when defined(vancodeGradualTypes):
+    if gen.caseSensitive: s
+    else: lowerName(s)
+  else:
+    lowerName(s)
+
+template normLower*(gen: CodeGen, s: string): string =
+  ## Fully-lowered variant of `normName` (for forward-declaration keys).
+  when defined(vancodeGradualTypes):
+    if gen.caseSensitive: s
+    else: s.toLowerAscii()
+  else:
+    s.toLowerAscii()
+
+template sensitive*(gen: CodeGen): bool =
+  ## True when symbol names keep their spelling (case-sensitive
+  ## frontend). Folds to constant `false` in typed-only builds.
+  when defined(vancodeGradualTypes):
+    gen.caseSensitive
+  else:
+    false
+
 import std/terminal
 proc warn(node: Node, msg: string) =
   # Output a warning message on the given node.
@@ -197,12 +250,27 @@ proc initCodeGen*(script: Script, module: Module, chunk: Chunk,
     parserCallback: parserCallback,
     policy: policy,
   )
+  # `strictTypes` defaults to true at the field level; callers wanting
+  # untyped mode assign it post-construction (see `withStrictTypes`).
   if ctxAllocator == nil:
     result.ctxAllocator = ContextAllocator()
     result.context = result.ctxAllocator.allocCtx()
   result.resolver = initResolver()
   if manager != nil:
     result.resolver = manager.resolver
+
+when defined(vancodeGradualTypes):
+  proc withStrictTypes*(gen: CodeGen, v: bool): CodeGen {.discardable, inline.} =
+    ## Chainable opt-out for untyped languages:
+    ## `initCodeGen(...).withStrictTypes(false)`.
+    gen.strictTypes = v
+    gen
+
+  proc withCaseSensitive*(gen: CodeGen, v: bool = true): CodeGen {.discardable, inline.} =
+    ## Chainable opt-in for case-sensitive frontends (JS-like):
+    ## `initCodeGen(...).withCaseSensitive()`.
+    gen.caseSensitive = v
+    gen
 
 proc initCodeGenLegacy*(script: Script, module: Module, chunk: Chunk,
         kind = gkToplevel, ctxAllocator: ContextAllocator = nil,
@@ -225,6 +293,9 @@ proc clone(gen: CodeGen, kind: GenKind): CodeGen =
     triggerFromPath: gen.triggerFromPath,
     allowExprResult: gen.allowExprResult,
     kind: kind)
+  when defined(vancodeGradualTypes):
+    result.strictTypes = gen.strictTypes
+    result.caseSensitive = gen.caseSensitive
 
 template genGuard(body) =
   # Wraps ``body`` in a "guard" used for code generation. The guard sets the
@@ -256,6 +327,7 @@ macro codegen(theProc: untyped): untyped =
 #
 proc declareVar*(gen: CodeGen, name: Node, kind: SymKind,
               ty: Sym, isMagic = false, varExport = false): Sym {.discardable.}
+proc varLookup(gen: CodeGen, id: string): Sym
 proc pushDefault(gen: CodeGen, ty: Sym)
 proc popVar(gen: CodeGen, name: Node)
 proc lookup(gen: CodeGen, symName: Node, quiet = false): Sym
@@ -330,9 +402,12 @@ proc addSym(gen: CodeGen, sym: Sym,
 proc newProc*(script: Script, name, impl: Node,
         params: seq[ProcParam], returnTy: Sym,
         kind: ProcKind, exported = false,
-        genKind: GenKind = gkToplevel): (Sym, Proc) =
+        genKind: GenKind = gkToplevel,
+        caseSensitive = false): (Sym, Proc) =
   ## Creates a procedure for the given script. Returns its symbol and Proc
   ## object. This does not add the procedure to the script!
+  ## `caseSensitive` keeps the declared spelling (JS-like frontends);
+  ## otherwise names mangle to first-letter case as before.
   var
     exported = exported
     identName: Node
@@ -345,13 +420,14 @@ proc newProc*(script: Script, name, impl: Node,
     identName.ident = "anonymous:" & $script.procs.len
   else:
     # when name is a postfix node, we create a named proc
-    # and mark it as exported if the name is a postfix node
-    exported = true
+    # and mark it as exported if the marker is `*` (other markers,
+    # e.g. `generator` from JS-like frontends, only wrap the name)
+    exported = name.kind == nkPostfix and name[0].kind == nkIdent and name[0].ident == "*"
     assert name.kind == nkPostfix, "Invalid postfix node for function identifier"
     identName = name[1] # returns the function ident name
 
-  if identName.ident.len > 0:
-    identName.ident = identName.ident[0] & identName.ident[1..^1].toLowerAscii()
+  if identName.ident.len > 0 and not caseSensitive:
+    identName.ident = lowerName(identName.ident)
   
   if genKind != gkToplevel and exported:
     # if the proc is not a top-level proc, it cannot be exported
@@ -433,11 +509,19 @@ proc declareVar*(gen: CodeGen, name: Node, kind: SymKind, ty: Sym,
 
   # create the symbol for the variable
   assert kind in skVars, "Got " & $(kind) & " expected " & $(skVars)
-  name.ident = 
-    if name.ident.len > 1:
-      name.ident[0] & name.ident[1..^1].toLowerAscii()
-    else:
-      name.ident
+  if not gen.sensitive:
+    name.ident = lowerName(name.ident)
+  if not gen.checkTypes and kind == skVar:
+    # gradual mode: JS `var` hoisting merges redeclarations
+    # (`n = 1; …; var n;`) instead of raising. An `any` binding
+    # upgrades to a concrete redeclared type for precision.
+    let existing = gen.varLookup(name.ident)
+    if existing != nil and existing.kind == skVar:
+      if existing.varTy != nil and existing.varTy.kind == skType and
+         existing.varTy.tyKind == ttyAny and ty != nil and
+         ty.kind == skType and ty.tyKind != ttyAny:
+        existing.varTy = ty
+      return existing
   result = newSym(kind, name)
   result.varTy = ty
   # result.varSet = false
@@ -523,7 +607,7 @@ proc inferGenericArgs(gen: CodeGen, sym: Sym,
         let callTyIsAny = callTy.kind == skType and callTy.tyKind == ttyAny
         if existingIsAny and not callTyIsAny:
           types[procTy] = callTy
-        elif not existingIsAny and not callTyIsAny and existing != callTy:
+        elif gen.checkTypes and not existingIsAny and not callTyIsAny and existing != callTy:
           callNode.error(ErrTypeMismatch % [$callTy, $existing])
 
     # as for generic types: we take all their arguments and recursively walk
@@ -578,6 +662,18 @@ proc funcLookup(gen: CodeGen, id: string): Sym =
   if result == nil and id in gen.module.functions:
     return gen.module.functions[id]
 
+when defined(vancodeGradualTypes):
+  proc lookupValueFirst*(gen: CodeGen, name: Node): Sym =
+    ## Gradual-mode value-position lookup: a param/var/proc binding
+    ## shadows a same-named type (JS has no types, so d3's `object`
+    ## param must beat the builtin `object` type). Returns nil when no
+    ## value binding exists; callers fall back to the type-first result.
+    if name == nil or name.kind != nkIdent: return nil
+    let id = gen.normName(name.ident)
+    result = gen.varLookup(id)
+    if result == nil:
+      result = gen.funcLookup(id)
+
 proc typeLookup(gen: CodeGen, id: string): Sym =
   # Look up the symbol with the given `name`.
   if gen.scopes.len > 0:
@@ -626,11 +722,7 @@ proc lookup(gen: CodeGen, symName: Node, quiet = false): Sym =
     # invalid symbol name
     symName.error(ErrInvalidSymName % symName.render)
 
-  let id = 
-    if name.ident.len > 1:
-      name.ident[0] & name.ident[1..^1].toLowerAscii()
-    else:
-      name.ident
+  let id = gen.normName(name.ident)
 
   # try find the symbol in the types table
   result = gen.typeLookup(id)
@@ -644,6 +736,12 @@ proc lookup(gen: CodeGen, symName: Node, quiet = false): Sym =
 
   if result == nil:
     if not quiet:
+      if not gen.checkTypes:
+        # gradual mode: unknown names degrade to `any` so untyped
+        # languages can reference values the checker cannot see.
+        let anySym = gen.module.sym"any"
+        if anySym != nil:
+          return anySym
       name.error(ErrUndefinedReference % $name)
       return
 
@@ -659,11 +757,7 @@ proc lookup(gen: CodeGen, symName: Node, quiet = false): Sym =
 
 proc popVar(gen: CodeGen, name: Node) =
   # Pop the value at the top of the stack to the variable ``name``.
-  let id = 
-    if name.ident.len > 1:
-      name.ident[0] & name.ident[1..^1].toLowerAscii()
-    else:
-      name.ident
+  let id = gen.normName(name.ident)
   let sym: Sym = gen.varLookup(id)
   assert sym != nil
   
@@ -743,6 +837,7 @@ proc getDefaultSym*(gen: CodeGen, kind: NodeKind): Sym =
   of nkInt:    result = gen.module.sym"int"
   of nkFloat:  result = gen.module.sym"float"
   of nkString: result = gen.module.sym"string"
+  of nkRegex:  result = gen.module.sym"string"
   of nkArray:  result = gen.module.sym"array"
   of nkNil:    result = gen.module.sym"nil"
   of nkObjectStorage: result = gen.module.sym"object"
@@ -772,6 +867,11 @@ proc pushConst*(node: Node): Sym {.codegen.} =
     # strings - use pushS with a string ID
     gen.chunk.emit(opcPushS)
     gen.chunk.emit(gen.chunk.getString(node.stringVal))
+    result = gen.module.sym"string"
+  of nkRegex:
+    # regex - pushed as its source string; typed as string
+    gen.chunk.emit(opcPushS)
+    gen.chunk.emit(gen.chunk.getString(node.regexVal))
     result = gen.module.sym"string"
   of nkNil:
     # nil - use pushNil
@@ -825,6 +925,18 @@ proc findOverload*(sym: Sym, args: seq[Sym],
   # if we failed to find an appropriate overload,
   # we give a nice error message to the user
   if (errorNode != nil and result == nil) and quiet == false:
+    if not gen.checkTypes:
+      # gradual mode: no overload matched; fall back to the declared
+      # proc (or first callable choice) best-effort instead of raising.
+      case sym.kind
+      of skProc, skIterator: result = sym
+      of skChoice:
+        for choice in sym.choices:
+          if choice.kind in skCallable:
+            result = choice
+            break
+      else: discard
+  if (errorNode != nil and result == nil) and quiet == false:
     # <T, U, ...>
     var paramList = args.mapIt($it).join(", ")
     # possible overloads
@@ -856,7 +968,7 @@ template withBlock*(node: Node, isStmt: bool = false, body: untyped) =
   # pop the block's scope
   gen.popScope()
 
-const splittableCallKinds = {nkPrefix, nkInfix, nkCall, nkDot, nkBracket, nkString, nkIdent, nkArray}
+const splittableCallKinds = {nkPrefix, nkInfix, nkCall, nkDot, nkBracket, nkString, nkRegex, nkIdent, nkArray}
 proc splitCall*(ast: Node): tuple[callee: Sym, args: seq[Node]] {.codegen.} =
   ## Splits any call node (prefix, infix, call, dot access, dot call) into a
   ## callee (the thing being called) and parameters. The callee is resolved to a
@@ -928,6 +1040,8 @@ proc splitCall*(ast: Node): tuple[callee: Sym, args: seq[Node]] {.codegen.} =
       args = @[ast[1]]  # the index is the only argument
   of nkString:
     callee = ast
+  of nkRegex:
+    callee = ast
   of nkIdent:
     callee = newIdent("items") # the built-in items() iterator
     args = @[ast]
@@ -956,9 +1070,14 @@ proc callProc*(procSym: Sym, argTypes: seq[Sym],
   ## Generate code that calls a procedure. `errorNode`
   ## is used for error reporting.
   if procSym.kind in {skProc, skChoice}:
-    # find the overload
-    var theProc = gen.findOverload(procSym, argTypes, errorNode)
-    if theProc.kind != skProc:
+    # find the overload (quiet in gradual mode: total failure degrades
+    # to `any` below instead of raising inside findOverload)
+    var theProc = gen.findOverload(procSym, argTypes, errorNode, quiet = not gen.checkTypes)
+    if theProc == nil or theProc.kind != skProc:
+      if not gen.checkTypes:
+        # gradual mode: unresolvable callee degrades to `any`
+        # instead of raising (arguments already generated above).
+        return gen.module.sym"any"
       errorNode.error(ErrSymKindMismatch % [$skProc, $theProc.kind])
   
     # resolve generic params
@@ -972,7 +1091,7 @@ proc callProc*(procSym: Sym, argTypes: seq[Sym],
         let itemTy = unwrapType(argTypes[1])
         if arrTy.arrayTy == nil or arrTy.arrayTy.tyKind == ttyAny:
           arrTy.arrayTy = itemTy
-        elif errorNode != nil and not arrTy.arrayTy.sameType(itemTy):
+        elif errorNode != nil and gen.checkTypes and not arrTy.arrayTy.sameType(itemTy):
           errorNode.error(ErrTypeMismatch % [$itemTy, $arrTy.arrayTy])
 
     # Fill omitted optional parameters with defaults
@@ -980,7 +1099,9 @@ proc callProc*(procSym: Sym, argTypes: seq[Sym],
     if argTypes.len < params.len:
       for i in argTypes.len ..< params.len:
         let p = params[i]
-        if not p.isOpt:
+        if not p.isOpt and gen.checkTypes:
+          # gradual mode: JS allows omitted args (they arrive as
+          # undefined); fall through to the default push below.
           errorNode.error("missing required argument: " & p.name.ident)
 
         if p.implSym != nil and p.implSym.impl != nil:
@@ -1000,6 +1121,14 @@ proc callProc*(procSym: Sym, argTypes: seq[Sym],
     result = theProc.procReturnTy
 
   elif procSym.kind in skVars:
+    if not gen.checkTypes:
+      # gradual mode: call through a variable of unknown type (the
+      # TODO above); arguments were already generated, so drop their
+      # pushes and degrade to `any`.
+      for i in 0 ..< argTypes.len:
+        gen.chunk.emit(opcDiscard)
+        gen.chunk.emit(1'u8)
+      return gen.module.sym"any"
     discard # TODO: call through reference in variable
   # elif procSym.kind == skHtmlType:
   #   var theProc = gen.findOverload(procSym, argTypes, errorNode)
@@ -1009,14 +1138,47 @@ proc callProc*(procSym: Sym, argTypes: seq[Sym],
   else:
     # anything that is not a proc cannot be called
     if errorNode != nil:
+      if not gen.checkTypes:
+        # gradual mode: calling a non-proc value degrades to `any`.
+        return gen.module.sym"any"
       errorNode.error(ErrNotAProc % $procSym.name)
 
 proc prefix*(node: Node): Sym {.codegen.} =
   ## Generate instructions for a prefix operator.
   # TODO: see infix()
+  if node[0].kind == nkIdent and node[0].ident == "typeof":
+    # `typeof x` (JS fidelity): always a string. The operand is
+    # evaluated for effects and dropped; undeclared operands degrade
+    # honestly via the operand's own lookup (`any` in gradual mode).
+    discard gen.genExpr(node[1])
+    gen.chunk.emit(opcDiscard)
+    gen.chunk.emit(1'u8)
+    return gen.module.sym"string"
+  if node[0].kind == nkIdent and node[0].ident in ["yield", "yield*", "await"]:
+    # `yield`/`await` (JS fidelity): the operand is evaluated for
+    # effects and dropped; the static type is unknowable, so `any`.
+    if node.len > 1:
+      discard gen.genExpr(node[1])
+      gen.chunk.emit(opcDiscard)
+      gen.chunk.emit(1'u8)
+    return gen.module.sym"any"
+  if node[0].kind == nkIdent and node[0].ident == "delete":
+    # `delete x.y` (JS fidelity): always a boolean.
+    discard gen.genExpr(node[1])
+    gen.chunk.emit(opcDiscard)
+    gen.chunk.emit(1'u8)
+    return gen.module.sym"bool"
   var noBuiltin = false # is no builtin operator available?
-  let ty = gen.genExpr(node[1]) # generate the operand's code
-  
+  var ty = gen.genExpr(node[1]) # generate the operand's code
+
+  # Gradual typing: an `any` operand borrows int for opcode selection
+  # (best-effort); the result stays `any` (see below).
+  var wasAny = false
+  if not gen.checkTypes:
+    if ty != nil and ty.kind == skType and ty.tyKind == ttyAny:
+      wasAny = true
+      ty = gen.module.sym"int"
+
   # number operators
   if ty in [gen.module.sym"int", gen.module.sym"float"]:
     let isFloat = ty == gen.module.sym"float"
@@ -1024,8 +1186,10 @@ proc prefix*(node: Node): Sym {.codegen.} =
       of "+": discard # + is a noop
       of "-": gen.chunk.emit(if isFloat: opcNegF else: opcNegI)
       else: noBuiltin = true # non-builtin operator
+    if wasAny:
+      return gen.module.sym"any"
     return ty
-  
+
   # bool operators
   if ty == gen.module.sym"bool":
     case node[0].ident
@@ -1033,12 +1197,19 @@ proc prefix*(node: Node): Sym {.codegen.} =
       else: noBuiltin = true # non-builtin operator
     return ty
   else: noBuiltin = true
-  
+
   if noBuiltin:
     # if no builtin operator is available, will try
     # to call a procedure for the operator
-    let procSym = gen.lookup(node[0])
-    result = gen.callProc(procSym, argTypes = @[ty], node)
+    if not gen.checkTypes:
+      let procSym = gen.lookup(node[0], quiet = true)
+      if procSym != nil:
+        result = gen.callProc(procSym, argTypes = @[ty], node)
+      else:
+        result = gen.module.sym"any"
+    else:
+      let procSym = gen.lookup(node[0])
+      result = gen.callProc(procSym, argTypes = @[ty], node)
 
 proc infix*(node: Node): Sym {.codegen.} =
   ## Generate instructions for an infix operator.
@@ -1062,12 +1233,52 @@ proc infix*(node: Node): Sym {.codegen.} =
       bTy = bTy.varTy
     else: discard
 
+    # Gradual typing: with checks off, an `any` operand borrows the
+    # other side's type for opcode selection (best-effort emission);
+    # both-`any` falls back to the int family. The result stays `any`
+    # (see below) so untyped values propagate instead of raising.
+    # `checkTypes` folds to constant `true` in typed-only builds, so
+    # this vanishes there. Note: `==` on Syms matches `any` against
+    # anything, hence the explicit `tyKind` tests.
+    var aWasAny = false
+    var bWasAny = false
+    if not gen.checkTypes:
+      let intSym = gen.module.sym"int"
+      if aTy != nil and aTy.kind == skType and aTy.tyKind == ttyAny:
+        aWasAny = true
+        aTy = if bTy != nil and bTy.kind == skType and bTy.tyKind != ttyAny: bTy else: intSym
+      if bTy != nil and bTy.kind == skType and bTy.tyKind == ttyAny:
+        bWasAny = true
+        bTy = if not aWasAny and aTy != nil and aTy.kind == skType and aTy.tyKind != ttyAny: aTy else: intSym
+
     let numOp = [gen.module.sym"float", gen.module.sym"int"]
+    if node[0].kind == nkIdent and node[0].ident == ",":
+      # sequence expression `(A, B)`: the left side was evaluated for
+      # effects above; drop its value. The value (and static type) is
+      # the right side (`any` when it degraded).
+      if aTy == nil or not aTy.sameType(gen.module.sym"void"):
+        gen.chunk.emit(opcDiscard)
+        gen.chunk.emit(1'u8)
+      if bWasAny or bTy == nil:
+        result = gen.module.sym"any"
+      else:
+        result = bTy
+      return result
+    var opKey = node[0].ident
+    when defined(vancodeGradualTypes):
+      if gen.sensitive:
+        # JS-like frontends keep raw spellings (`^`, `**`, `&`, ...)
+        # in the AST for faithful emission; validate them as their
+        # int-family equivalents (their chunks are validation-only).
+        case opKey
+        of "**": opKey = "*"
+        of "^", "&", "|", "<<", ">>", ">>>": opKey = "+"
+        else: discard
     if (aTy in numOp and bTy in numOp):
       # number operators
       let areFloats =
         aTy == gen.module.sym"float" or bTy == gen.module.sym"float"
-      case node[0].ident
+      case opKey
       # arithmetic
       of "+": gen.chunk.emit(if areFloats: opcAddF else: opcAddI)
       of "-": gen.chunk.emit(if areFloats: opcSubF else: opcSubI)
@@ -1088,7 +1299,7 @@ proc infix*(node: Node): Sym {.codegen.} =
         gen.chunk.emit(opcInvB)
       else: noBuiltin = true # unknown operator
       result =
-        case node[0].ident
+        case opKey
         # arithmetic operators return numbers.
         of "+", "-", "*", "/":
           if areFloats: gen.module.sym"float"
@@ -1108,10 +1319,18 @@ proc infix*(node: Node): Sym {.codegen.} =
       result = gen.module.sym"bool"
     elif aTy == bTy and aTy == gen.module.sym"string":
       # string operators
-      case node[0].ident
+      case opKey
       of "&":
-        gen.chunk.emit(opcConcatStr)
-        result = gen.module.sym"string"
+        when defined(vancodeGradualTypes):
+          if gen.sensitive:
+            # JS-like frontends: `&` is bitwise, not concat
+            noBuiltin = true
+          else:
+            gen.chunk.emit(opcConcatStr)
+            result = gen.module.sym"string"
+        else:
+          gen.chunk.emit(opcConcatStr)
+          result = gen.module.sym"string"
       of "==":
         gen.chunk.emit(opcEqS)
         result = gen.module.sym"bool"
@@ -1121,9 +1340,22 @@ proc infix*(node: Node): Sym {.codegen.} =
         result = gen.module.sym"bool"
       else: noBuiltin = true
     else: noBuiltin = true # no optimized operators for given type
+    if (aWasAny or bWasAny) and not noBuiltin:
+      # an `any` operand was substituted above: keep the gradual
+      # result instead of the placeholder family's type.
+      result = gen.module.sym"any"
     if noBuiltin:
-      let procSym = gen.lookup(node[0])
-      result = gen.callProc(procSym, argTypes = @[aTy, bTy], node)
+      if not gen.checkTypes:
+        # gradual mode: prefer a user-defined operator, else degrade
+        # to `any` instead of raising on the operator name.
+        let procSym = gen.lookup(node[0], quiet = true)
+        if procSym != nil:
+          result = gen.callProc(procSym, argTypes = @[aTy, bTy], node)
+        else:
+          result = gen.module.sym"any"
+      else:
+        let procSym = gen.lookup(node[0])
+        result = gen.callProc(procSym, argTypes = @[aTy, bTy], node)
   else:
     case node[0].ident
     # assignment is special
@@ -1135,7 +1367,24 @@ proc infix*(node: Node): Sym {.codegen.} =
         value = node[2]
       case receiver.kind
       of nkIdent: # to a variable
-        let sym = gen.lookup(receiver) # look the variable up
+        var sym = gen.lookup(receiver) # look the variable up
+        when defined(vancodeGradualTypes):
+          if not gen.checkTypes and sym != nil and sym.kind == skType and
+             sym.tyKind != ttyAny:
+            # gradual mode: assigning to a shadowed value targets the
+            # value, not the type.
+            let vSym = gen.lookupValueFirst(receiver)
+            if vSym != nil: sym = vSym
+        if not gen.checkTypes and sym != nil and sym.kind == skType and sym.tyKind == ttyAny:
+          # gradual mode: assignment to an undeclared name implicitly
+          # declares an `any` variable (JS-like leniency). Only the
+          # degraded `any` type sym qualifies; real non-var symbols
+          # keep today's behavior below.
+          sym = gen.declareVar(receiver, skVar, sym)
+        if not gen.checkTypes and sym != nil and sym.kind in {skProc, skChoice}:
+          # gradual mode: reassignment of a proc binding (JS allows
+          # rebinding function declarations); shadow with an `any` var.
+          sym = gen.declareVar(receiver, skVar, gen.module.sym"any")
         # Detect x = x +/- 1 → incL/decL (local vars only)
         if sym.kind == skVar and sym.varLocal and value.kind == nkInfix and value[0].kind == nkIdent and
            value[0].ident in ["+", "-"]:
@@ -1151,8 +1400,10 @@ proc infix*(node: Node): Sym {.codegen.} =
               gen.chunk.emit(opcDecL); gen.chunk.emit(sym.varStackPos.uint8)
             return gen.module.sym"void"
         let valTy = gen.genExpr(value)
-        if valTy == sym.varTy:
-          if sym.kind == skVar:
+        if not gen.checkTypes or valTy == sym.varTy:
+          if sym.kind == skVar or (not gen.checkTypes and sym.kind == skLet):
+            # gradual mode additionally allows reassigning let-locals
+            # and params (JS semantics); `const` still raises below.
             gen.popVar(receiver)
           else:
             receiver.error(ErrImmutableReassignment % $sym.name)
@@ -1160,27 +1411,97 @@ proc infix*(node: Node): Sym {.codegen.} =
           node.error(ErrTypeMismatch % [$valTy.name, $sym.varTy.name])
       of nkDot: # to an object field
         if receiver[1].kind != nkIdent:
-          # object fields are always identifiers
-          receiver[1].error(ErrInvalidField % $node[1][1])
+          # object fields are always identifiers (`render`, not `$`:
+          # `$` only supports leaf nodes and would crash here).
+          receiver[1].error(ErrInvalidField % receiver[1].render)
         let
           typeSym = gen.genExpr(receiver[0]) # generate the receiver's code
           fieldName = receiver[1].ident
           valTy = gen.genExpr(value) # generate the value's code
-        if typeSym.tyKind == ttyObject and fieldName in typeSym.objectFields:
+        # Normalize the receiver to a type when possible; anything
+        # else (e.g. assigning a property on a proc value, `fn.x = …`,
+        # common in JS) has no `tyKind` to inspect.
+        var recvTy = typeSym
+        if recvTy != nil and recvTy.kind in skVars and recvTy.varTy != nil:
+          recvTy = recvTy.varTy
+        if recvTy == nil or recvTy.kind != skType:
+          if not gen.checkTypes:
+            # gradual mode: drop the pushed receiver+value.
+            gen.chunk.emit(opcDiscard)
+            gen.chunk.emit(2'u8)
+            result = gen.module.sym"any"
+          else:
+            receiver.error(ErrTypeIsNotAnObject % $typeSym.name)
+        elif recvTy.tyKind == ttyObject and fieldName in recvTy.objectFields:
           # assign the field if it's valid, using popF
-          let field = typeSym.objectFields[fieldName]
-          if valTy != field.ty:
+          let field = recvTy.objectFields[fieldName]
+          if gen.checkTypes and valTy != field.ty:
             node[2].error(ErrTypeMismatch % [$field.ty.name, $valTy.name])
           gen.chunk.emit(opcSetF)
           gen.chunk.emit(field.id.uint8)
         else:
           # otherwise, try to find a matching setter
           let setter = gen.lookup(newIdent(fieldName & '='))
-          if setter == nil:
-            receiver.error(ErrNonExistentField % [fieldName, $typeSym])
-          result = gen.callProc(setter, argTypes = @[typeSym, valTy],
-                                errorNode = node)
-      else: node.error(ErrInvalidAssignment % $node)
+          if not gen.checkTypes and (setter == nil or
+             (typeSym != nil and typeSym.kind == skType and typeSym.tyKind == ttyAny)):
+            # gradual mode: unknown setter or `any` receiver (JS-style
+            # expando/unknown field); drop the pushed receiver+value
+            # and degrade to `any`.
+            gen.chunk.emit(opcDiscard)
+            gen.chunk.emit(2'u8)
+            result = gen.module.sym"any"
+          else:
+            if setter == nil:
+              receiver.error(ErrNonExistentField % [fieldName, $typeSym])
+            result = gen.callProc(setter, argTypes = @[typeSym, valTy],
+                                  errorNode = node)
+      of nkBracket: # to an array item: T[i] = v
+        if receiver.len != 2:
+          node.error(ErrInvalidAssignment % node.render)
+        discard gen.genExpr(receiver[0])
+        var indexTy = gen.genExpr(receiver[1])
+        if indexTy.kind in skVars: indexTy = indexTy.varTy
+        discard gen.genExpr(value)
+        if gen.checkTypes and indexTy != nil and indexTy.kind == skType and indexTy.tyKind != ttyInt:
+          receiver[1].error(ErrTypeMismatch % [$indexTy.name, "int"])
+        gen.chunk.emit(opcSetI)
+        result = gen.module.sym"void"
+      of nkArray: # destructuring assignment: [a, b] = v
+        # validated element-wise as `a = v[0]`, `b = v[1]`, ... by
+        # recursing into this same `=` logic (single evaluation in
+        # emitted JS is the frontend's job; here each element re-reads
+        # `v`, which is validation-adequate).
+        for idx, elem in receiver.children:
+          if elem.kind != nkIdent:
+            if gen.checkTypes:
+              elem.error(ErrInvalidAssignment % elem.render)
+            continue
+          let itemNode = newTree(nkInfix, newIdent("="), elem,
+            newTree(nkBracket, value, newIntLit(idx)))
+          discard gen.infix(itemNode)
+        result = gen.module.sym"void"
+      of nkObjectStorage: # destructuring assignment: {a, b: c} = v
+        # validated per-key as `local = v.key` by recursing into `=`
+        # (same validation-only re-read caveat as nkArray above).
+        for child in receiver.children:
+          if child.kind != nkColon or child.len < 2 or child[1].kind != nkIdent:
+            if gen.checkTypes:
+              child.error(ErrInvalidAssignment % child.render)
+            continue
+          let accessNode =
+            if child[0].kind == nkIdent:
+              newTree(nkDot, value, child[0])
+            elif child[0].kind == nkString:
+              newTree(nkBracket, value, child[0])
+            else: nil
+          if accessNode == nil:
+            if gen.checkTypes:
+              child.error(ErrInvalidAssignment % child.render)
+            continue
+          let itemNode = newTree(nkInfix, newIdent("="), child[1], accessNode)
+          discard gen.infix(itemNode)
+        result = gen.module.sym"void"
+      else: node.error(ErrInvalidAssignment % node.render)
       # assignment doesn't return anything (in most cases, setters can be
       # declared to return a value, albeit it's not that useful)
       if result == nil:
@@ -1199,8 +1520,8 @@ proc infix*(node: Node): Sym {.codegen.} =
       gen.chunk.emit(opcDiscard)
       gen.chunk.emit(1'u8)
       let bTy = gen.genExpr(rhs) # generate the right-hand side
-      if aTy.tyKind notin {ttyBool, ttyJson}: lhs.error(ErrTypeMismatch % [$aTy, "bool"])
-      if bTy.tyKind notin {ttyBool, ttyJson}: rhs.error(ErrTypeMismatch % [$bTy, "bool"])
+      if gen.checkTypes and aTy.tyKind notin {ttyBool, ttyJson}: lhs.error(ErrTypeMismatch % [$aTy, "bool"])
+      if gen.checkTypes and bTy.tyKind notin {ttyBool, ttyJson}: rhs.error(ErrTypeMismatch % [$bTy, "bool"])
       gen.chunk.patchHole(hole)
       result = gen.module.sym"bool"
     of "and": # ``and``
@@ -1215,8 +1536,8 @@ proc infix*(node: Node): Sym {.codegen.} =
       gen.chunk.emit(opcDiscard)
       gen.chunk.emit(1'u8)
       let bTy = gen.genExpr(rhs) # generate the right-hand side
-      if aTy.tyKind != ttyBool: lhs.error(ErrTypeMismatch % [$aTy, "bool"])
-      if bTy.tyKind != ttyBool: rhs.error(ErrTypeMismatch % [$bTy, "bool"])
+      if gen.checkTypes and aTy.tyKind != ttyBool: lhs.error(ErrTypeMismatch % [$aTy, "bool"])
+      if gen.checkTypes and bTy.tyKind != ttyBool: rhs.error(ErrTypeMismatch % [$bTy, "bool"])
       gen.chunk.patchHole(hole)
       result = gen.module.sym"bool"
     of "&":
@@ -1226,9 +1547,9 @@ proc infix*(node: Node): Sym {.codegen.} =
         rhs = node[2]
       let aTy = gen.genExpr(lhs) # generate the left-hand side
       let bTy = gen.genExpr(rhs) # generate the right-hand side 
-      if aTy.tyKind != ttyString:
+      if gen.checkTypes and aTy.tyKind != ttyString:
         lhs.error(ErrTypeMismatch % [$aTy, "string"])
-      if bTy.tyKind != ttyString:
+      if gen.checkTypes and bTy.tyKind != ttyString:
         rhs.error(ErrTypeMismatch % [$bTy, "string"])
       gen.chunk.emit(opcConcatStr)
       result = gen.module.sym"string"
@@ -1243,19 +1564,37 @@ proc objConstr*(node: Node, ty: Sym, constructFromIdent = false): Sym {.codegen.
       gen.lookup(node)
 
   if result.tyKind != ttyObject:
+    if not gen.checkTypes:
+      # gradual mode: constructing a non-object/unknown type degrades
+      # to `any` (field iteration below requires a real object type).
+      return gen.module.sym"any"
     node.error(ErrTypeIsNotAnObject % $result.name)
 
   var explicitFields: Table[string, Node]
   # Only parse explicit fields for call-style constructors: User(...)
   if not constructFromIdent and node.len > 1:
     for f in node[1..^1]:
-      # Expected infix-like shape: [op, fieldIdent, valueExpr]
-      if f.len < 2 or f[0].kind != nkIdent:
+      # Expected infix-like shape: [op, fieldIdent, valueExpr].
+      # Check the kind first: `f.len`/`f[0]` on a leaf (e.g. a
+      # positional arg like `object(row)`) would crash the compiler.
+      if f.kind != nkColon or f.len < 2 or f[0].kind != nkIdent:
+        if not gen.checkTypes:
+          # gradual mode: positional/foreign call on an object type;
+          # evaluate the arguments, drop them, degrade to `any`.
+          for arg in node[1..^1]:
+            if arg.kind == nkColon:
+              if arg.len > 1:
+                discard gen.genExpr(arg[1])
+                gen.chunk.emit(opcDiscard)
+                gen.chunk.emit(1'u8)
+            else:
+              discard gen.genExpr(arg)
+              gen.chunk.emit(opcDiscard)
+              gen.chunk.emit(1'u8)
+          return gen.module.sym"any"
         f.error("Invalid object constructor field: " & f.render)
-      elif f.kind != nkColon:
-        f.error("Expected ':' in object constructor field: " & f.render)
       let fname = f[0].ident
-      if not result.objectFields.hasKey(fname):
+      if gen.checkTypes and not result.objectFields.hasKey(fname):
         f[0].error(ErrNonExistentField % [fname, $result])
       explicitFields[fname] = f[1]
 
@@ -1267,7 +1606,7 @@ proc objConstr*(node: Node, ty: Sym, constructFromIdent = false): Sym {.codegen.
     keyIds.add(gen.chunk.getString(k))
     if explicitFields.hasKey(k):
       let valTy = gen.genExpr(explicitFields[k])
-      if not unwrapType(valTy).sameType(field.ty):
+      if gen.checkTypes and not unwrapType(valTy).sameType(field.ty):
         node.error(ErrTypeMismatch % [$unwrapType(valTy).name, $field.ty.name])
     elif field.implVal != nil:
       discard gen.genExpr(field.implVal.impl) # default expr from type definition
@@ -1341,6 +1680,41 @@ proc call*(node: Node): Sym {.codegen.} =
         return gen.genCoroResume(node)
     case sym.kind
     of skType: # object construction
+      if not gen.checkTypes and sym.tyKind == ttyAny:
+        # gradual mode: calling an unknown/undeclared callee; evaluate
+        # the arguments, drop them, and degrade to `any`.
+        for arg in node[1..^1]:
+          discard gen.genExpr(arg)
+          gen.chunk.emit(opcDiscard)
+          gen.chunk.emit(1'u8)
+        return gen.module.sym"any"
+      if sym.tyKind notin {ttyClass, ttyInterface, ttyObject}:
+        # `lookup` prefers types over functions, so a call like
+        # `pointer(x)` resolves to the builtin `pointer` type even when
+        # a proc of that name exists (d3.js). A non-constructible type
+        # can never be called, so fall back to a same-named callable.
+        let fnSym = gen.funcLookup(gen.normName(node[0].ident))
+        if fnSym != nil and fnSym.kind in {skProc, skChoice, skCoroutine}:
+          return gen.procCall(node, fnSym)
+        if not gen.checkTypes:
+          # gradual mode: the named proc (if any) lives in an ancestor
+          # scope the fresh proc generator cannot see; evaluate the
+          # arguments, drop them, and degrade to `any`.
+          for arg in node[1..^1]:
+            discard gen.genExpr(arg)
+            gen.chunk.emit(opcDiscard)
+            gen.chunk.emit(1'u8)
+          return gen.module.sym"any"
+      elif sym.tyKind == ttyObject and not gen.checkTypes:
+        # gradual mode: `lookup` prefers the builtin `object` type over
+        # a same-named value (d3's `var object`, called as `object(row)`).
+        # Prefer the value, like JS would.
+        let vSym = gen.varLookup(gen.normName(node[0].ident))
+        if vSym != nil:
+          return gen.procCall(node, vSym)
+        let fnSym = gen.funcLookup(gen.normName(node[0].ident))
+        if fnSym != nil and fnSym.kind in {skProc, skChoice, skCoroutine}:
+          return gen.procCall(node, fnSym)
       if sym.tyKind == ttyClass or sym.tyKind == ttyInterface:
         gen.chunk.emit(opcPushNil)
         gen.chunk.emit(uint16(0))
@@ -1357,6 +1731,17 @@ proc call*(node: Node): Sym {.codegen.} =
       lhs = node[0]
       callee = gen.lookup(lhs[1], quiet = true)
     if callee == nil:
+      if not gen.checkTypes:
+        # gradual mode: indirect call on an unknown method (e.g. an
+        # IIFE over untyped JS); evaluate everything, drop it all.
+        discard gen.genExpr(lhs[0])
+        gen.chunk.emit(opcDiscard)
+        gen.chunk.emit(1'u8)
+        for arg in node[1..^1]:
+          discard gen.genExpr(arg)
+          gen.chunk.emit(opcDiscard)
+          gen.chunk.emit(1'u8)
+        return gen.module.sym"any"
       assert false, "indirect calls are not implemented yet: " & node.render
     else:
       var argTypes = @[gen.genExpr(lhs[0])]
@@ -1364,12 +1749,39 @@ proc call*(node: Node): Sym {.codegen.} =
         argTypes.add(gen.genExpr(arg))
       result = gen.callProc(callee, argTypes, errorNode = node)
   else:
-    # the call is an indirect call
+    # the call is an indirect call (e.g. an IIFE `(fn)(args)`)
+    if node[0].kind == nkCall and node[0].len > 1 and
+       node[0][0].kind == nkIdent and node[0][0].ident == "new" and
+       node[0][1].kind in {nkIdent, nkDot}:
+      # `new X(args)` marker from a JS-like frontend: validate the
+      # construction as a direct call of X, preserving class
+      # construction and honest errors for unknown callees.
+      var inner = newCall(node[0][1])
+      inner.ln = node.ln
+      inner.col = node.col
+      for a in node[1..^1]: inner.add(a)
+      return gen.call(inner)
+    if not gen.checkTypes:
+      # gradual mode: evaluate callee and arguments, drop the pushed
+      # values, degrade to `any`. A proc literal pushes nothing at
+      # its definition site (genProc emits into its own chunk), so
+      # only non-proc callees leave a value to discard.
+      discard gen.genExpr(node[0])
+      if node[0].kind != nkProc:
+        gen.chunk.emit(opcDiscard)
+        gen.chunk.emit(1'u8)
+      for arg in node[1..^1]:
+        discard gen.genExpr(arg)
+        gen.chunk.emit(opcDiscard)
+        gen.chunk.emit(1'u8)
+      return gen.module.sym"any"
     assert false, "indirect calls are not implemented yet: " & node.render
 
 proc genGetField*(node: Node): Sym {.codegen.} =
   # Evaluate the receiver (can be an ident, bracket access, etc.)
   var recvSym = gen.genExpr(node[0], varUnwrap = false)
+  if recvSym == nil:
+    node[0].error(ErrInvalidReceiver % $node[0])
   var valTy: Sym =
     if recvSym.kind in skVars: recvSym.varTy else: recvSym
 
@@ -1455,6 +1867,11 @@ proc genGetField*(node: Node): Sym {.codegen.} =
 
   # If it's JSON, dot notation is not supported
   if valTy.tyKind == ttyJson and node[1].kind notin {nkBracket, nkCall}:
+    if not gen.checkTypes:
+      # gradual mode: dynamic get instead of the guidance error.
+      gen.chunk.emit(opcGetF)
+      gen.chunk.emit(0'u8)
+      return gen.module.sym"any"
     node[1].error("Use bracket notation to access JSON fields or items")
 
   # Method call on receiver: item.fn(...)
@@ -1471,6 +1888,13 @@ proc genGetField*(node: Node): Sym {.codegen.} =
           return memberTy
         else: return gen.module.sym"any"
       else:
+        if not gen.checkTypes:
+          # gradual mode: unknown method on class/interface degrades
+          # to a dynamic get (receiver already on the stack).
+          for arg in node[1].children[1..^1]: discard gen.genExpr(arg)
+          gen.chunk.emit(opcGetF)
+          gen.chunk.emit(0'u8)
+          return gen.module.sym"any"
         node[1].error(ErrNonExistentField % [mNameStrict, $valTy])
     var fnSym: Sym
     try:
@@ -1515,13 +1939,24 @@ proc genGetField*(node: Node): Sym {.codegen.} =
         result = memberTy
       else: result = gen.module.sym"any"
     else:
-      node[1].error(ErrNonExistentField % [fieldName, $valTy])
+      if not gen.checkTypes:
+        # gradual mode: unknown member degrades to a dynamic get.
+        gen.chunk.emit(opcGetF)
+        gen.chunk.emit(0'u8)
+        result = gen.module.sym"any"
+      else:
+        node[1].error(ErrNonExistentField % [fieldName, $valTy])
   else:
     let getter = gen.lookup(node[1], quiet = true)
     if getter != nil:
       result = gen.callProc(getter, argTypes = @[valTy], errorNode = node)
     else:
-      if valTy.tyKind == ttyJson:
+      if not gen.checkTypes:
+        # gradual mode: unknown field degrades to a dynamic get.
+        gen.chunk.emit(opcGetF)
+        gen.chunk.emit(0'u8)
+        result = gen.module.sym"any"
+      elif valTy.tyKind == ttyJson:
         node[1].error("Use bracket notation to access JSON fields or items")
       else:
         node[1].error(ErrNonExistentField % [fieldName, $valTy])
@@ -1541,12 +1976,12 @@ proc genArrayAccess*(node: Node): Sym {.codegen.} =
   case valTy.tyKind
   of ttyJson:
     # generate the code for accessing a JSON array
-    if indexTy.tyKind notin {ttyInt, ttyString, ttyJson}:
+    if gen.checkTypes and indexTy.tyKind notin {ttyInt, ttyString, ttyJson}:
       node[1].error(ErrTypeMismatch % [$indexTy.name, "int|string|json<int|string>"])
     gen.chunk.emit(opcGetJ)
     result = valTy
   of ttyObject:
-    if indexTy.tyKind != ttyString:
+    if gen.checkTypes and indexTy.tyKind != ttyString:
       node[1].error(ErrTypeMismatch % [$indexTy.name, "string"])
     # Allow bracket access for constant string keys
     if node[1].kind == nkString:
@@ -1556,14 +1991,23 @@ proc genArrayAccess*(node: Node): Sym {.codegen.} =
         gen.chunk.emit(opcGetF)
         gen.chunk.emit(field.id.uint8)
         return field.ty
+      elif not gen.checkTypes:
+        # gradual mode: unknown key degrades to a dynamic get.
+        gen.chunk.emit(opcGetF)
+        gen.chunk.emit(0'u8)
+        return gen.module.sym"any"
       else:
         node[1].error(ErrNonExistentField % [key, $valTy])
     # dynamic string keys not supported at codegen time yet
     echo "not implemented yet: accessing object fields using dynamic string keys"
     result = valTy
   of ttyArray:
-    if indexTy.tyKind != ttyInt:
+    if gen.checkTypes and indexTy.tyKind != ttyInt:
       node[1].error(ErrTypeMismatch % [$indexTy.name, "int"])
+    if valTy.arrayTy == nil and not gen.checkTypes:
+      # gradual mode: untyped array; dynamic get of `any`.
+      gen.chunk.emit(opcGetI)
+      return gen.module.sym"any"
     assert valTy.arrayTy != nil, "Array type must have an element type"
     gen.chunk.emit(opcGetI)
     return valTy.arrayTy
@@ -1596,7 +2040,7 @@ proc genIf*(node: Node, isStmt: bool): Sym {.codegen.} =
     let
       cond = branches[i]
       condTy = gen.genExpr(cond)
-    if condTy.tyKind notin {ttyBool, ttyJson}:
+    if gen.checkTypes and condTy.tyKind notin {ttyBool, ttyJson}:
       cond.error(ErrTypeMismatch % [$condTy.name, "bool"])
 
     # if the condition is false, jump past the branch
@@ -1614,7 +2058,7 @@ proc genIf*(node: Node, isStmt: bool): Sym {.codegen.} =
     if not isStmt:
       if result == nil: result = branchTy
       else:
-        if branchTy != result:
+        if gen.checkTypes and branchTy != result:
           branch.error(ErrTypeMismatch % [$branchTy.name, $result.name])
 
 
@@ -1636,13 +2080,17 @@ proc genIf*(node: Node, isStmt: bool): Sym {.codegen.} =
       elseBranch = node[^1]
       elseTy = gen.genBlock(elseBranch, isStmt)
     # check its type
-    if not isStmt and elseTy != result:
+    if not isStmt and gen.checkTypes and elseTy != result:
       elseBranch.error(ErrTypeMismatch % [$elseTy.name, $result.name])
   else:
     if not isStmt:
       # raise an error if the if statement is an expression and
       # the else branch is missing
-      node.error(ErrTypeMismatch % ["void", "expression"])
+      if not gen.checkTypes:
+        # gradual mode: valueless if-expression degrades to `any`.
+        result = gen.module.sym"any"
+      else:
+        node.error(ErrTypeMismatch % ["void", "expression"])
 
   # dummy byte target for forward jumps that skip past all code;
   # emit raw noop byte (emit(opcNoop) silently drops it)
@@ -1695,7 +2143,7 @@ proc collectParams*(formalParams: Node,
     if defaultNode.kind != nkEmpty:
       var defaultTy: Sym = nil
       case defaultNode.kind
-      of nkBool, nkInt, nkFloat, nkString, nkNil, nkArray, nkObjectStorage:
+      of nkBool, nkInt, nkFloat, nkString, nkRegex, nkNil, nkArray, nkObjectStorage:
         defaultTy = gen.getDefaultSym(defaultNode.kind)
       of nkIdent:
         let s = gen.lookup(defaultNode, quiet = true)
@@ -1704,16 +2152,32 @@ proc collectParams*(formalParams: Node,
       else:
         discard
 
-      if defaultTy != nil and not unwrapType(defaultTy).sameType(unwrapType(paramTy)):
+      if gen.checkTypes and defaultTy != nil and not unwrapType(defaultTy).sameType(unwrapType(paramTy)):
         defaultNode.error(ErrTypeMismatch % [$unwrapType(defaultTy).name, $unwrapType(paramTy).name])
 
     # Build ProcParam entries (one per declared name).
     for name in defs[0..^3]:
+      if name.kind notin {nkIdent, nkPostfix}:
+        # Destructuring patterns (`([a, b]) => …`, `{x}` params) have
+        # no single name to declare. Gradual mode skips them (uses
+        # degrade to `any`); strict mode rejects them cleanly instead
+        # of crashing in declareVar below.
+        if not gen.checkTypes:
+          continue
+        name.error(ErrInvalidSymName % name.render)
+      var pname = name
+      when defined(vancodeGradualTypes):
+        if pname.kind == nkPostfix and pname.len > 1 and
+           pname[0].kind == nkIdent and pname[0].ident == "..." and
+           pname[1].kind == nkIdent:
+          # rest param marker from a JS-like frontend: declare the
+          # inner name (no other frontend produces this shape)
+          pname = pname[1]
       var implSym: Sym = nil
       let isOptional = defaultNode.kind != nkEmpty
       if isOptional:
         let defName =
-          if name.kind == nkIdent: name.ident
+          if pname.kind == nkIdent: pname.ident
           else: "param"
         implSym = newSym(
           skConst,
@@ -1722,7 +2186,7 @@ proc collectParams*(formalParams: Node,
         )
       result.add(
         genParam(
-          name,
+          pname,
           paramTy,
           implSym,
           isMut = rawTyNode.kind == nkVarTy,
@@ -1774,7 +2238,7 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
     var (sym, theProc) =
       newProc(gen.script, name, impl = node,
                 params, returnTy, kind = pkNative,
-                genKind = gen.kind)
+                genKind = gen.kind, caseSensitive = gen.sensitive)
     sym.genericParams = genericParams
     gen.addSym(sym, scopeOffset = ord(sym.genericParams.isSome))
     theProc.procId = gen.script.procs.len
@@ -1791,12 +2255,12 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
     else: name
   let fwdMatchIdx = block:
     var idx = -1
-    let lookupName = nameIdent.ident.toLowerAscii
+    let lookupName = gen.normLower(nameIdent.ident)
     for i, fwd in gen.fwdDecl:
       let fwdName =
         if fwd[0].kind == nkPostfix: fwd[0][1]
         else: fwd[0]
-      if fwdName.ident.toLowerAscii == lookupName:
+      if gen.normLower(fwdName.ident) == lookupName:
         idx = i
         break
     idx
@@ -1804,7 +2268,8 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
   if fwdMatchIdx >= 0:
     # Sync: compile body into the existing forward declaration's proc
     # Use lowered name since newProc normalizes idents to lowercase
-    let fwdLookup = nameIdent.ident.toLowerAscii
+    # (or the raw spelling when case-sensitive)
+    let fwdLookup = gen.normLower(nameIdent.ident)
     let fwdSym = gen.funcLookup(fwdLookup)
     if fwdSym == nil:
       node.error("forward declaration registered but symbol not found")
@@ -1816,6 +2281,9 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
           if gen.kind == gkToplevel: nil
           else: gen.ctxAllocator
       )
+    when defined(vancodeGradualTypes):
+      procGen.strictTypes = gen.strictTypes
+      procGen.caseSensitive = gen.caseSensitive
     let theProc = gen.script.procs[fwdSym.procId]
     theProc.chunk = chunk
     chunk.file = gen.chunk.file
@@ -1828,6 +2296,15 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
         else: skLet
       let param = procGen.declareVar(pname, varType, ty)
       param.varSet = true
+    when defined(vancodeGradualTypes):
+      if procGen.sensitive:
+        # JS-like frontends: every function has an `arguments`
+        # binding (`any`, so `arguments.length` / `arguments[i]`
+        # validate even in strict mode). An explicit user param
+        # named `arguments` (legal JS shadowing) wins.
+        let argsIdent = newIdent("arguments")
+        if procGen.lookup(argsIdent, quiet = true) == nil:
+          discard procGen.declareVar(argsIdent, skLet, procGen.module.sym"any")
 
     if returnTy.tyKind != ttyVoid:
       let res = newIdent("result")
@@ -1854,7 +2331,7 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
   var (sym, theProc) =
     newProc(gen.script, name, impl = node,
               params, returnTy, kind = pkNative,
-              genKind = gen.kind)
+              genKind = gen.kind, caseSensitive = gen.sensitive)
   sym.genericParams = genericParams
   gen.addSym(sym, scopeOffset = ord(sym.genericParams.isSome))
 
@@ -1866,6 +2343,9 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
           if gen.kind == gkToplevel: nil
           else: gen.ctxAllocator
       )
+    when defined(vancodeGradualTypes):
+      procGen.strictTypes = gen.strictTypes
+      procGen.caseSensitive = gen.caseSensitive
     theProc.chunk = chunk
     chunk.file = gen.chunk.file
     procGen.procReturnTy = returnTy
@@ -1877,6 +2357,12 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
         else: skLet
       let param = procGen.declareVar(pname, varType, ty)
       param.varSet = true
+    when defined(vancodeGradualTypes):
+      if procGen.sensitive:
+        # JS-like frontends: every function has an `arguments` binding
+        let argsIdent = newIdent("arguments")
+        if procGen.lookup(argsIdent, quiet = true) == nil:
+          discard procGen.declareVar(argsIdent, skLet, procGen.module.sym"any")
 
     if returnTy.tyKind != ttyVoid:
       let res = newIdent("result")
@@ -1932,10 +2418,29 @@ proc genExpr*(node: Node, varUnwrap = true): Sym {.codegen.} =
   # Generates code for an expression.
   extendableCase "codeGenExpr":
     case node.kind
-    of nkBool, nkInt, nkFloat, nkString, nkNil:  # constants
+    of nkBool, nkInt, nkFloat, nkString, nkRegex, nkNil:  # constants
       result = gen.pushConst(node)
     of nkIdent:                     # variables
       var symNode = gen.lookup(node)
+      when defined(vancodeGradualTypes):
+        if not gen.checkTypes and symNode != nil and symNode.kind == skType and
+           symNode.tyKind != ttyAny:
+          # gradual mode: a value binding shadows a same-named type.
+          let vSym = gen.lookupValueFirst(node)
+          if vSym != nil: symNode = vSym
+      if not gen.checkTypes and symNode != nil and symNode.kind == skType and symNode.tyKind != ttyObject:
+        # gradual mode: a bare type name in value position (e.g. an
+        # undeclared JS global shadowing a type name like `array`).
+        # Object construction above stays; everything else degrades
+        # to the `any` default (reading `.varTy` below would crash).
+        gen.pushDefault(gen.module.sym"any")
+        return gen.module.sym"any"
+      if not gen.checkTypes and symNode != nil and symNode.kind == skType and symNode.tyKind == ttyAny:
+        # gradual mode: reading an undeclared name yields the `any`
+        # default value instead of falling through to the no-push
+        # `else` in `pushVar` below (which would unbalance the stack).
+        gen.pushDefault(symNode)
+        return symNode
       case symNode.kind:
         of skType:
           case symNode.tyKind
@@ -1977,6 +2482,35 @@ proc genExpr*(node: Node, varUnwrap = true): Sym {.codegen.} =
       result = gen.genObject(node)
     of nkProc:
       result = gen.genProc(node)
+    of nkPostfix:
+      # `x++` / `x--`: in-place inc/dec produces no value (like `=`),
+      # so this returns `void` and works both as a statement and as
+      # an assignment RHS (where the checker then applies).
+      let op = if node.len == 2 and node[0].kind == nkIdent: node[0].ident else: ""
+      if node.len == 2 and node[1].kind == nkIdent and op in ["++", "--"]:
+        let sym = gen.lookup(node[1], quiet = true)
+        if sym != nil and sym.kind == skVar and sym.varLocal:
+          let vty = sym.varTy
+          if vty != nil and vty.kind == skType and vty.tyKind == ttyInt:
+            if op == "++":
+              gen.chunk.emit(opcIncL)
+              gen.chunk.emit(sym.varStackPos.uint8)
+            else:
+              gen.chunk.emit(opcDecL)
+              gen.chunk.emit(sym.varStackPos.uint8)
+            return gen.module.sym"void"
+      if not gen.checkTypes:
+        # gradual mode: non-int or unknown operand; evaluate for
+        # effects, drop the value, no result.
+        discard gen.genExpr(node[1])
+        gen.chunk.emit(opcDiscard)
+        gen.chunk.emit(1'u8)
+        return gen.module.sym"void"
+      if node.len == 2 and node[1].kind == nkIdent:
+        # strict: surface unknown names precisely before the void error.
+        discard gen.lookup(node[1])
+      debugEcho "Unsupported node kind in genExpr: " & $node.kind
+      node.error(ErrValueIsVoid)
     else:
       # handle statement-like nodes used as lazy-injected macro bodies
       if node.kind in vanCodeStmtNodeKinds:
@@ -2017,7 +2551,7 @@ proc tryElideWhile*(node: Node): bool {.codegen.} =
 
   proc isPureLiteralExpr(n: Node): bool =
     case n.kind
-    of nkEmpty, nkBool, nkInt, nkFloat, nkString, nkNil:
+    of nkEmpty, nkBool, nkInt, nkFloat, nkString, nkRegex, nkNil:
       true
     else:
       false
@@ -2180,7 +2714,7 @@ proc genWhile*(node: Node) {.codegen.} =
   if not isWhileTrue:
     # if it's not a while true loop, execute the condition
     let condTy = gen.genExpr(node[0])
-    if condTy.tyKind != ttyBool:
+    if gen.checkTypes and condTy.tyKind != ttyBool:
       node[0].error(ErrTypeMismatch % [$condTy.name, "bool"])
 
     # if it's false, jump over the loop's body
@@ -2213,10 +2747,76 @@ proc genWhile*(node: Node) {.codegen.} =
   # finish the loop by popping its outer flow block.
   gen.popFlowBlock()
 
+proc declarePatternNames(gen: CodeGen, pat: Node, anyTy: Sym) =
+  ## Declare the idents bound by a destructuring pattern as `any`
+  ## (gradual-mode loop variables and skipped declarations).
+  case pat.kind
+  of nkIdent:
+    discard gen.declareVar(pat, skLet, anyTy)
+  of nkArray:
+    for e in pat.children:
+      if e.kind == nkIdent:
+        discard gen.declareVar(e, skLet, anyTy)
+      elif e.kind == nkInfix and e.len >= 3 and e[1].kind == nkIdent:
+        discard gen.declareVar(e[1], skLet, anyTy)
+  of nkObjectStorage:
+    for f in pat.children:
+      if f.kind == nkColon and f.len >= 2 and f[1].kind == nkIdent:
+        discard gen.declareVar(f[1], skLet, anyTy)
+  else: discard
+
+proc declareAnyLoopVar(gen: CodeGen, decl: Node, anyTy: Sym) =
+  ## Declare for-loop variable(s) as `any` for gradual-mode loops.
+  ## Handles bare idents, tuple brackets, decl wrappers
+  ## (nkVar/nkLet/nkConst over nkIdentDefs), and leading
+  ## destructuring-pattern decls (`for (const [k, v] of x)`)
+  ## emitted by untyped frontends.
+  case decl.kind
+  of nkIdent:
+    discard gen.declareVar(decl, skLet, anyTy)
+  of nkBracket:
+    for v in decl.children:
+      if v.kind == nkIdent:
+        discard gen.declareVar(v, skLet, anyTy)
+  of nkVar, nkLet, nkConst, nkIdentDefs:
+    var w = decl
+    while w.kind in {nkVar, nkLet, nkConst, nkIdentDefs} and w.len > 0:
+      if w.kind == nkIdentDefs:
+        for child in w.children:
+          if child.kind == nkIdentDefs and child.len >= 3 and
+             child[0].kind in {nkArray, nkObjectStorage}:
+            gen.declarePatternNames(child[0], anyTy)
+      w = w[0]
+    if w.kind == nkIdent:
+      discard gen.declareVar(w, skLet, anyTy)
+    elif w.kind == nkPostfix and w.len == 2 and w[1].kind == nkIdent:
+      discard gen.declareVar(w[1], skLet, anyTy)
+  else: discard
+
 proc genFor*(node: Node) {.codegen.} =
   ## Generate code for a ``for`` loop.
   if policyAny in gen.policy.disallow or policyLoops in gen.policy.disallow:
     node.error(ErrPolicyViolation % "loops are disabled")
+
+  if not gen.checkTypes and node.len == 4:
+    # gradual mode: extended 4-child for (loopDecl, iterable, kind,
+    # body) emitted by untyped frontends (e.g. lesscript for-of). The
+    # iterator machinery below only understands 3-child iterator
+    # calls, so validate the iterable and the body once with `any`
+    # loop variable(s) instead.
+    gen.pushScope()
+    gen.pushFlowBlock(fbLoopOuter)
+    gen.pushFlowBlock(fbLoopIter)
+    let anySym = gen.module.sym"any"
+    discard gen.genExpr(node[1])
+    gen.chunk.emit(opcDiscard)
+    gen.chunk.emit(1'u8)
+    gen.declareAnyLoopVar(node[0], anySym)
+    discard gen.genBlock(node[3], isStmt = true)
+    gen.popFlowBlock()
+    gen.popFlowBlock()
+    gen.popScope()
+    return
 
   let
     loopVarName = node[0]
@@ -2314,8 +2914,25 @@ proc genFor*(node: Node) {.codegen.} =
   
   # resolve the iterator's overload
   var theIter = gen.findOverload(iterSym, argTypes, node[1], quiet = true)
-  
-  if theIter.kind != skIterator:
+
+  if theIter == nil or theIter.kind != skIterator:
+    if not gen.checkTypes:
+      # gradual mode: unknown iterator; validate the body once with
+      # `any` loop variable(s). Evaluated arguments are discarded.
+      for i in 0 ..< argTypes.len:
+        gen.chunk.emit(opcDiscard)
+        gen.chunk.emit(1'u8)
+      gen.pushScope()
+      gen.pushFlowBlock(fbLoopOuter)
+      gen.pushFlowBlock(fbLoopIter)
+      gen.declareAnyLoopVar(loopVarName, gen.module.sym"any")
+      discard gen.genBlock(body, isStmt = true)
+      gen.popFlowBlock()
+      gen.popFlowBlock()
+      gen.popScope()
+      iterGen.popFlowBlock()
+      gen.ctxAllocator.freeCtx(iterGen.context)
+      return
     node[1].error(ErrSymKindMismatch % [$skIterator, $theIter.kind])
   gen.resolveGenerics(theIter, argTypes, node[1])
 
@@ -2358,7 +2975,11 @@ proc genBreak*(node: Node) {.codegen.} =
 proc genDiscard*(node: Node) {.codegen.} =
   if node.len > 0:
     let ty = gen.genExpr(node[0])
-    if ty.sameType(gen.module.sym"void"):
+    if not gen.checkTypes and ty != nil and ty.kind == skType and ty.tyKind == ttyAny:
+      discard # gradual mode: discarding/throwing an `any` is fine
+              # (`sameType` matches `any` against `void` below, which
+              # would wrongly reject it).
+    elif ty.sameType(gen.module.sym"void"):
       node[0].error(ErrCannotDiscardVoid % node[0].render)
     gen.chunk.emit(opcDiscard)
     gen.chunk.emit(1'u8)
@@ -2394,7 +3015,7 @@ proc genReturn*(node: Node) {.codegen.} =
   # otherwise if we have a value, use that
   else:
     let valTy = gen.genExpr(node[0])
-    if not unwrapType(valTy).sameType(unwrapType(retTy)):
+    if gen.checkTypes and not unwrapType(valTy).sameType(unwrapType(retTy)):
       node[0].error(ErrTypeMismatch % [$valTy.name, $retTy.name])
 
   # hayago uses two different opcodes for
@@ -2421,7 +3042,7 @@ proc genYield*(node: Node) {.codegen.} =
 
   # generate the iterator value
   let valTy = gen.genExpr(node[0])
-  if not valTy.sameType(gen.iter.iterYieldTy):
+  if gen.checkTypes and not valTy.sameType(gen.iter.iterYieldTy):
     node[0].error(ErrTypeMismatch % [$valTy.name, $gen.iter.iterYieldTy.name])
 
   # switch context to the for loop
@@ -2471,7 +3092,7 @@ proc genArray*(node: Node, isInstantiation = false): Sym {.codegen.} =
   for n in node.children:
     let itemTy = gen.genExpr(n)
     let itemTyUnwrap = unwrapType(itemTy)
-    if not itemTyUnwrap.sameType(firstItemTy):
+    if gen.checkTypes and not itemTyUnwrap.sameType(firstItemTy):
       # checking if the other type is the same as the first element's type
       n.error(ErrTypeMismatch % [$itemTyUnwrap.name, $firstItemTy.name])
     instArrayType.arrayItems.add(itemTy)
@@ -2645,8 +3266,8 @@ proc genCoroutineDecl*(node: Node, isInstantiation = false): Sym {.codegen.} =
   let identName =
     if name.kind == nkPostfix: name[1]
     else: name
-  let loweredName = identName.ident
-  identName.ident = loweredName[0] & loweredName[1..^1].toLowerAscii
+  if not gen.sensitive:
+    identName.ident = lowerName(identName.ident)
 
   let id = gen.script.procs.len.uint16
   let hasReturnType = returnTy.kind == skType and returnTy.tyKind != ttyVoid
@@ -2672,6 +3293,9 @@ proc genCoroutineDecl*(node: Node, isInstantiation = false): Sym {.codegen.} =
         if gen.kind == gkToplevel: nil
         else: gen.ctxAllocator
     )
+    when defined(vancodeGradualTypes):
+      coroGen.strictTypes = gen.strictTypes
+      coroGen.caseSensitive = gen.caseSensitive
     theProc.chunk = chunk
     chunk.file = gen.chunk.file
     coroGen.coroReturnTy = returnTy
@@ -2687,6 +3311,12 @@ proc genCoroutineDecl*(node: Node, isInstantiation = false): Sym {.codegen.} =
       var varType = if isMut: skVar else: skLet
       let param = coroGen.declareVar(pname, varType, ty)
       param.varSet = true
+    when defined(vancodeGradualTypes):
+      if coroGen.sensitive:
+        # JS-like frontends: every function has an `arguments` binding
+        let argsIdent = newIdent("arguments")
+        if coroGen.lookup(argsIdent, quiet = true) == nil:
+          discard coroGen.declareVar(argsIdent, skLet, coroGen.module.sym"any")
 
     if hasReturnType:
       let res = newIdent("result")
@@ -2712,7 +3342,10 @@ proc genVar*(node: Node) {.codegen.} =
   for decl in node.children[0]:
     let implNode = decl[^1]
     if implNode.kind == nkEmpty and node.kind != nkVar:
-      decl[^1].error(ErrVarMustHaveValue)
+      if gen.checkTypes:
+        decl[^1].error(ErrVarMustHaveValue)
+      # unchecked: fall through; the branches below supply the
+      # default (by type, or `any` when untyped).
     var valTy: Sym            # the type of the value
     var valTyImpl: Sym        # the specified type of the variable (if any)
     for name in decl[0..^3]:
@@ -2731,9 +3364,14 @@ proc genVar*(node: Node) {.codegen.} =
         valTyImpl = gen.lookup(decl[^2])
         gen.pushDefault(valTyImpl)
       else:
-        # if neither the value nor the type is specified,
-        # we emit error that the variable must have a value
-        decl[^1].error(ErrTypeMismatch % ["none", "none"])
+        # if neither the value nor the type is specified, the variable
+        # must have a value -- except in gradual mode, where `let x;`
+        # declares `any` (JS undefined).
+        if not gen.checkTypes:
+          valTy = gen.module.sym"any"
+          gen.pushDefault(valTy)
+        else:
+          decl[^1].error(ErrTypeMismatch % ["none", "none"])
       
       # determine the variable's type based on the declaration kind
       # if the variable is declared as `var`, it is mutable
@@ -2758,10 +3396,13 @@ proc genVar*(node: Node) {.codegen.} =
       if valTy != nil and valTyImpl != nil:
         # before declaring the variable, we need to check if
         # the variable's type matches the expected type
-        if not unwrapType(valTy).sameType(unwrapType(valTyImpl)):
+        if gen.checkTypes and not unwrapType(valTy).sameType(unwrapType(valTyImpl)):
           decl[^1].error(ErrTypeMismatch % [$unwrapType(valTy).name, $unwrapType(valTyImpl).name])
       else:
         valTy = valTyImpl
+      if not gen.checkTypes and valTy == nil:
+        # gradual mode: never declare a typeless variable.
+        valTy = gen.module.sym"any"
 
       # declare the variable in the current scope
       gen.declareVar(name, varTy, valTy, varExport = varExport)
@@ -2884,6 +3525,9 @@ proc genImport*(node: Node) {.codegen.} =
       moduleGen.stdlibs = gen.stdlibs
       moduleGen.parserCallback = gen.parserCallback
       moduleGen.policy = gen.policy
+      when defined(vancodeGradualTypes):
+        moduleGen.strictTypes = gen.strictTypes
+        moduleGen.caseSensitive = gen.caseSensitive
       
       # generate the module's script based
       # on the parsed module AST program
@@ -2980,7 +3624,13 @@ proc genStmt*(node: Node) {.codegen.} =
       # if ty != gen.module.sym"void":
       if not ty.sameType(gen.module.sym"void"):
         if not gen.allowExprResult:
-          node.error(ErrUseOrDiscard % [node.render, $ty.name])
+          if not gen.checkTypes:
+            # gradual mode: JS allows value-dropping expression
+            # statements (`'use strict';`, `a + b;`).
+            gen.chunk.emit(opcDiscard)
+            gen.chunk.emit(1'u8)
+          else:
+            node.error(ErrUseOrDiscard % [node.render, $ty.name])
 
 proc genBlock*(node: Node, isStmt: bool): Sym {.codegen.} =
   ## Generate a block of code. Every block creates a new scope

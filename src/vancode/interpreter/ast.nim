@@ -36,6 +36,7 @@ type
     nkInt            # int literal
     nkFloat          # float literal
     nkString         # string literal
+    nkRegex          # regex literal (raw `/pat/flags` source in regexVal)
     nkIdent          # identifier
     nkVarTy          # identifier variable
     nkNil            # nil literal
@@ -108,6 +109,9 @@ type
     of nkString:
       stringVal*: string
         ## The string value
+    of nkRegex:
+      regexVal*: string
+        ## The raw regex source (`/pattern/flags`)
     of nkIdent:
       ident*: string
         ## The identifier name
@@ -187,6 +191,7 @@ proc hash*(node: Node): Hash =
     of nkInt: h = h !& hash(node.intVal)
     of nkFloat: h = h !& hash(node.floatVal)
     of nkString: h = h !& hash(node.stringVal)
+    of nkRegex: h = h !& hash(node.regexVal)
     of nkIdent: h = h !& hash(node.ident)
     else:
       h = h !& hash(node.len)
@@ -206,6 +211,7 @@ proc `$`*(node: Node): string =
     of nkInt: $node.intVal
     of nkFloat: $node.floatVal
     of nkString: node.stringVal.escape
+    of nkRegex: node.regexVal
     of nkIdent: node.ident
     of nkNil: "nil"
     else: ""
@@ -218,6 +224,7 @@ proc treeRepr*(node: Node): string =
   of nkInt: result = "Int " & $node.intVal
   of nkFloat: result = "Float " & $node.floatVal
   of nkString: result = "String " & escape(node.stringVal)
+  of nkRegex: result = "Regex " & node.regexVal
   of nkIdent: result = "Ident " & node.ident
   else:
     result = $node.kind
@@ -265,7 +272,7 @@ proc render*(node: Node): string =
     result = '[' & node.children.join(", ") & ']'
   of nkRecFields:
     result = node.children.join("\n")
-  of nkBool, nkInt, nkFloat, nkString:
+  of nkBool, nkInt, nkFloat, nkString, nkRegex:
     result = $node
   of nkIdent:
     let identName = $node
@@ -384,6 +391,11 @@ proc newStringLit*(val: string): Node =
   ## Construct a new string literal.
   result = newNode(nkString)
   result.stringVal = val
+
+proc newRegexLit*(val: string): Node =
+  ## Construct a new regex literal (raw `/pattern/flags` source).
+  result = newNode(nkRegex)
+  result.regexVal = val
 
 proc newIdent*(ident: string, ln, col: int = 0): Node =
   ## Construct a new ident node.
