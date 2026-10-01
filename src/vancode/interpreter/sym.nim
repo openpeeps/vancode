@@ -349,9 +349,25 @@ proc newSym*(kind: SymKind, name: Node, impl: Node = nil): Sym =
   ## Create a new symbol from a Node.
   result = Sym(name: name, impl: impl, kind: kind)
 
+proc lowerName*(s: string): string {.inline.} =
+  ## Canonical first-letter-case symbol form (Nim-like languages).
+  if s.len > 1: s[0] & s[1..^1].toLowerAscii() else: s
+
 proc newType*(kind: TypeKind, name: Node, impl: Node = nil): Sym =
   ## Create a new type symbol from a Node.
-  result = Sym(name: name, impl: impl, kind: skType, tyKind: kind)
+  ##
+  ## The stored name is canonicalized with `lowerName`, exactly as `newProc`
+  ## does for procedure names. Lookups already normalize through `normName`,
+  ## so without this a type whose name carries an uppercase letter after the
+  ## first could be declared but never found again: `type BadFruit` worked,
+  ## `BadFruit` did not. A fresh node is built rather than rewriting the
+  ## caller's, so the AST still reports the name as it was written.
+  let nameNode =
+    if name.kind == nkIdent:
+      Node(kind: nkIdent, ident: lowerName(name.ident), ln: name.ln, col: name.col)
+    else:
+      name
+  result = Sym(name: nameNode, impl: impl, kind: skType, tyKind: kind)
 
 proc genType*(kind: TypeKind, name: string, exportSym: bool,
       genericParams: Option[seq[Sym]] = none(seq[Sym])): Sym =

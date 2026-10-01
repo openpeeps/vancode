@@ -47,8 +47,15 @@ const
   ErrImmutableReassignment* = "immutable variable '$1' cannot be reassigned"
   ErrTypeMismatch* = "type mismatch: got <$1>, but expected <$2>"
   ErrTypeMismatchChoice* = "type mismatch: got <$1>, but expected one of:$2"
-  ErrNotAProc* = "'$1' is not a procedure"
+  ErrNotAProc* = "'$1' is not a function"
+  ErrCoroNeedsAwait* =
+    "'$1' is an async function, so it cannot be called directly: use " &
+    "'await $1(...)' for its result, or 'dispatch($1, ...)' for the coroutine"
   ErrInvalidField* = "'$1' is not a valid field"
+  ErrDuplicateEnumField* =
+    "'$1' is already declared in enum '$2'"
+  ErrEnumFieldValue* =
+    "enum field '$1' needs a string value after '='"
   ErrInvalidReceiver* = "'$1' is not a valid receiver"
   ErrNonExistentField* = "field '$1' does not exist for <$2>"
   ErrInvalidAssignment* = "cannot assign to '$1'"

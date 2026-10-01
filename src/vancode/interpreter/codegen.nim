@@ -188,10 +188,6 @@ template checkTypes*(gen: CodeGen): bool =
   else:
     true
 
-proc lowerName*(s: string): string {.inline.} =
-  ## Canonical first-letter-case symbol form (tim-like languages).
-  if s.len > 1: s[0] & s[1..^1].toLowerAscii() else: s
-
 template normName*(gen: CodeGen, s: string): string =
   ## Canonical symbol-name form: tim-like languages are case-insensitive
   ## (first letter kept, rest lowered); case-sensitive frontends (JS)
@@ -344,6 +340,9 @@ proc genObjectStorage*(node: Node, isInstantiation = false): Sym {.codegen.}
 proc genArray*(node: Node, isInstantiation = false): Sym {.codegen.}
 proc genGetField*(node: Node): Sym {.codegen.}
 proc genTypeDef*(node: Node): Sym {.codegen.}
+  # forward declaration for frontends registering their own declaration kinds
+  # (dfkup's `enum`); the body comes from `extendModule`.
+proc genEnumDef*(node: Node): Sym {.codegen.}
 proc genFor*(node: Node) {.codegen.}
 proc procCall*(node: Node, procSym: Sym): Sym {.codegen.}
 
@@ -1071,6 +1070,15 @@ proc callProc*(procSym: Sym, argTypes: seq[Sym],
               errorNode: Node = nil): Sym {.codegen.} =
   ## Generate code that calls a procedure. `errorNode`
   ## is used for error reporting.
+  if procSym.kind == skCoroutine:
+    # `async func` declares a coroutine, which is built by `createCoro` or
+    # `dispatch` and advanced by `resume`/`await` -- there is no direct call.
+    # Report the two forms that do work instead of a bare "not a function".
+    if not gen.checkTypes:
+      return gen.module.sym"any"
+    if errorNode != nil:
+      errorNode.error(ErrCoroNeedsAwait % $procSym.name)
+    return gen.module.sym"any"
   if procSym.kind in {skProc, skChoice}:
     # find the overload (quiet in gradual mode: total failure degrades
     # to `any` below instead of raising inside findOverload)
@@ -1854,6 +1862,10 @@ proc call*(node: Node): Sym {.codegen.} =
     assert false, "indirect calls are not implemented yet: " & node.render
 
 proc genGetField*(node: Node): Sym {.codegen.} =
+  extendableCase "codegenGetField":
+    case node.kind
+    else: discard
+
   # Evaluate the receiver (can be an ident, bracket access, etc.)
   var recvSym = gen.genExpr(node[0], varUnwrap = false)
   if recvSym == nil:
@@ -2472,10 +2484,11 @@ proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.} =
 proc genTypeDef*(node: Node): Sym {.codegen.} =
   # Generates code for a type definition
   for defNode in node:
-    case defNode.kind
-    of nkObject:
-      discard gen.genObject(defNode)
-    else: discard # todo
+    extendableCase "codeGenTypeDef":
+      case defNode.kind
+      of nkObject:
+        discard gen.genObject(defNode)
+      else: discard # todo
 
 # This injects the extended module, which contains built-in procedures and types
 injectExtendedModule()
