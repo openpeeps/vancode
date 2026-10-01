@@ -75,6 +75,21 @@ type
     savedStackBottom*: int
     result*: Value
 
+  CoroFrame* = object
+    ## One suspended coroutine activation. Holds the interpreter state to
+    ## restore when the suspended coroutine is resumed, plus the coroutine
+    ## that resumed it (`resumer`), so a coroutine resumed from inside
+    ## another coroutine hands control back to the right place.
+    ## `resumer` is nil when the resumer is the toplevel activation.
+    resumer*: Coroutine
+    stack*: seq[Value]
+    callStack*: seq[CallFrame]
+    pcIdx*: int
+    chunk*: Chunk
+    co*: CachedOps
+    stackBottom*: int
+    script*: Script
+
   CoroutineResultKind* = enum
     crYielded
     crCompleted
@@ -108,14 +123,11 @@ type
     preferences: VMPreferences
     importedModules*: Table[string, Script]
     activeCoroutine*: Coroutine
-    savedStack: seq[Value]
-    savedCallStack: seq[CallFrame]
+    coroFrames: seq[CoroFrame]
+      ## Stack of suspended activations, innermost last. Every `resume` of a
+      ## coroutine pushes a frame, every yield/completion pops one. This is
+      ## what makes coroutines nestable.
     globals*: Table[string, Value]
-    savedPcIdx: int
-    savedChunk: Chunk
-    savedCo: CachedOps
-    savedStackBottom: int
-    savedScript: Script
     jit*: JitHooks
     pendingCallback*: Value
     traceCache*: TraceCache
@@ -298,6 +310,9 @@ proc parseChunk(currentChunk: Chunk): CachedOps =
         addOp(oc, sid.int64, 0, akString)
       of opcPushPointer:
         discard readArg[pointer](pc)
+        addOp(oc)
+      of opcPushJNil:
+        discard readArg[uint16](pc) # json storage type id
         addOp(oc)
       of opcPushTrue, opcPushFalse, opcConcatStr:
         addOp(oc)
@@ -601,6 +616,43 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
     pcIdx = frame.pcIdx
     stackBottom = frame.stackBottom
 
+  template pushCoroActivation(savedStack: seq[Value]) =
+    ## Suspend the current activation so a coroutine can run in its place.
+    ## `vm.activeCoroutine` at this point is the resumer, and becomes the
+    ## frame's owner so a nested resume restores the right coroutine.
+    vm.coroFrames.add(
+      CoroFrame(
+        resumer: vm.activeCoroutine,
+        stack: savedStack,
+        callStack: callStack,
+        pcIdx: pcIdx,
+        chunk: currentChunk,
+        co: co,
+        stackBottom: stackBottom,
+        script: script
+      )
+    )
+
+  template restoreCoroActivation() =
+    ## Return control to the innermost suspended activation, popping its frame.
+    ## When the stack is empty the coroutine was resumed from toplevel, so
+    ## control goes back to the main activation and `activeCoroutine` clears.
+    if vm.coroFrames.len == 0:
+      vm.activeCoroutine = nil
+    else:
+      let frame = vm.coroFrames[^1]
+      vm.coroFrames.setLen(vm.coroFrames.len - 1)
+      stack = frame.stack
+      callStack = frame.callStack
+      pcIdx = frame.pcIdx
+      currentChunk = frame.chunk
+      co = frame.co
+      cached = co
+      opcodes = co.opcodes
+      stackBottom = frame.stackBottom
+      script = frame.script
+      vm.activeCoroutine = frame.resumer
+
     # Defensive: ensure pcIdx is valid
     if pcIdx < 0 or pcIdx >= co.opcodes.len:
       pcIdx = co.opcodes.len - 1
@@ -712,6 +764,9 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         stack.push(initObject(co.getArg1Int(pcIdx).uint16, nilObject))
       of opcPushI, opcPushF, opcPushS:
         co.pushConst(pcIdx, currentChunk, stack)
+      of opcPushJNil:
+        # an optional json parameter omitted at the call site
+        stack.push(initValue(newJNull()))
       of opcPushTrue:
         stack.push(initValue(true))
       of opcPushFalse:
@@ -1235,16 +1290,8 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
             let coro = vm.activeCoroutine
             coro.state = csCompleted
             coro.result = rv
-            stack = vm.savedStack
-            callStack = vm.savedCallStack
-            pcIdx = vm.savedPcIdx
-            currentChunk = vm.savedChunk
-            co = vm.savedCo
-            cached = co
-            opcodes = co.opcodes
-            stackBottom = vm.savedStackBottom
-            script = vm.savedScript
-            vm.activeCoroutine = nil
+            # control returns to whoever resumed this coroutine
+            restoreCoroActivation()
             stack.push(rv)
           else:
             return rv
@@ -1292,16 +1339,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         if callStack.len == 0 and vm.activeCoroutine != nil:
           let coro = vm.activeCoroutine
           coro.state = csCompleted
-          stack = vm.savedStack
-          callStack = vm.savedCallStack
-          pcIdx = vm.savedPcIdx
-          currentChunk = vm.savedChunk
-          co = vm.savedCo
-          cached = co
-          opcodes = co.opcodes
-          stackBottom = vm.savedStackBottom
-          script = vm.savedScript
-          vm.activeCoroutine = nil
+          restoreCoroActivation()
         else:
           restoreFrame()
         when defined(hayaVmWriteStackOps):
@@ -1340,13 +1378,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
               "opcCoroResume: not enough arguments on stack for coroutine" &
               " (need " & $paramCount & ", have " & $stack.len & ")")
           let argsStart = stack.len - paramCount
-          vm.savedStack = stack[0..<argsStart]
-          vm.savedCallStack = callStack
-          vm.savedPcIdx = pcIdx
-          vm.savedChunk = currentChunk
-          vm.savedCo = co
-          vm.savedStackBottom = stackBottom
-          vm.savedScript = script
+          pushCoroActivation(stack[0..<argsStart])
           vm.activeCoroutine = coro
           var coroStack = newSeqOfCap[Value](VMInitialPreallocatedStackSize)
           for i in 0..<paramCount:
@@ -1364,13 +1396,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           coro.state = csRunning
           continue
         of csSuspended:
-          vm.savedStack = stack
-          vm.savedCallStack = callStack
-          vm.savedPcIdx = pcIdx
-          vm.savedChunk = currentChunk
-          vm.savedCo = co
-          vm.savedStackBottom = stackBottom
-          vm.savedScript = script
+          pushCoroActivation(stack)
           stack = coro.savedStack
           callStack = coro.savedCallStack
           pcIdx = coro.savedPcIdx
@@ -1416,16 +1442,8 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         coro.savedCachedOps = co
         coro.savedStackBottom = stackBottom
         coro.state = csSuspended
-        stack = vm.savedStack
-        callStack = vm.savedCallStack
-        pcIdx = vm.savedPcIdx
-        currentChunk = vm.savedChunk
-        co = vm.savedCo
-        cached = co
-        opcodes = co.opcodes
-        stackBottom = vm.savedStackBottom
-        script = vm.savedScript
-        vm.activeCoroutine = nil
+        # hand control back to whoever resumed this coroutine
+        restoreCoroActivation()
         stack.push(val)
       of opcHalt:
         if stepping != nil:

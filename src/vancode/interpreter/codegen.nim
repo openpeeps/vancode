@@ -335,6 +335,8 @@ proc genScript*(program: Ast, includePath: Option[string], emitHalt: static bool
 proc genExpr*(node: Node, varUnwrap = true): Sym {.codegen.}
 proc genBlock*(node: Node, isStmt: bool): Sym {.codegen.}
 proc genStmt*(node: Node) {.codegen.}
+proc genAwait*(node: Node): Sym {.codegen.}
+proc genThen*(node: Node): Sym {.codegen.}
 proc genProc*(node: Node, isInstantiation = false): Sym {.codegen.}
 proc genIterator*(node: Node, isInstantiation = false): Sym {.codegen.}
 proc genObject*(node: Node, isInstantiation = false): Sym {.codegen.}
@@ -1107,7 +1109,16 @@ proc callProc*(procSym: Sym, argTypes: seq[Sym],
         if p.implSym != nil and p.implSym.impl != nil:
           discard gen.genExpr(p.implSym.impl)  # pushes default value
         else:
-          gen.pushDefault(unwrapType(p.ty))    # fallback by type
+          # A `val`-carrying default whose type has no literal node form
+          # (json, arrays) leaves implSym nil. pushDefault emits a typed
+          # zero for those, which is right; the one case it cannot express
+          # is a json default, where a null is the honest neutral.
+          let ty = unwrapType(p.ty)
+          if ty != nil and ty.kind == skType and ty.tyKind == ttyJson:
+            gen.chunk.emit(opcPushJNil)
+            gen.chunk.emit(uint16(tyJsonStorage))
+          else:
+            gen.pushDefault(ty)                 # fallback by type
 
     # call the proc
     gen.chunk.emit(opcCallD)
@@ -1631,6 +1642,69 @@ proc makeCoroType(gen: CodeGen, resultTy: Sym): Sym =
     result.tyKind = ttyCoroutine
     result.coroResultTy = resultTy
 
+var awaitCounter = 0
+
+proc freshAwaitName(prefix: string): Node =
+  ## A compiler-generated identifier for `await`'s internal temporaries.
+  inc awaitCounter
+  newIdent(prefix & "_" & $awaitCounter)
+
+proc awaitIdent(name: Node): Node =
+  ## A fresh lookup node for a generated `await` temporary.
+  newIdent(name.ident)
+
+proc genDispatch*(node: Node): Sym {.codegen.} =
+  ## Codegen for the `dispatch` intrinsic.
+  ##
+  ## `dispatch(f, args...)` creates a coroutine from `f` and resumes it once,
+  ## binding `args` to its parameters. It is `createCoro(f)` plus that first
+  ## `resume`, collapsed into one call, and it evaluates to the coroutine so
+  ## the caller can keep stepping it with `resume` and `status`.
+  ##
+  ## `await f(args...)` is the other half of the pair: it drives `f` all the
+  ## way to completion and evaluates to its return value, so a caller that
+  ## wants the result never needs `createCoro` at all.
+  ##
+  ##   let c = dispatch(counter, 10)
+  ##   let v = resume(c)        # 11 — the 10 was bound by dispatch
+  ##   let total = await sum(1, 2)
+  ##
+  ## Built as AST and run through the normal statement path rather than
+  ## emitted by hand, so `createCoro` and `resume` keep going through the
+  ## intrinsics that intercept them.
+  if node.len < 2:
+    node.error("dispatch requires a proc or coroutine argument")
+  let targetSym = gen.lookup(node[1])
+  if targetSym == nil or targetSym.kind notin {skProc, skCoroutine}:
+    node[1].error("dispatch expects a proc or coroutine")
+
+  let coroName = freshAwaitName("__dispatch_coro")
+  let valName = freshAwaitName("__dispatch_val")
+
+  # let __dispatch_coro = createCoro(f)
+  var coroDefs = newNode(nkIdentDefs)
+  coroDefs.add(newTree(nkAssign, coroName, newEmpty(),
+    newCall(newIdent"createCoro", node[1])))
+  gen.genStmt(newTree(nkLet, coroDefs))
+
+  # let __dispatch_val = resume(__dispatch_coro, args...)
+  let firstResume = newCall(newIdent"resume", awaitIdent(coroName))
+  for arg in node[2..^1]:
+    firstResume.add(arg)
+  var valDefs = newNode(nkIdentDefs)
+  valDefs.add(newTree(nkAssign, valName, newEmpty(), firstResume))
+  gen.genStmt(newTree(nkLet, valDefs))
+
+  # the expression evaluates to the coroutine, not the first yielded value
+  let valSym = gen.lookup(awaitIdent(coroName))
+  if valSym != nil:
+    gen.pushVar(valSym)
+    if valSym.varTy != nil: result = valSym.varTy
+    else: result = gen.module.sym"any"
+  else:
+    gen.pushDefault(gen.module.sym"any")
+    result = gen.module.sym"any"
+
 proc genCreateCoro*(node: Node): Sym {.codegen.} =
   ## Codegen for the `createCoro` intrinsic.
   if node.len < 2:
@@ -1671,11 +1745,13 @@ proc call*(node: Node): Sym {.codegen.} =
   of nkIdent:
     # the call is direct or from a variable
     let sym = gen.lookup(node[0])  # lookup the left-hand side
-    # Coroutine intrinsics: intercept createCoro and resume
+    # Coroutine intrinsics: intercept createCoro, dispatch and resume
     if sym.kind in {skProc, skCoroutine, skChoice}:
       let name = sym.name.ident.toLowerAscii
       if name == "createcoro":
         return gen.genCreateCoro(node)
+      elif name == "dispatch":
+        return gen.genDispatch(node)
       elif name == "resume":
         return gen.genCoroResume(node)
     case sym.kind
@@ -2457,6 +2533,8 @@ proc genExpr*(node: Node, varUnwrap = true): Sym {.codegen.} =
         if varUnwrap: symNode.varTy
         else: symNode
       )
+    of nkAwait: result = gen.genAwait(node)
+    of nkThen: result = gen.genThen(node)
     of nkPrefix:
       result = gen.prefix(node)
     of nkInfix:
@@ -3024,6 +3102,103 @@ proc genReturn*(node: Node) {.codegen.} =
     gen.chunk.emit(opcReturnVal)
   else:
     gen.chunk.emit(opcReturnVoid)
+
+proc splitAwaitOperand(gen: CodeGen, operand: Node): tuple[coro: Node, args: seq[Node]] =
+  ## Decide what an `await` operand means.
+  ##
+  ## `await coroValue` drives an existing coroutine. `await coroFunc(args)`
+  ## calls the coroutine function to get a fresh coroutine and passes `args`
+  ## to its first resume, matching the `createCoro(f)` / `resume(c, args)`
+  ## pair. That second form is what makes `await chat(client, "hi")` read
+  ## like its JS counterpart.
+  if operand.kind == nkCall and operand.len >= 1 and
+     operand[0].kind == nkIdent:
+    let callee = gen.lookup(operand[0], quiet = true)
+    if callee != nil and callee.kind == skCoroutine:
+      # `await chat(a, b)` becomes `createCoro(chat)` plus arguments bound on
+      # the first resume. createCoro takes the proc alone.
+      result.coro = newCall(newIdent"createCoro", newIdent(operand[0].ident))
+      for arg in operand[1..^1]:
+        result.args.add(arg)
+      return
+  result.coro = operand
+
+proc genAwait*(node: Node): Sym {.codegen.} =
+  ## Generate code for an ``await`` expression.
+  ##
+  ## Drives the awaited coroutine to completion and evaluates to its return
+  ## value. Inside a coroutine, every intermediate ``yield`` of the awaited
+  ## coroutine is forwarded as a ``yield`` of the enclosing coroutine, which is
+  ## what makes streamed values pass through. Equivalent source:
+  ##
+  ##     let c = <coro>
+  ##     var v = resume(c)
+  ##     while status(c) != "csCompleted":
+  ##       yield v
+  ##       v = resume(c)
+  ##     v
+  ##
+  ## The loop is built as AST and run through the normal expression and
+  ## statement paths rather than emitted by hand, so `resume` and `status`
+  ## keep going through the compiler intrinsics that intercept them.
+  let
+    coroName = freshAwaitName("__await_coro")
+    valName = freshAwaitName("__await_val")
+  let operand = gen.splitAwaitOperand(node[0])
+
+  # let c = <coro>
+  let coroDefs = newNode(nkIdentDefs)
+  coroDefs.add(newTree(nkAssign, coroName, newEmpty(), operand.coro))
+  gen.genStmt(newTree(nkLet, coroDefs))
+
+  # var v = resume(c, args...)  -- arguments bind on the first resume only
+  let firstResume = newCall(newIdent"resume", awaitIdent(coroName))
+  for arg in operand.args:
+    firstResume.add(arg)
+  let valBind = newNode(nkIdentDefs)
+  valBind.add(newTree(nkAssign, valName, newEmpty(), firstResume))
+  gen.genStmt(newTree(nkVar, valBind))
+
+  # while status(c) != "csCompleted": ...
+  let cond = newTree(nkInfix, newIdent"!=",
+    newCall(newIdent"status", awaitIdent(coroName)),
+    newStringLit("csCompleted"))
+
+  let body = newNode(nkBlock)
+  if gen.kind == gkCoroutine:
+    # forward the awaited coroutine's yield to our own resumer
+    body.add(newTree(nkYield, awaitIdent(valName)))
+  else:
+    # nothing to forward to outside a coroutine, so drop it
+    body.add(newTree(nkDiscard, awaitIdent(valName)))
+  body.add(newTree(nkInfix, newIdent"=", awaitIdent(valName),
+    newCall(newIdent"resume", awaitIdent(coroName))))
+  gen.genStmt(newTree(nkWhile, cond, body))
+
+  # the awaited coroutine's return value is the value of the expression
+  let valSym = gen.lookup(awaitIdent(valName))
+  if valSym != nil: gen.pushVar(valSym)
+  else: gen.pushDefault(gen.module.sym"any")
+  if valSym != nil and valSym.varTy != nil: result = valSym.varTy
+  else: result = gen.module.sym"any"
+
+proc genThen*(node: Node): Sym {.codegen.} =
+  ## Generate code for ``await coroExpr then proc(args)``.
+  ##
+  ## A sequential continuation: awaits `node[0]`, then calls `node[1]` (a
+  ## direct call to a named proc) with the awaited result substituted for its
+  ## first argument. The value of the expression is the continuation's
+  ## return value.
+  let awaited = node[0]
+  var call = newNode(nkCall)
+  for child in node[1]:
+    call.add(child)
+  if call.len > 1:
+    # replace the awaited expression the parser left in argument position
+    call[1] = awaited
+  else:
+    call.add(awaited)
+  result = gen.genExpr(call)
 
 proc genYield*(node: Node) {.codegen.} =
   ## Generate code for a ``yield`` statement.

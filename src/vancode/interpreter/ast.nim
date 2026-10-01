@@ -59,6 +59,8 @@ type
     nkCall           # call - left(a, ...)
     nkIf             # if expression - if expr {...} elif expr {...} else {...}
     nkAssign         # assignment - left = right
+    nkAwait          # await expression - await coroExpr
+    nkThen           # then expression - await coroExpr then proc(args)
     # types
     nkProcTy         # procedure type - proc (...) -> t
     nkTypeDef        # type definition - type t = s
@@ -331,6 +333,10 @@ proc render*(node: Node): string =
       if node.kind == nkReturn: "return"
       else: "yield"
     if node[0].kind != nkEmpty: result.add(' ' & node[0].render)
+  of nkAwait:
+    result = "await " & node[0].render
+  of nkThen:
+    result = "await " & node[0].render & " then " & node[1].render
   of nkObject:
     result = "object " & node[0].render & node[1].render & " {\n" &
              node[2].render.indent(2) & "\n}\n"
