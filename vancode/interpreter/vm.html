@@ -71,6 +71,15 @@
   strKeys*: seq[seq[uint16]]">CachedOps</a></li>
 <li><a class="reference" href="#CallFrame" title="CallFrame = tuple[currentChunk: Chunk, cachedOps: CachedOps, pcIdx: int,
                   stackBottom: int, script: Script]">CallFrame</a></li>
+<li><a class="reference" href="#CoroFrame" title="CoroFrame = object
+  resumer*: Coroutine
+  stack*: seq[Value]
+  callStack*: seq[CallFrame]
+  pcIdx*: int
+  chunk*: Chunk
+  co*: CachedOps
+  stackBottom*: int
+  script*: Script">CoroFrame</a></li>
 <li><a class="reference" href="#Coroutine" title="Coroutine {.acyclic.} = ref object
   state*: CoroutineState
   callee*: Proc
@@ -237,6 +246,22 @@
   <dd>
     
     Represents a call frame for function/procedure calls.
+    
+  </dd>
+</div>
+<div id="CoroFrame">
+  <dt><pre><a href="#CoroFrame"><span class="Identifier">CoroFrame</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">resumer</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Coroutine"><span class="Identifier">Coroutine</span></a>
+  <span class="Identifier">stack</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="value.html#Value"><span class="Identifier">Value</span></a><span class="Other">]</span>
+  <span class="Identifier">callStack</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#CallFrame"><span class="Identifier">CallFrame</span></a><span class="Other">]</span>
+  <span class="Identifier">pcIdx</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">chunk</span><span class="Operator">*</span><span class="Other">:</span> <a href="chunk.html#Chunk"><span class="Identifier">Chunk</span></a>
+  <span class="Identifier">co</span><span class="Operator">*</span><span class="Other">:</span> <a href="#CachedOps"><span class="Identifier">CachedOps</span></a>
+  <span class="Identifier">stackBottom</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">script</span><span class="Operator">*</span><span class="Other">:</span> <a href="chunk.html#Script"><span class="Identifier">Script</span></a></pre></dt>
+  <dd>
+    
+    One suspended coroutine activation. Holds the interpreter state to restore when the suspended coroutine is resumed, plus the coroutine that resumed it (<tt class="docutils literal"><span class="pre"><span class="Identifier">resumer</span></span></tt>), so a coroutine resumed from inside another coroutine hands control back to the right place. <tt class="docutils literal"><span class="pre"><span class="Identifier">resumer</span></span></tt> is nil when the resumer is the toplevel activation.
     
   </dd>
 </div>
@@ -518,7 +543,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-09-27 12:19:31 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-10-01 13:42:50 UTC</small>
       </div>
     </div>
   </div>

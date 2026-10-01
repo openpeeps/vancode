@@ -170,6 +170,10 @@
   <li><a class="reference" href="#genArrayAccess%2CCodeGen%2CNode" title="genArrayAccess(gen: CodeGen; node: Node): Sym">genArrayAccess(gen: CodeGen; node: Node): Sym</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">genAwait
+  <li><a class="reference" href="#genAwait%2CCodeGen%2CNode" title="genAwait(gen: CodeGen; node: Node): Sym">genAwait(gen: CodeGen; node: Node): Sym</a></li>
+
+</ul>
 <ul class="simple nested-toc-section">genBlock
   <li><a class="reference" href="#genBlock%2CCodeGen%2CNode%2Cbool" title="genBlock(gen: CodeGen; node: Node; isStmt: bool): Sym">genBlock(gen: CodeGen; node: Node; isStmt: bool): Sym</a></li>
 
@@ -200,6 +204,10 @@
 </ul>
 <ul class="simple nested-toc-section">genDiscard
   <li><a class="reference" href="#genDiscard%2CCodeGen%2CNode" title="genDiscard(gen: CodeGen; node: Node)">genDiscard(gen: CodeGen; node: Node)</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">genDispatch
+  <li><a class="reference" href="#genDispatch%2CCodeGen%2CNode" title="genDispatch(gen: CodeGen; node: Node): Sym">genDispatch(gen: CodeGen; node: Node): Sym</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">genExpr
@@ -250,6 +258,10 @@
 </ul>
 <ul class="simple nested-toc-section">genStmt
   <li><a class="reference" href="#genStmt%2CCodeGen%2CNode" title="genStmt(gen: CodeGen; node: Node)">genStmt(gen: CodeGen; node: Node)</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">genThen
+  <li><a class="reference" href="#genThen%2CCodeGen%2CNode" title="genThen(gen: CodeGen; node: Node): Sym">genThen(gen: CodeGen; node: Node): Sym</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">genTypeDef
@@ -716,6 +728,19 @@
 </div>
 
 </div>
+<div id="genAwait-procs-all">
+  <div id="genAwait,CodeGen,Node">
+  <dt><pre><span class="Keyword">proc</span> <a href="#genAwait%2CCodeGen%2CNode"><span class="Identifier">genAwait</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
 <div id="genBlock-procs-all">
   <div id="genBlock,CodeGen,Node,bool">
   <dt><pre><span class="Keyword">proc</span> <a href="#genBlock%2CCodeGen%2CNode%2Cbool"><span class="Identifier">genBlock</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">isStmt</span><span class="Other">:</span> <span class="Identifier">bool</span><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.
@@ -807,6 +832,19 @@
   <div id="genDiscard,CodeGen,Node">
   <dt><pre><span class="Keyword">proc</span> <a href="#genDiscard%2CCodeGen%2CNode"><span class="Identifier">genDiscard</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
+<div id="genDispatch-procs-all">
+  <div id="genDispatch,CodeGen,Node">
+  <dt><pre><span class="Keyword">proc</span> <a href="#genDispatch%2CCodeGen%2CNode"><span class="Identifier">genDispatch</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -963,6 +1001,19 @@
   <dt><pre><span class="Keyword">proc</span> <a href="#genStmt%2CCodeGen%2CNode"><span class="Identifier">genStmt</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">IOError</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+
+</div>
+<div id="genThen-procs-all">
+  <div id="genThen,CodeGen,Node">
+  <dt><pre><span class="Keyword">proc</span> <a href="#genThen%2CCodeGen%2CNode"><span class="Identifier">genThen</span></a><span class="Other">(</span><span class="Identifier">gen</span><span class="Other">:</span> <a href="#CodeGen"><span class="Identifier">CodeGen</span></a><span class="Other">;</span> <span class="Identifier">node</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">)</span><span class="Other">:</span> <a href="sym.html#Sym"><span class="Identifier">Sym</span></a> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">CodeGenError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     
@@ -1352,7 +1403,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-09-27 12:19:31 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-10-01 13:42:50 UTC</small>
       </div>
     </div>
   </div>
