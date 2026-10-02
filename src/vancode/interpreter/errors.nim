@@ -52,6 +52,10 @@ const
     "'$1' is an async function, so it cannot be called directly: use " &
     "'await $1(...)' for its result, or 'dispatch($1, ...)' for the coroutine"
   ErrInvalidField* = "'$1' is not a valid field"
+  ErrAmbiguousType* =
+    "'$1' is declared in more than one imported file: $2. Import one with " &
+    "'as' and refer to it as 'alias.$1'"
+  ErrDuplicateImportAlias* = "import alias '$1' is already used"
   ErrDuplicateEnumField* =
     "'$1' is already declared in enum '$2'"
   ErrEnumFieldValue* =

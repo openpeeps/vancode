@@ -19,9 +19,29 @@ import pkg/voodoo/extensibles
 
 import ./[ast, value]
 
+var globalTypeOrdinal* {.global.}: int = 0
+  ## Per-file declaration counter backing `Sym.stamp`. Exposed so frontends
+  ## that build type symbols outside `newType` can stamp them the same way.
+
 type
   Context* = distinct uint16
     ## A scope context.
+
+  ImportedTypes* = object
+    ## One import's worth of exported type symbols, kept as a separate layer.
+    ##
+    ## Imports used to be flattened into a single `typeDefs` table keyed by
+    ## bare name, so two modules declaring the same type name collided and the
+    ## loser was dropped without a word. Keeping each import in its own layer
+    ## lets a lookup tell "the local declaration" from "two imported
+    ## candidates that disagree", which is the difference between a working
+    ## program and a silently wrong one.
+    alias*: string
+      ## the `import "x" as alias` binding, empty when unaliased
+    path*: string
+      ## the imported module's source path, for diagnostics
+    types*: Table[string, Sym]
+      ## the module's exported types, keyed by canonical name
 
   Scope* {.acyclic.} = ref object of RootObj
     ## A local scope.
@@ -38,8 +58,11 @@ type
       ## A table of functions. This is used for fast lookups of functions
       ## in the current scope.
     typeDefs*, exportTypeDefs*: Table[string, Sym]
-      ## A table of type definitions. This is used for fast lookups of type
-      ## definitions in the current scope.
+      ## A table of type definitions declared *in this scope*. This is used
+      ## for fast lookups of type definitions in the current scope.
+    importedTypes*: seq[ImportedTypes]
+      ## one layer per import, in import order. consulted only after
+      ## `typeDefs` misses, so a local declaration always wins.
     context*: Context
       ## the scope's context. this is used for scope hygiene
   
@@ -102,6 +125,15 @@ type
     procTypeFunction
     procTypeMacro
 
+  Stamp* = object
+    ## Where a symbol was declared. Two symbols are the same *declared* symbol
+    ## when their stamps match, which is what keeps a type named `Veg` in one
+    ## file from being satisfied by a different `Veg` declared elsewhere.
+    path*: string
+      ## the declaring file, empty for generated (builtin) symbols
+    ordinal*: uint32
+      ## the declaration's index within that file
+
   Sym* {.acyclic.} = ref object
     ## A symbol. This represents an ident that can be looked up.
     name*: Node  ## the name of the symbol
@@ -109,6 +141,9 @@ type
     src*: Option[string]
       ## the source file where the symbol was defined
       ## this is used for type checking and error reporting
+    stamp*: Stamp
+      ## the declaration site. Unlike `src` this is total: two builtins
+      ## declared in the same file still get distinct ordinals.
     case kind*: SymKind
     of skVar, skLet, skConst:
       varTy*: Sym        ## the type of the variable
@@ -279,10 +314,14 @@ proc `$`*(sym: Sym): string =
           result.add(sym.genericInstArgs.get()[0].name.render)
       result.add("]")
     of ttyObject:
-      result = "{"
-      for name, field in sym.objectFields:
-        result.add(" " & name & ": (...);")
-      result.add("}")
+      # Name the type rather than listing its fields. Two same-named types in a
+      # type error rendered as `{ carrot: (...); leek: (...)}` and
+      # `{ pea: (...);}`, which says nothing about *which* `Veg` was wanted, and
+      # for an enum the field list is the entire type. `name (file)` identifies
+      # both the type and the file that declared it.
+      result = sym.name.render
+      if sym.stamp.path.len > 0:
+        result.add(" (" & sym.stamp.path.extractFilename & ")")
     else:
       result = sym.name.render
       if sym.genericInstArgs.isSome:
@@ -324,6 +363,13 @@ proc `$`*(sym: Sym): string =
   of skChoice:
     result = sym.choices.mapIt($it).join("\n").indent(2)
   else: discard
+  # When two same-named types meet in a type error, the bare name is useless on
+  # its own, so name the declaring file: a `Veg` in a.dfkup and a `Veg` in
+  # b.dfkup otherwise render identically. Only the bare-name branch qualifies,
+  # since that is the one that reads as a type name rather than a value.
+  if sym.kind == skType and sym.tyKind notin tyPrimitives and
+     sym.stamp.path.len > 0 and result == sym.name.render:
+    result.add(" (" & sym.stamp.path.extractFilename & ")")
 
 proc isGeneric*(sym: Sym): bool =
   ## Returns whether the symbol is generic or not.
@@ -345,15 +391,43 @@ proc hash*(sym: Sym): Hash =
   # is just converting the int to a Hash (which is a distinct int) :)
   result = hash(cast[int](sym))
 
-proc newSym*(kind: SymKind, name: Node, impl: Node = nil): Sym =
-  ## Create a new symbol from a Node.
-  result = Sym(name: name, impl: impl, kind: kind)
-
 proc lowerName*(s: string): string {.inline.} =
   ## Canonical first-letter-case symbol form (Nim-like languages).
   if s.len > 1: s[0] & s[1..^1].toLowerAscii() else: s
 
-proc newType*(kind: TypeKind, name: Node, impl: Node = nil): Sym =
+proc sameStamp*(a, b: Stamp): bool =
+  ## Whether two declaration sites are the same.
+  ##
+  ## Symbols with no stamp at all (built before stamping existed, or injected
+  ## by a frontend that skipped it) are treated as equal to each other, so a
+  ## missing stamp degrades to the old name-based behaviour rather than making
+  ## every such type distinct from every other.
+  if a.ordinal == 0 and b.ordinal == 0: return true
+  a.ordinal == b.ordinal and a.path == b.path
+
+proc newStamp*(src: Option[string], ordinal: uint32): Stamp =
+  ## Where a symbol was declared: the file that declared it, plus a per-file
+  ## ordinal so two declarations in one file stay distinct.
+  result.path = if src.isSome: src.get else: ""
+  result.ordinal = ordinal
+
+proc `$`*(stamp: Stamp): string =
+  if stamp.path.len == 0: return $stamp.ordinal
+  $stamp.ordinal & " @" & stamp.path.extractFilename
+
+proc nextTypeOrdinal(): uint32 =
+  ## Per-file ordinal for the next declared type. Identity needs to distinguish
+  ## `Veg` in a.dfkup from `Veg` in b.dfkup, and two same-named types declared
+  ## in the same file, which a path alone cannot do.
+  globalTypeOrdinal.inc()
+  uint32(globalTypeOrdinal)
+
+proc newSym*(kind: SymKind, name: Node, impl: Node = nil): Sym =
+  ## Create a new symbol from a Node.
+  result = Sym(name: name, impl: impl, kind: kind)
+
+proc newType*(kind: TypeKind, name: Node, impl: Node = nil,
+              src: Option[string] = none(string)): Sym =
   ## Create a new type symbol from a Node.
   ##
   ## The stored name is canonicalized with `lowerName`, exactly as `newProc`
@@ -363,15 +437,23 @@ proc newType*(kind: TypeKind, name: Node, impl: Node = nil): Sym =
   ## `BadFruit` did not. A fresh node is built rather than rewriting the
   ## caller's, so the AST still reports the name as it was written.
   let nameNode =
-    if name.kind == nkIdent:
+    if name == nil: nil
+    elif name.kind == nkIdent:
       Node(kind: nkIdent, ident: lowerName(name.ident), ln: name.ln, col: name.col)
     else:
       name
-  result = Sym(name: nameNode, impl: impl, kind: skType, tyKind: kind)
+  result = Sym(name: nameNode, impl: impl, kind: skType, tyKind: kind,
+               src: src, stamp: newStamp(src, nextTypeOrdinal()))
 
 proc genType*(kind: TypeKind, name: string, exportSym: bool,
       genericParams: Option[seq[Sym]] = none(seq[Sym])): Sym =
   ## Generate a new type symbol from a string name.
+  ##
+  ## Deliberately left unstamped. These are the builtin and library types
+  ## (`int`, `json`, `void`, every `addProc` parameter type), which are global
+  ## singletons rather than per-file declarations, so they must keep matching
+  ## each other by `tyKind`. Only `newType` stamps, because only it describes a
+  ## type declared at a particular place in a particular file.
   result = Sym(
     name: newIdent(name),
     kind: skType,
@@ -439,8 +521,16 @@ proc sameType*(a, b: Sym): bool =
         return a.objectId == b.objectId
       of ttyAlias, ttyCustom:
         return a == b
-      else:
+      of ttyVoid..ttyString:
+        # primitives are global: every `int` is the same `int`
         return true
+      else:
+        # A declared type of any other kind (class, interface, coroutine, ...)
+        # is identified by where it was declared, not by its name. Returning
+        # `true` here made every same-kind type match every other, so a
+        # `Veg` from one file quietly satisfied a `Veg` parameter declared in
+        # another.
+        return sameStamp(a.stamp, b.stamp)
     else:
       return false
 
@@ -585,6 +675,10 @@ proc addCallable*(scope: Scope, sym: Sym, lookupName: Node,
 
 proc addType*(scope: Scope, sym: Sym, lookupName: Node, fromOtherModule: static bool = false): bool {.discardable.} =
   ## Add a type to the given scope.
+  ##
+  ## This is for declarations made *in* this scope. Imported types go through
+  ## `addImportedTypes` instead, so they land in a per-import layer rather
+  ## than being flattened into `typeDefs`.
   if not scope.typeDefs.hasKey(lookupName.ident):
     scope.typeDefs[lookupName.ident] = sym
     scope.syms[lookupName.ident] = sym # todo remove `syms`
@@ -592,6 +686,55 @@ proc addType*(scope: Scope, sym: Sym, lookupName: Node, fromOtherModule: static 
       if sym.canExport(): # export the type as well
         scope.exportTypeDefs[lookupName.ident] = sym
     return true
+
+proc addImportedTypes*(scope: Scope, alias, path: string,
+                       types: Table[string, Sym]) =
+  ## Record one import's exported types as a lookup layer on ``scope``.
+  ##
+  ## Layers are consulted in import order, after ``scope``'s own ``typeDefs``.
+  ## Re-importing the same path replaces the existing layer so a module loaded
+  ## twice does not appear twice in ambiguity reports.
+  for i, layer in scope.importedTypes:
+    if layer.path == path:
+      scope.importedTypes[i] = ImportedTypes(alias: alias, path: path, types: types)
+      return
+  scope.importedTypes.add(ImportedTypes(alias: alias, path: path, types: types))
+
+proc importedTypesCandidates*(scope: Module, id: string): seq[ImportedTypes] =
+  ## Every import layer that provides a type named ``id``.
+  for layer in scope.importedTypes:
+    if id in layer.types:
+      result.add(layer)
+
+proc importedTypeByAlias*(scope: Module, alias, id: string): Sym =
+  ## Look up ``id`` only within the import bound to ``alias``.
+  for layer in scope.importedTypes:
+    if layer.alias == alias and id in layer.types:
+      return layer.types[id]
+
+proc importAlias*(scope: Module, alias: string): bool =
+  ## Whether ``alias`` is bound by an `import ... as alias`.
+  for layer in scope.importedTypes:
+    if layer.alias == alias:
+      return true
+
+proc systemModule*(scope: Module): Module =
+  ## The system module linked into ``scope``, however it was linked.
+  ##
+  ## `load` keys `modules` by source path and `importModule` by alias, so a
+  ## frontend using either would otherwise have to know which. An embedder's
+  ## system module is the one named `system` or backed by a `system.timl` path.
+  for key, m in scope.modules:
+    if m.name == "system": return m
+    if key.endsWith("system.timl"): return m
+    if m.src.isSome and m.src.get().extractFilename == "system.timl":
+      return m
+
+proc importAliases*(scope: Module): seq[string] =
+  ## Every alias bound in this module, in import order.
+  for layer in scope.importedTypes:
+    if layer.alias.len > 0:
+      result.add(layer.alias)
 
 proc add*(scope: Scope, sym: Sym,
     lookupName: Node = nil, fromOtherModule: static bool = false): bool {.discardable.} =
@@ -645,15 +788,24 @@ proc sym*(module: Module, name: string): Sym =
   ## Get the symbol ``name`` from a module.
   result = module.syms[name]
 
-proc load*(module: Module, other: Module, fromOtherModule: static bool = false): bool {.discardable.} =
-  ## Import public symbols from `other` into `module`
-  ## If the module is already imported it will return `false`
-  let otherModulePath = other.src.get()
-  if module.modules.hasKey(otherModulePath):
-    return # false
+proc mergeModule*(module: Module, other: Module,
+                  fromOtherModule: static bool, alias, key: string): bool =
+  ## Merge `other`'s exported symbols into `module`. Shared by `load` and
+  ## `importModule`.
+  ##
+  ## Types are recorded as a per-import layer (``alias`` names it) instead of
+  ## being flattened into `typeDefs`. Flattening meant the first import to
+  ## claim a type name silently won, so a file that declared `Veg` itself could
+  ## end up resolving `Veg` to another file's enum. Variables and functions keep
+  ## their existing flat tables: those already overload by name via `skChoice`,
+  ## so a same-named entry is a genuine overload rather than a lost declaration.
   
+  # `syms` is the legacy flat table still read by `module.sym`, so imported
+  # types have to land there too even though lookup uses the layers.
   for k, sy in other.exportTypeDefs:
-    discard module.addType(sy, sy.name, fromOtherModule)
+    if k notin module.syms:
+      module.syms[k] = sy
+  module.addImportedTypes(alias, key, other.exportTypeDefs)
   
   for k, sy in other.exportVariables:
     discard module.addVariable(sy, sy.name, fromOtherModule)
@@ -661,8 +813,31 @@ proc load*(module: Module, other: Module, fromOtherModule: static bool = false):
   for k, sy in other.exportFunctions:
     discard module.addCallable(sy, sy.name, fromOtherModule)
   
-  module.modules[otherModulePath] = other
+  module.modules[key] = other
   result = true
+
+proc load*(module: Module, other: Module, fromOtherModule: static bool = false,
+           alias = ""): bool {.discardable.} =
+  ## Import public symbols from `other` into `module`
+  ## If the module is already imported it will return `false`
+  let otherModulePath = other.src.get()
+  if module.modules.hasKey(otherModulePath):
+    return # false
+  result = mergeModule(module, other, fromOtherModule, alias, otherModulePath)
+
+proc importModule*(module: Module, other: Module, alias = ""): bool {.discardable.} =
+  ## Make `other`'s exported symbols visible in `module` under `alias`.
+  ##
+  ## This is the low-level module link for an embedder that builds its own
+  ## module graph in Nim (a stdlib importing the system module, say), rather
+  ## than for a source-level `import`. Unlike `load` it does not require
+  ## `other.src` to be set, because an embedder's modules are not files, and
+  ## it keys on `alias` so the same module can be reached under a name.
+  ##
+  ## Types land in a layer, exactly as `load` does, so a module keeps its own
+  ## declarations ahead of anything it imports and two imports disagreeing
+  ## about a name is reported rather than silently resolved.
+  result = mergeModule(module, other, false, alias, alias)
 
 proc newModule*(name: string, src: Option[string] = none(string)): Module =
   ## Initialize a new module.

@@ -289,6 +289,10 @@ proc render*(node: Node): string =
     result = node[1].render & ' ' & node[0].render & ' ' & node[2].render
   of nkImport:
     result = "@import " & node[0].render
+    # `import "x" as alias` binds the module under a name, which is how a type
+    # that exists in two imported files is referred to unambiguously.
+    if node.len > 1 and node[1].kind == nkIdent:
+      result.add(" as " & node[1].render)
   of nkInclude:
     result = "@include " & node[0].render
   of nkDot:

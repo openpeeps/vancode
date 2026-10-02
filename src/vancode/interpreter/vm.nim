@@ -1101,6 +1101,13 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                 raise newException(ValueError,
                   "opcCallD: target module not found: " & chunkPath)
 
+        # Bounds-check rather than let the index raise. A wrong script here used
+        # to surface as a bare IndexDefect, which said nothing about which
+        # script was asked for which proc.
+        if procId < 0 or procId >= targetScript.procs.len:
+          raise newException(ValueError,
+            "opcCallD: proc " & $procId & " not found in '" & chunkPath &
+            "' (" & $targetScript.procs.len & " procs)")
         let p = targetScript.procs[procId]
         vm.markHotProc(p)
         when defined(vancodeJitDynasm):

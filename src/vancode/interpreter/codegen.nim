@@ -675,16 +675,35 @@ when defined(vancodeGradualTypes):
     if result == nil:
       result = gen.funcLookup(id)
 
+proc hasOwnType(gen: CodeGen, id: string): bool =
+  ## Whether ``id`` names a type declared in this module or an enclosing local
+  ## scope, as opposed to one that only an import can supply.
+  if gen.scopes.len > 0:
+    for i in countdown(gen.scopes.high, 0):
+      if sameScope() and id in gen.scopes[i].typeDefs:
+        return true
+  id in gen.module.typeDefs
+
 proc typeLookup(gen: CodeGen, id: string): Sym =
   # Look up the symbol with the given `name`.
+  #
+  # Order matters: innermost scope, then this module's own declarations, then
+  # import layers. A file that declares `Veg` must get its own `Veg` even when
+  # it also imports a module with a `Veg`, which the old flat table could not
+  # guarantee since whichever module loaded first claimed the name.
   if gen.scopes.len > 0:
     for i in countdown(gen.scopes.high, 0):
       if sameScope() and id in gen.scopes[i].typeDefs:
         return gen.scopes[i].typeDefs[id]
 
-  # try to find a global symbol if no local symbol was found
-  if result == nil and id in gen.module.typeDefs:
+  # this module's own declarations win over anything imported
+  if id in gen.module.typeDefs:
     return gen.module.typeDefs[id]
+
+  # then imports, in import order
+  for layer in gen.module.importedTypes:
+    if id in layer.types:
+      return layer.types[id]
 
 proc unwrapBaseIdent(n: Node): Node =
   # Extract left-most identifier from nested bracket/dot expressions
@@ -699,6 +718,20 @@ proc unwrapBaseIdent(n: Node): Node =
     else:
       return nil
 
+proc lookupQualifiedType*(gen: CodeGen, symName: Node): Sym =
+  # Resolve `alias.Type`, where `alias` came from `import "x" as alias`.
+  #
+  # This is the escape hatch for a name that genuinely exists in two imported
+  # files: without it, two same-named types from two imports make the bare name
+  # permanently ambiguous with no way to say which one is meant.
+  if symName.kind != nkDot: return nil
+  if symName.len < 2: return nil
+  let (aliasNode, nameNode) = (symName[0], symName[1])
+  if aliasNode.kind != nkIdent or nameNode.kind != nkIdent: return nil
+  if not gen.module.importAlias(gen.normName(aliasNode.ident)): return nil
+  gen.module.importedTypeByAlias(gen.normName(aliasNode.ident),
+                                 gen.normName(nameNode.ident))
+
 proc lookup(gen: CodeGen, symName: Node, quiet = false): Sym =
   # Look up the symbol with the given ``name``. If ``quiet`` is true,
   # an error will not be raised on undefined reference
@@ -708,6 +741,13 @@ proc lookup(gen: CodeGen, symName: Node, quiet = false): Sym =
     name = symName     # regular ident
   of nkCall:
     name = symName[0]  # function call
+  of nkDot:
+    # `alias.Type` names a type from an aliased import, which the bare-name
+    # path below cannot reach.
+    let qualified = gen.lookupQualifiedType(symName)
+    if qualified != nil:
+      return qualified
+    name = unwrapBaseIdent(symName)
   of nkVarTy:
     name = symName.varType
   of nkIndex:
@@ -724,6 +764,29 @@ proc lookup(gen: CodeGen, symName: Node, quiet = false): Sym =
     symName.error(ErrInvalidSymName % symName.render)
 
   let id = gen.normName(name.ident)
+
+  # A bare name that only the imports could satisfy, and where two imports
+  # disagree about it, is an error rather than a coin flip. This is caught
+  # before `typeLookup` so the local-declaration path stays unaffected: a file
+  # that declares `Veg` itself still resolves to its own `Veg` even when the
+  # name is also visible from an import.
+  if not gen.hasOwnType(id):
+    let candidates = gen.module.importedTypesCandidates(id)
+    # Distinct symbols only: the same module reached through two layers is not
+    # ambiguous.
+    var distinctSyms: seq[Sym]
+    for layer in candidates:
+      let sym = layer.types[id]
+      if sym notin distinctSyms:
+        distinctSyms.add(sym)
+    if distinctSyms.len > 1:
+      # dedup by hand: the same module can be reachable through more than one
+      # layer, and listing a file twice reads like two separate declarations.
+      var seenPaths: seq[string]
+      for layer in candidates:
+        if layer.path notin seenPaths:
+          seenPaths.add(layer.path)
+      name.error(ErrAmbiguousType % [id, seenPaths.join(", ")])
 
   # try find the symbol in the types table
   result = gen.typeLookup(id)
@@ -1130,9 +1193,19 @@ proc callProc*(procSym: Sym, argTypes: seq[Sym],
 
     # call the proc
     gen.chunk.emit(opcCallD)
-    let theSource =
-      if procSym.src.isSome(): procSym.src.get()
-      else: gen.chunk.file # fallback to current file
+    # The chunk path has to come from the *resolved* overload, not from
+    # `procSym`. `procSym` is the name-level symbol, which is an `skChoice`
+    # aggregating every overload of that name and carries no `src` of its own.
+    # A dfkup enum registers its own `echo`/`==`/`!=` in the module that
+    # declares it, so an `echo` on an imported enum resolves to a proc living in
+    # another script while the call is emitted from this one. Falling back to
+    # the current chunk there made the VM look the procId up in the wrong
+    # script, and every enum used across a file boundary died with an
+    # IndexDefect.
+    var theSource: string
+    if theProc.src.isSome(): theSource = theProc.src.get()
+    elif procSym.src.isSome(): theSource = procSym.src.get()
+    else: theSource = gen.chunk.file
     gen.chunk.emit(gen.chunk.getString(theSource))
     gen.chunk.emit(theProc.procId.uint16)
     
@@ -3332,6 +3405,7 @@ proc genObject*(node: Node, isInstantiation = false): Sym {.codegen.} =
     nameNode = node[0]
     genericNode = ast.newEmpty()
     recFieldsNode: Node
+    exportType = false
 
   if node.len >= 3:
     # legacy/full object declaration shape
@@ -3343,19 +3417,30 @@ proc genObject*(node: Node, isInstantiation = false): Sym {.codegen.} =
   else:
     node.error("Invalid object declaration shape: " & node.render)
 
-  # create a new type for the object
-  result = newType(ttyObject, name = nameNode, impl = node)
+  # `type Name* = object` marks the type exported, matching `func f*()`. The
+  # marker is a postfix wrapper, the same shape `newProc` reads.
+  if nameNode.kind == nkPostfix:
+    exportType = nameNode[0].kind == nkIdent and nameNode[0].ident == "*"
+    nameNode = nameNode[1]
+
+  # create a new type for the object. `newType` stamps it with this file and a
+  # per-file ordinal, which is what tells an object named `Veg` in one file
+  # apart from a `Veg` declared in another.
+  result = newType(ttyObject, name = nameNode, impl = node,
+                   src = some(gen.chunk.file))
   result.impl = node
+  result.typeExport = exportType
 
   # check if the object is generic
   if not isInstantiation and genericNode.kind == nkGenericParams:
     gen.pushScope()
     result.genericParams = gen.collectGenericParams(genericNode)
 
-  # process object fields
+  # process object fields. `objectId` is the VM's runtime type tag and stays a
+  # separate global counter; `stamp` (assigned by `newType`) is the
+  # compile-time identity.
   result.objectId = globalTypeCounter
   inc(globalTypeCounter)
-  result.src = some(gen.chunk.file)
 
   for fields in recFieldsNode:
     let fieldsTy = gen.lookup(fields[^2])
@@ -3601,6 +3686,9 @@ proc genImport*(node: Node) {.codegen.} =
   if policyAny in gen.policy.disallow or policyImports in gen.policy.disallow:
     node.error(ErrPolicyViolation % "imports are disabled")
   for pathNode in node.children:
+    # The first child is the path; an `import "x" as alias` also carries the
+    # alias ident. Only the path is a path.
+    if pathNode.kind != nkString: continue
     var path: string
     var astProgram: Ast
     # handle package imports via manager.pkgResolver (replaces Packager)
@@ -3633,9 +3721,14 @@ proc genImport*(node: Node) {.codegen.} =
       # handle standard library imports
       let stdLibName = pathNode.stringVal.split("/")[1]
       
-      # load the standard library module
+      # load the standard library module. The system module is found through
+      # `systemModule` rather than by indexing `modules["system.timl"]`, since
+      # `importModule` keys that table by alias and `load` by source path.
       if gen.stdlibs.hasKey(stdLibName):
-        gen.module.load(gen.stdlibs[stdLibName](gen.script, gen.module.modules["system.timl"]))
+        let sysMod = gen.module.systemModule()
+        if sysMod == nil:
+          pathNode.error(ErrImportError % "system module is not linked")
+        gen.module.load(gen.stdlibs[stdLibName](gen.script, sysMod))
       else:
         pathNode.error(ErrImportError % stdLibName)
       # skip the rest of the import handling
@@ -3699,8 +3792,11 @@ proc genImport*(node: Node) {.codegen.} =
         importScript = newScript(importChunk)
         importModule = newModule(path.extractFilename, some(path))
 
-      # load the system module
-      importModule.load(gen.module.modules["system.timl"])
+      # load the system module (see the note on the stdlib path above for why
+      # this is not an indexed lookup)
+      let sysMod = gen.module.systemModule()
+      if sysMod != nil:
+        importModule.load(sysMod)
 
       let stdpos = gen.script.stdpos
       importScript.procs = gen.script.procs[0..stdpos]
@@ -3721,9 +3817,19 @@ proc genImport*(node: Node) {.codegen.} =
       # on the parsed module AST program
       moduleGen.genScript(astProgram, gen.includeBasePath)
       
+      # `import "x" as alias` binds the module under a name so its types can be
+      # reached as `alias.Type`, which is the only way to disambiguate a type
+      # name that two imported modules both declare.
+      var alias = ""
+      if node.kind == nkImport and node.len > 1 and node[1].kind == nkIdent:
+        alias = gen.normName(node[1].ident)
+        if gen.module.importAlias(alias):
+          node.error(ErrDuplicateImportAlias % node[1].ident)
+
       # once the module is generated, we can load it
       # into the current module
-      if not gen.module.load(moduleGen.module, fromOtherModule = true):
+      if not gen.module.load(moduleGen.module, fromOtherModule = true,
+                             alias = alias):
         node.warn(WarnModuleAlreadyImported % pathNode.stringVal)
 
       # add the module to the current script's modules
