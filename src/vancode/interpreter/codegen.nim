@@ -340,11 +340,10 @@ proc genObjectStorage*(node: Node, isInstantiation = false): Sym {.codegen.}
 proc genArray*(node: Node, isInstantiation = false): Sym {.codegen.}
 proc genGetField*(node: Node): Sym {.codegen.}
 proc genTypeDef*(node: Node): Sym {.codegen.}
-  # forward declaration for frontends registering their own declaration kinds
-  # (dfkup's `enum`); the body comes from `extendModule`.
-proc genEnumDef*(node: Node): Sym {.codegen.}
 proc genFor*(node: Node) {.codegen.}
 proc procCall*(node: Node, procSym: Sym): Sym {.codegen.}
+
+injectCodeAt("CodeGenForwardDecl")
 
 let callBuiltinEcho = ast.newCall(ast.newIdent"echo")
   # some cached nodes for codegen optimizations

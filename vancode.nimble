@@ -10,9 +10,9 @@ srcDir        = "src"
 # Dependencies
 
 requires "nim >= 2.0.0"
-requires "voodoo >= 0.1.9"
-requires "openparser >= 0.3.0"
-requires "flysystem >= 0.1.0"
+requires "voodoo >= 0.2.3"
+requires "openparser >= 0.3.8"
+requires "flysystem >= 0.2.0"
 requires "checksums >= 0.2.2"
 requires "semver >= 1.2.3"
 requires "threading >= 0.1.0"

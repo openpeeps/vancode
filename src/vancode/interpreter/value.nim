@@ -38,6 +38,11 @@ const
   tyFirstObject* = 10
   tyJsonStorage* = 11
   tyArrayObject* = 12
+  tyObjectStorage* = 13
+    ## A native object built from a field list, the runtime tag shared by
+    ## object literals and any foreign proc returning a declared object type.
+    ## `opcConstrObj` used to hardcode the literal `15` here, which is
+    ## `tyPointer`, so every object literal was mistagged as a foreign pointer.
   tyPointer* = 15
   tyAny* = 16
   tyCoroutine* = 17
@@ -161,6 +166,20 @@ proc dumpHook*(s: var string, val: Value) =
         dumpHook(s, f.toValue)
       else:
         dumpHook(s, f.refVal)
+  of tyObjectStorage:
+    s.add("{")
+    for i, f in val.objectVal.fields:
+      if i > 0: s.add(", ")
+      if i < val.objectVal.keys.len:
+        s.add(val.objectVal.keys[i])
+      s.add(": ")
+      case f.typeId
+      of tyInt: s.add($f.intVal)
+      of tyBool: s.add($f.boolVal)
+      of tyFloat: s.add($f.floatVal)
+      of tyNil: s.add("null")
+      else: s.dumpHook(f.refVal)
+    s.add("}")
   of tyPointer:
     case val.objectVal.isForeign:
     of true:
@@ -190,7 +209,7 @@ proc `$`*(value: Value): string =
   ## Returns a value's string representation.
   if value == nil: return ""
   if value.typeId == tyString and value.stringVal == nil: return ""
-  result = 
+  result =
     case value.typeId
     of tyNil: "nil"
     of tyBool: $value.boolVal
@@ -202,6 +221,12 @@ proc `$`*(value: Value): string =
       var vs = newSeq[Value](value.objectVal.fields.len)
       for i, f in value.objectVal.fields: vs[i] = f.toValue
       toJson(vs)
+    of tyObjectStorage:
+      # An array of values would render as `[...]`, which is the wrong shape
+      # for an object; `dumpHook` already renders `{key: value, ...}`.
+      var s = ""
+      dumpHook(s, value)
+      s
     of tyPointer:
       case value.objectVal.isForeign:
       of true:
@@ -211,7 +236,7 @@ proc `$`*(value: Value): string =
           "pointer<0x" & $cast[uint](value.objectVal.foreign.data) & ">"
       else: ""
     of tyProc:
-      "proc<" & $value.procVal.procId & ":" & value.procVal.procScript & ">"
+      "proc<" & $value.procVal.procId & ":" & $value.procVal.procScript & ">"
     else: "<object>"
 
 proc toString*(value: JsonNode): string =

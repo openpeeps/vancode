@@ -831,7 +831,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         arr.objectVal.fields[idxVal.intVal] = val.toStorage
       of opcConstrObj:
         let count = co.getArg1Int(pcIdx)
-        var obj = initObject(15, count)
+        var obj = initObject(tyObjectStorage, count)
         if count > 0:
           if stack.len < count:
             raise newException(IndexDefect,
