@@ -140,6 +140,7 @@
 <li><a class="reference" href="#tyInt" title="tyInt = 2">tyInt</a></li>
 <li><a class="reference" href="#tyJsonStorage" title="tyJsonStorage = 11">tyJsonStorage</a></li>
 <li><a class="reference" href="#tyNil" title="tyNil = 0">tyNil</a></li>
+<li><a class="reference" href="#tyObjectStorage" title="tyObjectStorage = 13">tyObjectStorage</a></li>
 <li><a class="reference" href="#tyPointer" title="tyPointer = 15">tyPointer</a></li>
 <li><a class="reference" href="#tyProc" title="tyProc = 18">tyProc</a></li>
 <li><a class="reference" href="#tyString" title="tyString = 4">tyString</a></li>
@@ -441,6 +442,14 @@
     
   </dd>
 </div>
+<div id="tyObjectStorage">
+  <dt><pre><a href="#tyObjectStorage"><span class="Identifier">tyObjectStorage</span></a> <span class="Other">=</span> <span class="DecNumber">13</span></pre></dt>
+  <dd>
+    
+    A native object built from a field list, the runtime tag shared by object literals and any foreign proc returning a declared object type. <tt class="docutils literal"><span class="pre"><span class="Identifier">opcConstrObj</span></span></tt> used to hardcode the literal <tt class="docutils literal"><span class="pre"><span class="DecNumber">15</span></span></tt> here, which is <tt class="docutils literal"><span class="pre"><span class="Identifier">tyPointer</span></span></tt>, so every object literal was mistagged as a foreign pointer.
+    
+  </dd>
+</div>
 <div id="tyPointer">
   <dt><pre><a href="#tyPointer"><span class="Identifier">tyPointer</span></a> <span class="Other">=</span> <span class="DecNumber">15</span></pre></dt>
   <dd>
@@ -674,7 +683,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-10-01 13:42:49 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-10-03 20:54:20 UTC</small>
       </div>
     </div>
   </div>

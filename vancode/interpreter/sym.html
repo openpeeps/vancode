@@ -66,6 +66,10 @@
   file*: string
   ln*, col*: int">CodeGenError</a></li>
 <li><a class="reference" href="#Context" title="Context = distinct uint16">Context</a></li>
+<li><a class="reference" href="#ImportedTypes" title="ImportedTypes = object
+  alias*: string             ## the `import &quot;x&quot; as alias` binding, empty when unaliased
+  path*: string              ## the imported module's source path, for diagnostics
+  types*: Table[string, Sym] ## the module's exported types, keyed by canonical name">ImportedTypes</a></li>
 <li><a class="reference" href="#Module" title="Module {.acyclic.} = ref object of Scope
   name*: string              ## the name of the module
   src*: Option[string]       ## the source file where the module was defined
@@ -84,14 +88,21 @@
                                                    ## in the current scope. The key is the hash of the variable's name.
   functions*, exportFunctions*: Table[string, Sym] ## A table of functions. This is used for fast lookups of functions
                                                    ## in the current scope.
-  typeDefs*, exportTypeDefs*: Table[string, Sym] ## A table of type definitions. This is used for fast lookups of type
-                                                 ## definitions in the current scope.
+  typeDefs*, exportTypeDefs*: Table[string, Sym] ## A table of type definitions declared *in this scope*. This is used
+                                                 ## for fast lookups of type definitions in the current scope.
+  importedTypes*: seq[ImportedTypes] ## one layer per import, in import order. consulted only after
+                                     ## `typeDefs` misses, so a local declaration always wins.
   context*: Context          ## the scope's context. this is used for scope hygiene">Scope</a></li>
+<li><a class="reference" href="#Stamp" title="Stamp = object
+  path*: string              ## the declaring file, empty for generated (builtin) symbols
+  ordinal*: uint32           ## the declaration's index within that file">Stamp</a></li>
 <li><a class="reference" href="#Sym" title="Sym {.acyclic.} = ref object
   name*: Node                ## the name of the symbol
   impl*: Node                ## the implementation of the symbol. may be ``nil`` if the symbol is generated
   src*: Option[string]       ## the source file where the symbol was defined
                              ## this is used for type checking and error reporting
+  stamp*: Stamp ## the declaration site. Unlike `src` this is total: two builtins
+                ## declared in the same file still get distinct ordinals.
   case kind*: SymKind
   of skVar, skLet, skConst:
     varTy*: Sym              ## the type of the variable
@@ -177,6 +188,15 @@
 </li>
 <li>
   <details open>
+    <summary><a class="reference reference-toplevel" href="#8" id="58">Vars</a></summary>
+    <ul class="simple simple-toc-section">
+      <li><a class="reference" href="#globalTypeOrdinal" title="globalTypeOrdinal {.global.}: int = 0">globalTypeOrdinal</a></li>
+
+    </ul>
+  </details>
+</li>
+<li>
+  <details open>
     <summary><a class="reference reference-toplevel" href="#10" id="60">Consts</a></summary>
     <ul class="simple simple-toc-section">
       <li><a class="reference" href="#skCallable" title="skCallable = {skProc, skIterator, skCoroutine}">skCallable</a></li>
@@ -197,6 +217,7 @@
   <li><a class="reference" href="#%24%2CModule" title="`$`(module: Module): string">`$`(module: Module): string</a></li>
 <li><a class="reference" href="#%24%2Cseq%5BProcParam%5D" title="`$`(params: seq[ProcParam]): string">`$`(params: seq[ProcParam]): string</a></li>
 <li><a class="reference" href="#%24%2CScope" title="`$`(scope: Scope): string">`$`(scope: Scope): string</a></li>
+<li><a class="reference" href="#%24%2CStamp" title="`$`(stamp: Stamp): string">`$`(stamp: Stamp): string</a></li>
 <li><a class="reference" href="#%24%2CSym" title="`$`(sym: Sym): string">`$`(sym: Sym): string</a></li>
 
 </ul>
@@ -214,6 +235,10 @@
   <li><a class="reference" href="#addCallable%2CScope%2CSym%2CNode%2Cstaticbool" title="addCallable(scope: Scope; sym: Sym; lookupName: Node;
             fromOtherModule: static bool = false): bool">addCallable(scope: Scope; sym: Sym; lookupName: Node;
             fromOtherModule: static bool = false): bool</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">addImportedTypes
+  <li><a class="reference" href="#addImportedTypes%2CScope%2Cstring%2Cstring%2CTable%5Bstring%2CSym%5D" title="addImportedTypes(scope: Scope; alias, path: string; types: Table[string, Sym])">addImportedTypes(scope: Scope; alias, path: string; types: Table[string, Sym])</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">addType
@@ -254,6 +279,26 @@
   <li><a class="reference" href="#hash%2CSym" title="hash(sym: Sym): Hash">hash(sym: Sym): Hash</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">importAlias
+  <li><a class="reference" href="#importAlias%2CModule%2Cstring" title="importAlias(scope: Module; alias: string): bool">importAlias(scope: Module; alias: string): bool</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">importAliases
+  <li><a class="reference" href="#importAliases%2CModule" title="importAliases(scope: Module): seq[string]">importAliases(scope: Module): seq[string]</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">importedTypeByAlias
+  <li><a class="reference" href="#importedTypeByAlias%2CModule%2Cstring%2Cstring" title="importedTypeByAlias(scope: Module; alias, id: string): Sym">importedTypeByAlias(scope: Module; alias, id: string): Sym</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">importedTypesCandidates
+  <li><a class="reference" href="#importedTypesCandidates%2CModule%2Cstring" title="importedTypesCandidates(scope: Module; id: string): seq[ImportedTypes]">importedTypesCandidates(scope: Module; id: string): seq[ImportedTypes]</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">importModule
+  <li><a class="reference" href="#importModule%2CModule%2CModule%2Cstring" title="importModule(module: Module; other: Module; alias = &quot;&quot;): bool">importModule(module: Module; other: Module; alias = &quot;&quot;): bool</a></li>
+
+</ul>
 <ul class="simple nested-toc-section">initSystemTypes
   <li><a class="reference" href="#initSystemTypes%2CModule" title="initSystemTypes(module: Module)">initSystemTypes(module: Module)</a></li>
 
@@ -267,11 +312,27 @@
 
 </ul>
 <ul class="simple nested-toc-section">load
-  <li><a class="reference" href="#load%2CModule%2CModule%2Cstaticbool" title="load(module: Module; other: Module; fromOtherModule: static bool = false): bool">load(module: Module; other: Module; fromOtherModule: static bool = false): bool</a></li>
+  <li><a class="reference" href="#load%2CModule%2CModule%2Cstaticbool%2Cstring" title="load(module: Module; other: Module; fromOtherModule: static bool = false;
+     alias = &quot;&quot;): bool">load(module: Module; other: Module; fromOtherModule: static bool = false;
+     alias = &quot;&quot;): bool</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">lowerName
+  <li><a class="reference" href="#lowerName%2Cstring" title="lowerName(s: string): string">lowerName(s: string): string</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">mergeModule
+  <li><a class="reference" href="#mergeModule%2CModule%2CModule%2Cstaticbool%2Cstring%2Cstring" title="mergeModule(module: Module; other: Module; fromOtherModule: static bool;
+            alias, key: string): bool">mergeModule(module: Module; other: Module; fromOtherModule: static bool;
+            alias, key: string): bool</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">newModule
   <li><a class="reference" href="#newModule%2Cstring%2COption%5Bstring%5D" title="newModule(name: string; src: Option[string] = none(string)): Module">newModule(name: string; src: Option[string] = none(string)): Module</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">newStamp
+  <li><a class="reference" href="#newStamp%2COption%5Bstring%5D%2Cuint32" title="newStamp(src: Option[string]; ordinal: uint32): Stamp">newStamp(src: Option[string]; ordinal: uint32): Stamp</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">newSym
@@ -279,7 +340,9 @@
 
 </ul>
 <ul class="simple nested-toc-section">newType
-  <li><a class="reference" href="#newType%2CTypeKind%2CNode%2CNode" title="newType(kind: TypeKind; name: Node; impl: Node = nil): Sym">newType(kind: TypeKind; name: Node; impl: Node = nil): Sym</a></li>
+  <li><a class="reference" href="#newType%2CTypeKind%2CNode%2CNode%2COption%5Bstring%5D" title="newType(kind: TypeKind; name: Node; impl: Node = nil;
+        src: Option[string] = none(string)): Sym">newType(kind: TypeKind; name: Node; impl: Node = nil;
+        src: Option[string] = none(string)): Sym</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">params
@@ -295,12 +358,20 @@
 <li><a class="reference" href="#sameParams%2CSym%2Cseq%5BSym%5D" title="sameParams(sym: Sym; args: seq[Sym]): bool">sameParams(sym: Sym; args: seq[Sym]): bool</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">sameStamp
+  <li><a class="reference" href="#sameStamp%2CStamp%2CStamp" title="sameStamp(a, b: Stamp): bool">sameStamp(a, b: Stamp): bool</a></li>
+
+</ul>
 <ul class="simple nested-toc-section">sameType
   <li><a class="reference" href="#sameType%2CSym%2CSym" title="sameType(a, b: Sym): bool">sameType(a, b: Sym): bool</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">sym
   <li><a class="reference" href="#sym%2CModule%2Cstring" title="sym(module: Module; name: string): Sym">sym(module: Module; name: string): Sym</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">systemModule
+  <li><a class="reference" href="#systemModule%2CModule" title="systemModule(scope: Module): Module">systemModule(scope: Module): Module</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">unwrapType
@@ -355,6 +426,19 @@
     
   </dd>
 </div>
+<div id="ImportedTypes">
+  <dt><pre><a href="#ImportedTypes"><span class="Identifier">ImportedTypes</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">alias</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>             <span class="Comment">## the `import &quot;x&quot; as alias` binding, empty when unaliased</span>
+  <span class="Identifier">path</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>              <span class="Comment">## the imported module's source path, for diagnostics</span>
+  <span class="Identifier">types</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span> <span class="Comment">## the module's exported types, keyed by canonical name</span></pre></dt>
+  <dd>
+    
+    <p>One import's worth of exported type symbols, kept as a separate layer.</p>
+<p>Imports used to be flattened into a single <tt class="docutils literal"><span class="pre"><span class="Identifier">typeDefs</span></span></tt> table keyed by bare name, so two modules declaring the same type name collided and the loser was dropped without a word. Keeping each import in its own layer lets a lookup tell &quot;the local declaration&quot; from &quot;two imported candidates that disagree&quot;, which is the difference between a working program and a silently wrong one.</p>
+
+    
+  </dd>
+</div>
 <div id="Module">
   <dt><pre><a href="#Module"><span class="Identifier">Module</span></a> {.<span class="Identifier">acyclic</span>.} <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span> <span class="Keyword">of</span> <a href="#Scope"><span class="Identifier">Scope</span></a>
   <span class="Identifier">name</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>              <span class="Comment">## the name of the module</span>
@@ -402,12 +486,24 @@
                                                    <span class="Comment">## in the current scope. The key is the hash of the variable's name.</span>
   <span class="Identifier">functions</span><span class="Operator">*</span><span class="Other">,</span> <span class="Identifier">exportFunctions</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span> <span class="Comment">## A table of functions. This is used for fast lookups of functions</span>
                                                    <span class="Comment">## in the current scope.</span>
-  <span class="Identifier">typeDefs</span><span class="Operator">*</span><span class="Other">,</span> <span class="Identifier">exportTypeDefs</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span> <span class="Comment">## A table of type definitions. This is used for fast lookups of type</span>
-                                                 <span class="Comment">## definitions in the current scope.</span>
+  <span class="Identifier">typeDefs</span><span class="Operator">*</span><span class="Other">,</span> <span class="Identifier">exportTypeDefs</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span> <span class="Comment">## A table of type definitions declared *in this scope*. This is used</span>
+                                                 <span class="Comment">## for fast lookups of type definitions in the current scope.</span>
+  <span class="Identifier">importedTypes</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#ImportedTypes"><span class="Identifier">ImportedTypes</span></a><span class="Other">]</span> <span class="Comment">## one layer per import, in import order. consulted only after</span>
+                                     <span class="Comment">## `typeDefs` misses, so a local declaration always wins.</span>
   <span class="Identifier">context</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Context"><span class="Identifier">Context</span></a>          <span class="Comment">## the scope's context. this is used for scope hygiene</span></pre></dt>
   <dd>
     
     A local scope.
+    
+  </dd>
+</div>
+<div id="Stamp">
+  <dt><pre><a href="#Stamp"><span class="Identifier">Stamp</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">path</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>              <span class="Comment">## the declaring file, empty for generated (builtin) symbols</span>
+  <span class="Identifier">ordinal</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">uint32</span>           <span class="Comment">## the declaration's index within that file</span></pre></dt>
+  <dd>
+    
+    Where a symbol was declared. Two symbols are the same <em>declared</em> symbol when their stamps match, which is what keeps a type named <tt class="docutils literal"><span class="pre"><span class="Identifier">Veg</span></span></tt> in one file from being satisfied by a different <tt class="docutils literal"><span class="pre"><span class="Identifier">Veg</span></span></tt> declared elsewhere.
     
   </dd>
 </div>
@@ -417,6 +513,8 @@
   <span class="Identifier">impl</span><span class="Operator">*</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a>                <span class="Comment">## the implementation of the symbol. may be ``nil`` if the symbol is generated</span>
   <span class="Identifier">src</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span>       <span class="Comment">## the source file where the symbol was defined</span>
                              <span class="Comment">## this is used for type checking and error reporting</span>
+  <span class="Identifier">stamp</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Stamp"><span class="Identifier">Stamp</span></a> <span class="Comment">## the declaration site. Unlike `src` this is total: two builtins</span>
+                <span class="Comment">## declared in the same file still get distinct ordinals.</span>
   <span class="Keyword">case</span> <span class="Identifier">kind</span><span class="Operator">*</span><span class="Other">:</span> <a href="#SymKind"><span class="Identifier">SymKind</span></a>
   <span class="Keyword">of</span> <span class="Identifier">skVar</span><span class="Other">,</span> <span class="Identifier">skLet</span><span class="Other">,</span> <span class="Identifier">skConst</span><span class="Other">:</span>
     <span class="Identifier">varTy</span><span class="Operator">*</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a>              <span class="Comment">## the type of the variable</span>
@@ -519,6 +617,20 @@
 
   </dl>
 </div>
+<div class="section" id="8">
+  <h1><a class="toc-backref" href="#8">Vars</a></h1>
+  <dl class="item">
+    <div id="globalTypeOrdinal">
+  <dt><pre><a href="#globalTypeOrdinal"><span class="Identifier">globalTypeOrdinal</span></a> {.<span class="Identifier">global</span>.}<span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">0</span></pre></dt>
+  <dd>
+    
+    Per-file declaration counter backing <tt class="docutils literal"><span class="pre"><span class="Identifier">Sym</span><span class="Operator">.</span><span class="Identifier">stamp</span></span></tt>. Exposed so frontends that build type symbols outside <tt class="docutils literal"><span class="pre"><span class="Identifier">newType</span></span></tt> can stamp them the same way.
+    
+  </dd>
+</div>
+
+  </dl>
+</div>
 <div class="section" id="10">
   <h1><a class="toc-backref" href="#10">Consts</a></h1>
   <dl class="item">
@@ -602,6 +714,14 @@
     
   </dd>
 </div>
+<div id="$,Stamp">
+  <dt><pre><span class="Keyword">proc</span> <a href="#%24%2CStamp"><span class="Identifier">`$`</span></a><span class="Other">(</span><span class="Identifier">stamp</span><span class="Other">:</span> <a href="#Stamp"><span class="Identifier">Stamp</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
 <div id="$,Sym">
   <dt><pre><span class="Keyword">proc</span> <a href="#%24%2CSym"><span class="Identifier">`$`</span></a><span class="Other">(</span><span class="Identifier">sym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
                              <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
@@ -653,13 +773,30 @@
 </div>
 
 </div>
+<div id="addImportedTypes-procs-all">
+  <div id="addImportedTypes,Scope,string,string,Table[string,Sym]">
+  <dt><pre><span class="Keyword">proc</span> <a href="#addImportedTypes%2CScope%2Cstring%2Cstring%2CTable%5Bstring%2CSym%5D"><span class="Identifier">addImportedTypes</span></a><span class="Other">(</span><span class="Identifier">scope</span><span class="Other">:</span> <a href="#Scope"><span class="Identifier">Scope</span></a><span class="Other">;</span> <span class="Identifier">alias</span><span class="Other">,</span> <span class="Identifier">path</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span>
+                      <span class="Identifier">types</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    <p>Record one import's exported types as a lookup layer on <tt class="docutils literal"><span class="pre">scope</span></tt>.</p>
+<p>Layers are consulted in import order, after <tt class="docutils literal"><span class="pre">scope</span></tt>'s own <tt class="docutils literal"><span class="pre">typeDefs</span></tt>. Re-importing the same path replaces the existing layer so a module loaded twice does not appear twice in ambiguity reports.</p>
+
+    
+  </dd>
+</div>
+
+</div>
 <div id="addType-procs-all">
   <div id="addType,Scope,Sym,Node,staticbool">
   <dt><pre><span class="Keyword">proc</span> <a href="#addType%2CScope%2CSym%2CNode%2Cstaticbool"><span class="Identifier">addType</span></a><span class="Other">(</span><span class="Identifier">scope</span><span class="Other">:</span> <a href="#Scope"><span class="Identifier">Scope</span></a><span class="Other">;</span> <span class="Identifier">sym</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">;</span> <span class="Identifier">lookupName</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span>
              <span class="Identifier">fromOtherModule</span><span class="Other">:</span> <span class="Keyword">static</span> <span class="Identifier">bool</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span class="Identifier">discardable</span>.}</pre></dt>
   <dd>
     
-    Add a type to the given scope.
+    <p>Add a type to the given scope.</p>
+<p>This is for declarations made <em>in</em> this scope. Imported types go through <tt class="docutils literal"><span class="pre"><span class="Identifier">addImportedTypes</span></span></tt> instead, so they land in a per-import layer rather than being flattened into <tt class="docutils literal"><span class="pre"><span class="Identifier">typeDefs</span></span></tt>.</p>
+
     
   </dd>
 </div>
@@ -718,7 +855,9 @@
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    Generate a new type symbol from a string name.
+    <p>Generate a new type symbol from a string name.</p>
+<p>Deliberately left unstamped. These are the builtin and library types (<tt class="docutils literal"><span class="pre"><span class="Identifier">int</span></span></tt>, <tt class="docutils literal"><span class="pre"><span class="Identifier">json</span></span></tt>, <tt class="docutils literal"><span class="pre"><span class="Identifier">void</span></span></tt>, every <tt class="docutils literal"><span class="pre"><span class="Identifier">addProc</span></span></tt> parameter type), which are global singletons rather than per-file declarations, so they must keep matching each other by <tt class="docutils literal"><span class="pre"><span class="Identifier">tyKind</span></span></tt>. Only <tt class="docutils literal"><span class="pre"><span class="Identifier">newType</span></span></tt> stamps, because only it describes a type declared at a particular place in a particular file.</p>
+
     
   </dd>
 </div>
@@ -741,6 +880,69 @@
   <dd>
     
     Hashes a sym (for use in Tables).
+    
+  </dd>
+</div>
+
+</div>
+<div id="importAlias-procs-all">
+  <div id="importAlias,Module,string">
+  <dt><pre><span class="Keyword">proc</span> <a href="#importAlias%2CModule%2Cstring"><span class="Identifier">importAlias</span></a><span class="Other">(</span><span class="Identifier">scope</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">alias</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    Whether <tt class="docutils literal"><span class="pre">alias</span></tt> is bound by an <tt class="docutils literal"><span class="pre"><span class="Keyword">import</span> <span class="Operator">...</span> <span class="Keyword">as</span> <span class="Identifier">alias</span></span></tt>.
+    
+  </dd>
+</div>
+
+</div>
+<div id="importAliases-procs-all">
+  <div id="importAliases,Module">
+  <dt><pre><span class="Keyword">proc</span> <a href="#importAliases%2CModule"><span class="Identifier">importAliases</span></a><span class="Other">(</span><span class="Identifier">scope</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    Every alias bound in this module, in import order.
+    
+  </dd>
+</div>
+
+</div>
+<div id="importedTypeByAlias-procs-all">
+  <div id="importedTypeByAlias,Module,string,string">
+  <dt><pre><span class="Keyword">proc</span> <a href="#importedTypeByAlias%2CModule%2Cstring%2Cstring"><span class="Identifier">importedTypeByAlias</span></a><span class="Other">(</span><span class="Identifier">scope</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">alias</span><span class="Other">,</span> <span class="Identifier">id</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    Look up <tt class="docutils literal"><span class="pre">id</span></tt> only within the import bound to <tt class="docutils literal"><span class="pre">alias</span></tt>.
+    
+  </dd>
+</div>
+
+</div>
+<div id="importedTypesCandidates-procs-all">
+  <div id="importedTypesCandidates,Module,string">
+  <dt><pre><span class="Keyword">proc</span> <a href="#importedTypesCandidates%2CModule%2Cstring"><span class="Identifier">importedTypesCandidates</span></a><span class="Other">(</span><span class="Identifier">scope</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">id</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="#ImportedTypes"><span class="Identifier">ImportedTypes</span></a><span class="Other">]</span> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    Every import layer that provides a type named <tt class="docutils literal"><span class="pre">id</span></tt>.
+    
+  </dd>
+</div>
+
+</div>
+<div id="importModule-procs-all">
+  <div id="importModule,Module,Module,string">
+  <dt><pre><span class="Keyword">proc</span> <a href="#importModule%2CModule%2CModule%2Cstring"><span class="Identifier">importModule</span></a><span class="Other">(</span><span class="Identifier">module</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">other</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">alias</span> <span class="Other">=</span> <span class="StringLit">&quot;&quot;</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.
+    <span class="Identifier">discardable</span><span class="Other">,</span> <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    <p>Make <tt class="docutils literal"><span class="pre"><span class="Identifier">other</span></span></tt>'s exported symbols visible in <tt class="docutils literal"><span class="pre"><span class="Identifier">module</span></span></tt> under <tt class="docutils literal"><span class="pre"><span class="Identifier">alias</span></span></tt>.</p>
+<p>This is the low-level module link for an embedder that builds its own module graph in Nim (a stdlib importing the system module, say), rather than for a source-level <tt class="docutils literal"><span class="pre"><span class="Keyword">import</span></span></tt>. Unlike <tt class="docutils literal"><span class="pre"><span class="Identifier">load</span></span></tt> it does not require <tt class="docutils literal"><span class="pre"><span class="Identifier">other</span><span class="Operator">.</span><span class="Identifier">src</span></span></tt> to be set, because an embedder's modules are not files, and it keys on <tt class="docutils literal"><span class="pre"><span class="Identifier">alias</span></span></tt> so the same module can be reached under a name.</p>
+<p>Types land in a layer, exactly as <tt class="docutils literal"><span class="pre"><span class="Identifier">load</span></span></tt> does, so a module keeps its own declarations ahead of anything it imports and two imports disagreeing about a name is reported rather than silently resolved.</p>
+
     
   </dd>
 </div>
@@ -780,12 +982,37 @@
 
 </div>
 <div id="load-procs-all">
-  <div id="load,Module,Module,staticbool">
-  <dt><pre><span class="Keyword">proc</span> <a href="#load%2CModule%2CModule%2Cstaticbool"><span class="Identifier">load</span></a><span class="Other">(</span><span class="Identifier">module</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">other</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">fromOtherModule</span><span class="Other">:</span> <span class="Keyword">static</span> <span class="Identifier">bool</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.
-    <span class="Identifier">discardable</span>.}</pre></dt>
+  <div id="load,Module,Module,staticbool,string">
+  <dt><pre><span class="Keyword">proc</span> <a href="#load%2CModule%2CModule%2Cstaticbool%2Cstring"><span class="Identifier">load</span></a><span class="Other">(</span><span class="Identifier">module</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">other</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">fromOtherModule</span><span class="Other">:</span> <span class="Keyword">static</span> <span class="Identifier">bool</span> <span class="Other">=</span> <span class="Identifier">false</span><span class="Other">;</span>
+          <span class="Identifier">alias</span> <span class="Other">=</span> <span class="StringLit">&quot;&quot;</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span class="Identifier">discardable</span>.}</pre></dt>
   <dd>
     
     Import public symbols from <tt class="docutils literal"><span class="pre"><span class="Identifier">other</span></span></tt> into <tt class="docutils literal"><span class="pre"><span class="Identifier">module</span></span></tt> If the module is already imported it will return <tt class="docutils literal"><span class="pre"><span class="Identifier">false</span></span></tt>
+    
+  </dd>
+</div>
+
+</div>
+<div id="lowerName-procs-all">
+  <div id="lowerName,string">
+  <dt><pre><span class="Keyword">proc</span> <a href="#lowerName%2Cstring"><span class="Identifier">lowerName</span></a><span class="Other">(</span><span class="Identifier">s</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span class="Identifier">inline</span><span class="Other">,</span> <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    Canonical first-letter-case symbol form (Nim-like languages).
+    
+  </dd>
+</div>
+
+</div>
+<div id="mergeModule-procs-all">
+  <div id="mergeModule,Module,Module,staticbool,string,string">
+  <dt><pre><span class="Keyword">proc</span> <a href="#mergeModule%2CModule%2CModule%2Cstaticbool%2Cstring%2Cstring"><span class="Identifier">mergeModule</span></a><span class="Other">(</span><span class="Identifier">module</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">other</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">;</span> <span class="Identifier">fromOtherModule</span><span class="Other">:</span> <span class="Keyword">static</span> <span class="Identifier">bool</span><span class="Other">;</span>
+                 <span class="Identifier">alias</span><span class="Other">,</span> <span class="Identifier">key</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span></pre></dt>
+  <dd>
+    
+    <p>Merge <tt class="docutils literal"><span class="pre"><span class="Identifier">other</span></span></tt>'s exported symbols into <tt class="docutils literal"><span class="pre"><span class="Identifier">module</span></span></tt>. Shared by <tt class="docutils literal"><span class="pre"><span class="Identifier">load</span></span></tt> and <tt class="docutils literal"><span class="pre"><span class="Identifier">importModule</span></span></tt>.</p>
+<p>Types are recorded as a per-import layer (<tt class="docutils literal"><span class="pre">alias</span></tt> names it) instead of being flattened into <tt class="docutils literal"><span class="pre"><span class="Identifier">typeDefs</span></span></tt>. Flattening meant the first import to claim a type name silently won, so a file that declared <tt class="docutils literal"><span class="pre"><span class="Identifier">Veg</span></span></tt> itself could end up resolving <tt class="docutils literal"><span class="pre"><span class="Identifier">Veg</span></span></tt> to another file's enum. Variables and functions keep their existing flat tables: those already overload by name via <tt class="docutils literal"><span class="pre"><span class="Identifier">skChoice</span></span></tt>, so a same-named entry is a genuine overload rather than a lost declaration.</p>
+
     
   </dd>
 </div>
@@ -798,6 +1025,18 @@
   <dd>
     
     Initialize a new module.
+    
+  </dd>
+</div>
+
+</div>
+<div id="newStamp-procs-all">
+  <div id="newStamp,Option[string],uint32">
+  <dt><pre><span class="Keyword">proc</span> <a href="#newStamp%2COption%5Bstring%5D%2Cuint32"><span class="Identifier">newStamp</span></a><span class="Other">(</span><span class="Identifier">src</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span><span class="Other">;</span> <span class="Identifier">ordinal</span><span class="Other">:</span> <span class="Identifier">uint32</span><span class="Other">)</span><span class="Other">:</span> <a href="#Stamp"><span class="Identifier">Stamp</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    Where a symbol was declared: the file that declared it, plus a per-file ordinal so two declarations in one file stay distinct.
     
   </dd>
 </div>
@@ -816,12 +1055,15 @@
 
 </div>
 <div id="newType-procs-all">
-  <div id="newType,TypeKind,Node,Node">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newType%2CTypeKind%2CNode%2CNode"><span class="Identifier">newType</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="#TypeKind"><span class="Identifier">TypeKind</span></a><span class="Other">;</span> <span class="Identifier">name</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">impl</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">)</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
-    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <div id="newType,TypeKind,Node,Node,Option[string]">
+  <dt><pre><span class="Keyword">proc</span> <a href="#newType%2CTypeKind%2CNode%2CNode%2COption%5Bstring%5D"><span class="Identifier">newType</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="#TypeKind"><span class="Identifier">TypeKind</span></a><span class="Other">;</span> <span class="Identifier">name</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a><span class="Other">;</span> <span class="Identifier">impl</span><span class="Other">:</span> <a href="ast.html#Node"><span class="Identifier">Node</span></a> <span class="Other">=</span> <span class="Keyword">nil</span><span class="Other">;</span>
+             <span class="Identifier">src</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span> <span class="Other">=</span> <span class="Identifier">none</span><span class="Other">(</span><span class="Identifier">string</span><span class="Other">)</span><span class="Other">)</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    Create a new type symbol from a Node.
+    <p>Create a new type symbol from a Node.</p>
+<p>The stored name is canonicalized with <tt class="docutils literal"><span class="pre"><span class="Identifier">lowerName</span></span></tt>, exactly as <tt class="docutils literal"><span class="pre"><span class="Identifier">newProc</span></span></tt> does for procedure names. Lookups already normalize through <tt class="docutils literal"><span class="pre"><span class="Identifier">normName</span></span></tt>, so without this a type whose name carries an uppercase letter after the first could be declared but never found again: <tt class="docutils literal"><span class="pre"><span class="Keyword">type</span> <span class="Identifier">BadFruit</span></span></tt> worked, <tt class="docutils literal"><span class="pre"><span class="Identifier">BadFruit</span></span></tt> did not. A fresh node is built rather than rewriting the caller's, so the AST still reports the name as it was written.</p>
+
     
   </dd>
 </div>
@@ -869,6 +1111,19 @@
 </div>
 
 </div>
+<div id="sameStamp-procs-all">
+  <div id="sameStamp,Stamp,Stamp">
+  <dt><pre><span class="Keyword">proc</span> <a href="#sameStamp%2CStamp%2CStamp"><span class="Identifier">sameStamp</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <a href="#Stamp"><span class="Identifier">Stamp</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    <p>Whether two declaration sites are the same.</p>
+<p>Symbols with no stamp at all (built before stamping existed, or injected by a frontend that skipped it) are treated as equal to each other, so a missing stamp degrades to the old name-based behaviour rather than making every such type distinct from every other.</p>
+
+    
+  </dd>
+</div>
+
+</div>
 <div id="sameType-procs-all">
   <div id="sameType,Sym,Sym">
   <dt><pre><span class="Keyword">proc</span> <a href="#sameType%2CSym%2CSym"><span class="Identifier">sameType</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <a href="#Sym"><span class="Identifier">Sym</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
@@ -887,6 +1142,19 @@
   <dd>
     
     Get the symbol <tt class="docutils literal"><span class="pre">name</span></tt> from a module.
+    
+  </dd>
+</div>
+
+</div>
+<div id="systemModule-procs-all">
+  <div id="systemModule,Module">
+  <dt><pre><span class="Keyword">proc</span> <a href="#systemModule%2CModule"><span class="Identifier">systemModule</span></a><span class="Other">(</span><span class="Identifier">scope</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a><span class="Other">)</span><span class="Other">:</span> <a href="#Module"><span class="Identifier">Module</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    <p>The system module linked into <tt class="docutils literal"><span class="pre">scope</span></tt>, however it was linked.</p>
+<p><tt class="docutils literal"><span class="pre"><span class="Identifier">load</span></span></tt> keys <tt class="docutils literal"><span class="pre"><span class="Identifier">modules</span></span></tt> by source path and <tt class="docutils literal"><span class="pre"><span class="Identifier">importModule</span></span></tt> by alias, so a frontend using either would otherwise have to know which. An embedder's system module is the one named <tt class="docutils literal"><span class="pre"><span class="Identifier">system</span></span></tt> or backed by a <tt class="docutils literal"><span class="pre"><span class="Identifier">system</span><span class="Operator">.</span><span class="Identifier">timl</span></span></tt> path.</p>
+
     
   </dd>
 </div>
@@ -913,7 +1181,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-10-01 13:42:49 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-10-03 20:54:20 UTC</small>
       </div>
     </div>
   </div>

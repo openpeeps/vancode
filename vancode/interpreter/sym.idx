@@ -1,61 +1,76 @@
 nimTitle	sym	vancode/interpreter/sym.html	module vancode/interpreter/sym		0
-nim	Context	vancode/interpreter/sym.html#Context	type Context		23
-nim	Scope	vancode/interpreter/sym.html#Scope	type Scope		26
-nim	Module	vancode/interpreter/sym.html#Module	type Module		46
-nim	skVar	vancode/interpreter/sym.html#skVar	SymKind.skVar		57
-nim	skConst	vancode/interpreter/sym.html#skConst	SymKind.skConst		57
-nim	skLet	vancode/interpreter/sym.html#skLet	SymKind.skLet		57
-nim	skType	vancode/interpreter/sym.html#skType	SymKind.skType		57
-nim	skProc	vancode/interpreter/sym.html#skProc	SymKind.skProc		57
-nim	skIterator	vancode/interpreter/sym.html#skIterator	SymKind.skIterator		57
-nim	skCoroutine	vancode/interpreter/sym.html#skCoroutine	SymKind.skCoroutine		57
-nim	skGenericParam	vancode/interpreter/sym.html#skGenericParam	SymKind.skGenericParam		57
-nim	skHtmlType	vancode/interpreter/sym.html#skHtmlType	SymKind.skHtmlType		57
-nim	skChoice	vancode/interpreter/sym.html#skChoice	SymKind.skChoice		57
-nim	SymKind	vancode/interpreter/sym.html#SymKind	enum SymKind		57
-nim	TypeKind	vancode/interpreter/sym.html#TypeKind	enum TypeKind		71
-nim	procTypeFunction	vancode/interpreter/sym.html#procTypeFunction	ProcType.procTypeFunction		100
-nim	procTypeMacro	vancode/interpreter/sym.html#procTypeMacro	ProcType.procTypeMacro		100
-nim	ProcType	vancode/interpreter/sym.html#ProcType	enum ProcType		100
-nim	Sym	vancode/interpreter/sym.html#Sym	type Sym		105
-nim	ObjectField	vancode/interpreter/sym.html#ObjectField	tuple ObjectField		178
-nim	ProcParam	vancode/interpreter/sym.html#ProcParam	tuple ProcParam		186
-nim	ArgTuple	vancode/interpreter/sym.html#ArgTuple	tuple ArgTuple		194
-nim	CodeGenError	vancode/interpreter/sym.html#CodeGenError	object CodeGenError		200
-nim	skVars	vancode/interpreter/sym.html#skVars	const skVars		205
-nim	skCallable	vancode/interpreter/sym.html#skCallable	const skCallable		206
-nim	skDecl	vancode/interpreter/sym.html#skDecl	const skDecl		207
-nim	skTyped	vancode/interpreter/sym.html#skTyped	const skTyped		208
-nim	tyPrimitives	vancode/interpreter/sym.html#tyPrimitives	const tyPrimitives		210
-nim	tyMeta	vancode/interpreter/sym.html#tyMeta	const tyMeta		211
-nim	`==`	vancode/interpreter/sym.html#==,Context,Context	proc `==`(a, b: Context): bool		213
-nim	clone	vancode/interpreter/sym.html#clone,Sym	proc clone(sym: Sym): Sym		215
-nim	params	vancode/interpreter/sym.html#params,Sym	proc params(sym: Sym): seq[ProcParam]		220
-nim	returnTy	vancode/interpreter/sym.html#returnTy,Sym	proc returnTy(sym: Sym): Sym		229
-nim	`$`	vancode/interpreter/sym.html#$,Sym	proc `$`(sym: Sym): string		238
-nim	`$`	vancode/interpreter/sym.html#$,seq[ProcParam]	proc `$`(params: seq[ProcParam]): string		240
-nim	isGeneric	vancode/interpreter/sym.html#isGeneric,Sym	proc isGeneric(sym: Sym): bool		328
-nim	isInstantiation	vancode/interpreter/sym.html#isInstantiation,Sym	proc isInstantiation(sym: Sym): bool		334
-nim	hash	vancode/interpreter/sym.html#hash,Sym	proc hash(sym: Sym): Hash		338
-nim	newSym	vancode/interpreter/sym.html#newSym,SymKind,Node,Node	proc newSym(kind: SymKind; name: Node; impl: Node = nil): Sym		348
-nim	newType	vancode/interpreter/sym.html#newType,TypeKind,Node,Node	proc newType(kind: TypeKind; name: Node; impl: Node = nil): Sym		352
-nim	genType	vancode/interpreter/sym.html#genType,TypeKind,string,bool,Option[seq[Sym]]	proc genType(kind: TypeKind; name: string; exportSym: bool;\n        genericParams: Option[seq[Sym]] = none(seq[Sym])): Sym		356
-nim	unwrapType	vancode/interpreter/sym.html#unwrapType,Sym	proc unwrapType(ty: Sym): Sym		377
-nim	sameType	vancode/interpreter/sym.html#sameType,Sym,Sym	proc sameType(a, b: Sym): bool		383
-nim	sameParams	vancode/interpreter/sym.html#sameParams,Sym,seq[Sym]	proc sameParams(sym: Sym; args: seq[Sym]): bool		459
-nim	sameParams	vancode/interpreter/sym.html#sameParams,Sym,Sym	proc sameParams(a, b: Sym): bool		476
-nim	canAdd	vancode/interpreter/sym.html#canAdd,Sym,Sym	proc canAdd(choice, sym: Sym): bool		481
-nim	addVariable	vancode/interpreter/sym.html#addVariable,Scope,Sym,Node,staticbool	proc addVariable(scope: Scope; sym: Sym; lookupName: Node;\n            fromOtherModule: static bool = false): bool		515
-nim	addCallable	vancode/interpreter/sym.html#addCallable,Scope,Sym,Node,staticbool	proc addCallable(scope: Scope; sym: Sym; lookupName: Node;\n            fromOtherModule: static bool = false): bool		528
-nim	addType	vancode/interpreter/sym.html#addType,Scope,Sym,Node,staticbool	proc addType(scope: Scope; sym: Sym; lookupName: Node;\n        fromOtherModule: static bool = false): bool		570
-nim	add	vancode/interpreter/sym.html#add,Scope,Sym,Node,staticbool	proc add(scope: Scope; sym: Sym; lookupName: Node = nil;\n    fromOtherModule: static bool = false): bool		580
-nim	`$`	vancode/interpreter/sym.html#$,Scope	proc `$`(scope: Scope): string		614
-nim	`$`	vancode/interpreter/sym.html#$,Module	proc `$`(module: Module): string		623
-nim	sym	vancode/interpreter/sym.html#sym,Module,string	proc sym(module: Module; name: string): Sym		628
-nim	load	vancode/interpreter/sym.html#load,Module,Module,staticbool	proc load(module: Module; other: Module; fromOtherModule: static bool = false): bool		632
-nim	newModule	vancode/interpreter/sym.html#newModule,string,Option[string]	proc newModule(name: string; src: Option[string] = none(string)): Module		651
-nim	initSystemTypes	vancode/interpreter/sym.html#initSystemTypes,Module	proc initSystemTypes(module: Module)		655
-nim	genPtr	vancode/interpreter/sym.html#genPtr,Module,TypeId,string	proc genPtr(module: Module; typeId: TypeId; name: string): Sym		679
-nim	getModuleName	vancode/interpreter/sym.html#getModuleName,Module	proc getModuleName(module: Module): string		686
-nimgrp	$	vancode/interpreter/sym.html#$-procs-all	proc		238
-nimgrp	sameparams	vancode/interpreter/sym.html#sameParams-procs-all	proc		459
+nim	globalTypeOrdinal	vancode/interpreter/sym.html#globalTypeOrdinal	var globalTypeOrdinal		22
+nim	Context	vancode/interpreter/sym.html#Context	type Context		27
+nim	ImportedTypes	vancode/interpreter/sym.html#ImportedTypes	object ImportedTypes		30
+nim	Scope	vancode/interpreter/sym.html#Scope	type Scope		46
+nim	Module	vancode/interpreter/sym.html#Module	type Module		69
+nim	skVar	vancode/interpreter/sym.html#skVar	SymKind.skVar		80
+nim	skConst	vancode/interpreter/sym.html#skConst	SymKind.skConst		80
+nim	skLet	vancode/interpreter/sym.html#skLet	SymKind.skLet		80
+nim	skType	vancode/interpreter/sym.html#skType	SymKind.skType		80
+nim	skProc	vancode/interpreter/sym.html#skProc	SymKind.skProc		80
+nim	skIterator	vancode/interpreter/sym.html#skIterator	SymKind.skIterator		80
+nim	skCoroutine	vancode/interpreter/sym.html#skCoroutine	SymKind.skCoroutine		80
+nim	skGenericParam	vancode/interpreter/sym.html#skGenericParam	SymKind.skGenericParam		80
+nim	skHtmlType	vancode/interpreter/sym.html#skHtmlType	SymKind.skHtmlType		80
+nim	skChoice	vancode/interpreter/sym.html#skChoice	SymKind.skChoice		80
+nim	SymKind	vancode/interpreter/sym.html#SymKind	enum SymKind		80
+nim	TypeKind	vancode/interpreter/sym.html#TypeKind	enum TypeKind		94
+nim	procTypeFunction	vancode/interpreter/sym.html#procTypeFunction	ProcType.procTypeFunction		123
+nim	procTypeMacro	vancode/interpreter/sym.html#procTypeMacro	ProcType.procTypeMacro		123
+nim	ProcType	vancode/interpreter/sym.html#ProcType	enum ProcType		123
+nim	Stamp	vancode/interpreter/sym.html#Stamp	object Stamp		128
+nim	Sym	vancode/interpreter/sym.html#Sym	type Sym		137
+nim	ObjectField	vancode/interpreter/sym.html#ObjectField	tuple ObjectField		213
+nim	ProcParam	vancode/interpreter/sym.html#ProcParam	tuple ProcParam		221
+nim	ArgTuple	vancode/interpreter/sym.html#ArgTuple	tuple ArgTuple		229
+nim	CodeGenError	vancode/interpreter/sym.html#CodeGenError	object CodeGenError		235
+nim	skVars	vancode/interpreter/sym.html#skVars	const skVars		240
+nim	skCallable	vancode/interpreter/sym.html#skCallable	const skCallable		241
+nim	skDecl	vancode/interpreter/sym.html#skDecl	const skDecl		242
+nim	skTyped	vancode/interpreter/sym.html#skTyped	const skTyped		243
+nim	tyPrimitives	vancode/interpreter/sym.html#tyPrimitives	const tyPrimitives		245
+nim	tyMeta	vancode/interpreter/sym.html#tyMeta	const tyMeta		246
+nim	`==`	vancode/interpreter/sym.html#==,Context,Context	proc `==`(a, b: Context): bool		248
+nim	clone	vancode/interpreter/sym.html#clone,Sym	proc clone(sym: Sym): Sym		250
+nim	params	vancode/interpreter/sym.html#params,Sym	proc params(sym: Sym): seq[ProcParam]		255
+nim	returnTy	vancode/interpreter/sym.html#returnTy,Sym	proc returnTy(sym: Sym): Sym		264
+nim	`$`	vancode/interpreter/sym.html#$,Sym	proc `$`(sym: Sym): string		273
+nim	`$`	vancode/interpreter/sym.html#$,seq[ProcParam]	proc `$`(params: seq[ProcParam]): string		275
+nim	isGeneric	vancode/interpreter/sym.html#isGeneric,Sym	proc isGeneric(sym: Sym): bool		374
+nim	isInstantiation	vancode/interpreter/sym.html#isInstantiation,Sym	proc isInstantiation(sym: Sym): bool		380
+nim	hash	vancode/interpreter/sym.html#hash,Sym	proc hash(sym: Sym): Hash		384
+nim	lowerName	vancode/interpreter/sym.html#lowerName,string	proc lowerName(s: string): string		394
+nim	sameStamp	vancode/interpreter/sym.html#sameStamp,Stamp,Stamp	proc sameStamp(a, b: Stamp): bool		398
+nim	newStamp	vancode/interpreter/sym.html#newStamp,Option[string],uint32	proc newStamp(src: Option[string]; ordinal: uint32): Stamp		408
+nim	`$`	vancode/interpreter/sym.html#$,Stamp	proc `$`(stamp: Stamp): string		414
+nim	newSym	vancode/interpreter/sym.html#newSym,SymKind,Node,Node	proc newSym(kind: SymKind; name: Node; impl: Node = nil): Sym		425
+nim	newType	vancode/interpreter/sym.html#newType,TypeKind,Node,Node,Option[string]	proc newType(kind: TypeKind; name: Node; impl: Node = nil;\n        src: Option[string] = none(string)): Sym		429
+nim	genType	vancode/interpreter/sym.html#genType,TypeKind,string,bool,Option[seq[Sym]]	proc genType(kind: TypeKind; name: string; exportSym: bool;\n        genericParams: Option[seq[Sym]] = none(seq[Sym])): Sym		448
+nim	unwrapType	vancode/interpreter/sym.html#unwrapType,Sym	proc unwrapType(ty: Sym): Sym		475
+nim	sameType	vancode/interpreter/sym.html#sameType,Sym,Sym	proc sameType(a, b: Sym): bool		481
+nim	sameParams	vancode/interpreter/sym.html#sameParams,Sym,seq[Sym]	proc sameParams(sym: Sym; args: seq[Sym]): bool		565
+nim	sameParams	vancode/interpreter/sym.html#sameParams,Sym,Sym	proc sameParams(a, b: Sym): bool		582
+nim	canAdd	vancode/interpreter/sym.html#canAdd,Sym,Sym	proc canAdd(choice, sym: Sym): bool		587
+nim	addVariable	vancode/interpreter/sym.html#addVariable,Scope,Sym,Node,staticbool	proc addVariable(scope: Scope; sym: Sym; lookupName: Node;\n            fromOtherModule: static bool = false): bool		621
+nim	addCallable	vancode/interpreter/sym.html#addCallable,Scope,Sym,Node,staticbool	proc addCallable(scope: Scope; sym: Sym; lookupName: Node;\n            fromOtherModule: static bool = false): bool		634
+nim	addType	vancode/interpreter/sym.html#addType,Scope,Sym,Node,staticbool	proc addType(scope: Scope; sym: Sym; lookupName: Node;\n        fromOtherModule: static bool = false): bool		676
+nim	addImportedTypes	vancode/interpreter/sym.html#addImportedTypes,Scope,string,string,Table[string,Sym]	proc addImportedTypes(scope: Scope; alias, path: string; types: Table[string, Sym])		690
+nim	importedTypesCandidates	vancode/interpreter/sym.html#importedTypesCandidates,Module,string	proc importedTypesCandidates(scope: Module; id: string): seq[ImportedTypes]		703
+nim	importedTypeByAlias	vancode/interpreter/sym.html#importedTypeByAlias,Module,string,string	proc importedTypeByAlias(scope: Module; alias, id: string): Sym		709
+nim	importAlias	vancode/interpreter/sym.html#importAlias,Module,string	proc importAlias(scope: Module; alias: string): bool		715
+nim	systemModule	vancode/interpreter/sym.html#systemModule,Module	proc systemModule(scope: Module): Module		721
+nim	importAliases	vancode/interpreter/sym.html#importAliases,Module	proc importAliases(scope: Module): seq[string]		733
+nim	add	vancode/interpreter/sym.html#add,Scope,Sym,Node,staticbool	proc add(scope: Scope; sym: Sym; lookupName: Node = nil;\n    fromOtherModule: static bool = false): bool		739
+nim	`$`	vancode/interpreter/sym.html#$,Scope	proc `$`(scope: Scope): string		773
+nim	`$`	vancode/interpreter/sym.html#$,Module	proc `$`(module: Module): string		782
+nim	sym	vancode/interpreter/sym.html#sym,Module,string	proc sym(module: Module; name: string): Sym		787
+nim	mergeModule	vancode/interpreter/sym.html#mergeModule,Module,Module,staticbool,string,string	proc mergeModule(module: Module; other: Module; fromOtherModule: static bool;\n            alias, key: string): bool		791
+nim	load	vancode/interpreter/sym.html#load,Module,Module,staticbool,string	proc load(module: Module; other: Module; fromOtherModule: static bool = false;\n     alias = ""): bool		819
+nim	importModule	vancode/interpreter/sym.html#importModule,Module,Module,string	proc importModule(module: Module; other: Module; alias = ""): bool		828
+nim	newModule	vancode/interpreter/sym.html#newModule,string,Option[string]	proc newModule(name: string; src: Option[string] = none(string)): Module		842
+nim	initSystemTypes	vancode/interpreter/sym.html#initSystemTypes,Module	proc initSystemTypes(module: Module)		846
+nim	genPtr	vancode/interpreter/sym.html#genPtr,Module,TypeId,string	proc genPtr(module: Module; typeId: TypeId; name: string): Sym		870
+nim	getModuleName	vancode/interpreter/sym.html#getModuleName,Module	proc getModuleName(module: Module): string		877
+nimgrp	$	vancode/interpreter/sym.html#$-procs-all	proc		273
+nimgrp	sameparams	vancode/interpreter/sym.html#sameParams-procs-all	proc		565

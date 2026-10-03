@@ -30,4 +30,4 @@ nim	getArg1Float	vancode/interpreter/vm.html#getArg1Float.t,CachedOps,int	templa
 nim	getArg1Str	vancode/interpreter/vm.html#getArg1Str.t,CachedOps,int,Chunk	template getArg1Str(co: CachedOps; i: int; currentChunk: Chunk): string		431
 nim	prewarmScriptOps	vancode/interpreter/vm.html#prewarmScriptOps,Vm,Script	proc prewarmScriptOps(vm: Vm; s: Script)		473
 nim	interpret	vancode/interpreter/vm.html#interpret,Vm,Script,Chunk,openArray[Value],Option[string],Coroutine	proc interpret(vm: Vm; script: Script; startChunk: Chunk;\n          args: openArray[Value] = [];\n          staticString: Option[string] = none(string);\n          globaldata = newJObject(); localData = newJObject();\n          stepping: Coroutine = nil): Value		480
-nim	stepCoroutine	vancode/interpreter/vm.html#stepCoroutine,Vm,Coroutine	proc stepCoroutine(vm: Vm; coro: Coroutine): CoroutineResult		1483
+nim	stepCoroutine	vancode/interpreter/vm.html#stepCoroutine,Vm,Coroutine	proc stepCoroutine(vm: Vm; coro: Coroutine): CoroutineResult		1490

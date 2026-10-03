@@ -43,6 +43,8 @@
           <li><a class="reference external"
           data-doc-search-tag="sym: proc `$`(params: seq[ProcParam]): string" href="vancode/interpreter/sym.html#%24%2Cseq%5BProcParam%5D">sym: proc `$`(params: seq[ProcParam]): string</a></li>
           <li><a class="reference external"
+          data-doc-search-tag="sym: proc `$`(stamp: Stamp): string" href="vancode/interpreter/sym.html#%24%2CStamp">sym: proc `$`(stamp: Stamp): string</a></li>
+          <li><a class="reference external"
           data-doc-search-tag="sym: proc `$`(sym: Sym): string" href="vancode/interpreter/sym.html#%24%2CSym">sym: proc `$`(sym: Sym): string</a></li>
           <li><a class="reference external"
           data-doc-search-tag="value: proc `$`(value: Value): string" href="vancode/interpreter/value.html#%24%2CValue">value: proc `$`(value: Value): string</a></li>
@@ -86,6 +88,10 @@
           data-doc-search-tag="sym: proc addCallable(scope: Scope; sym: Sym; lookupName: Node;
             fromOtherModule: static bool = false): bool" href="vancode/interpreter/sym.html#addCallable%2CScope%2CSym%2CNode%2Cstaticbool">sym: proc addCallable(scope: Scope; sym: Sym; lookupName: Node;
             fromOtherModule: static bool = false): bool</a></li>
+          </ul></dd>
+<dt><a name="addImportedTypes" href="#addImportedTypes"><span>addImportedTypes:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="sym: proc addImportedTypes(scope: Scope; alias, path: string; types: Table[string, Sym])" href="vancode/interpreter/sym.html#addImportedTypes%2CScope%2Cstring%2Cstring%2CTable%5Bstring%2CSym%5D">sym: proc addImportedTypes(scope: Scope; alias, path: string; types: Table[string, Sym])</a></li>
           </ul></dd>
 <dt><a name="addIterator" href="#addIterator"><span>addIterator:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -363,6 +369,10 @@
 <li><a class="reference external"
           data-doc-search-tag="chunk: proc emitHole(chunk: var Chunk; size: int): int" href="vancode/interpreter/chunk.html#emitHole%2CChunk%2Cint">chunk: proc emitHole(chunk: var Chunk; size: int): int</a></li>
           </ul></dd>
+<dt><a name="ErrAmbiguousType" href="#ErrAmbiguousType"><span>ErrAmbiguousType:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="errors: const ErrAmbiguousType" href="vancode/interpreter/errors.html#ErrAmbiguousType">errors: const ErrAmbiguousType</a></li>
+          </ul></dd>
 <dt><a name="ErrAssignOpExpected" href="#ErrAssignOpExpected"><span>ErrAssignOpExpected:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="errors: const ErrAssignOpExpected" href="vancode/interpreter/errors.html#ErrAssignOpExpected">errors: const ErrAssignOpExpected</a></li>
@@ -379,9 +389,25 @@
 <li><a class="reference external"
           data-doc-search-tag="errors: const ErrCoroMustHaveReturnType" href="vancode/interpreter/errors.html#ErrCoroMustHaveReturnType">errors: const ErrCoroMustHaveReturnType</a></li>
           </ul></dd>
+<dt><a name="ErrCoroNeedsAwait" href="#ErrCoroNeedsAwait"><span>ErrCoroNeedsAwait:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="errors: const ErrCoroNeedsAwait" href="vancode/interpreter/errors.html#ErrCoroNeedsAwait">errors: const ErrCoroNeedsAwait</a></li>
+          </ul></dd>
 <dt><a name="ErrCouldNotInferGeneric" href="#ErrCouldNotInferGeneric"><span>ErrCouldNotInferGeneric:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="errors: const ErrCouldNotInferGeneric" href="vancode/interpreter/errors.html#ErrCouldNotInferGeneric">errors: const ErrCouldNotInferGeneric</a></li>
+          </ul></dd>
+<dt><a name="ErrDuplicateEnumField" href="#ErrDuplicateEnumField"><span>ErrDuplicateEnumField:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="errors: const ErrDuplicateEnumField" href="vancode/interpreter/errors.html#ErrDuplicateEnumField">errors: const ErrDuplicateEnumField</a></li>
+          </ul></dd>
+<dt><a name="ErrDuplicateImportAlias" href="#ErrDuplicateImportAlias"><span>ErrDuplicateImportAlias:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="errors: const ErrDuplicateImportAlias" href="vancode/interpreter/errors.html#ErrDuplicateImportAlias">errors: const ErrDuplicateImportAlias</a></li>
+          </ul></dd>
+<dt><a name="ErrEnumFieldValue" href="#ErrEnumFieldValue"><span>ErrEnumFieldValue:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="errors: const ErrEnumFieldValue" href="vancode/interpreter/errors.html#ErrEnumFieldValue">errors: const ErrEnumFieldValue</a></li>
           </ul></dd>
 <dt><a name="ErrExportOnlyTopLevel" href="#ErrExportOnlyTopLevel"><span>ErrExportOnlyTopLevel:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -871,6 +897,10 @@
 <li><a class="reference external"
           data-doc-search-tag="codegen: var globalTypeCounter" href="vancode/interpreter/codegen.html#globalTypeCounter">codegen: var globalTypeCounter</a></li>
           </ul></dd>
+<dt><a name="globalTypeOrdinal" href="#globalTypeOrdinal"><span>globalTypeOrdinal:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="sym: var globalTypeOrdinal" href="vancode/interpreter/sym.html#globalTypeOrdinal">sym: var globalTypeOrdinal</a></li>
+          </ul></dd>
 <dt><a name="hash" href="#hash"><span>hash:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="ast: proc hash(node: Node): Hash" href="vancode/interpreter/ast.html#hash%2CNode">ast: proc hash(node: Node): Hash</a></li>
@@ -934,6 +964,30 @@
 <dt><a name="httpGet" href="#httpGet"><span>httpGet:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="remote: proc httpGet(client: RemoteSource; path: string; args: seq[string] = @[]): Response" href="vancode/manager/remote.html#httpGet%2CRemoteSource%2Cstring%2Cseq%5Bstring%5D">remote: proc httpGet(client: RemoteSource; path: string; args: seq[string] = @[]): Response</a></li>
+          </ul></dd>
+<dt><a name="importAlias" href="#importAlias"><span>importAlias:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="sym: proc importAlias(scope: Module; alias: string): bool" href="vancode/interpreter/sym.html#importAlias%2CModule%2Cstring">sym: proc importAlias(scope: Module; alias: string): bool</a></li>
+          </ul></dd>
+<dt><a name="importAliases" href="#importAliases"><span>importAliases:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="sym: proc importAliases(scope: Module): seq[string]" href="vancode/interpreter/sym.html#importAliases%2CModule">sym: proc importAliases(scope: Module): seq[string]</a></li>
+          </ul></dd>
+<dt><a name="importedTypeByAlias" href="#importedTypeByAlias"><span>importedTypeByAlias:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="sym: proc importedTypeByAlias(scope: Module; alias, id: string): Sym" href="vancode/interpreter/sym.html#importedTypeByAlias%2CModule%2Cstring%2Cstring">sym: proc importedTypeByAlias(scope: Module; alias, id: string): Sym</a></li>
+          </ul></dd>
+<dt><a name="ImportedTypes" href="#ImportedTypes"><span>ImportedTypes:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="sym: object ImportedTypes" href="vancode/interpreter/sym.html#ImportedTypes">sym: object ImportedTypes</a></li>
+          </ul></dd>
+<dt><a name="importedTypesCandidates" href="#importedTypesCandidates"><span>importedTypesCandidates:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="sym: proc importedTypesCandidates(scope: Module; id: string): seq[ImportedTypes]" href="vancode/interpreter/sym.html#importedTypesCandidates%2CModule%2Cstring">sym: proc importedTypesCandidates(scope: Module; id: string): seq[ImportedTypes]</a></li>
+          </ul></dd>
+<dt><a name="importModule" href="#importModule"><span>importModule:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="sym: proc importModule(module: Module; other: Module; alias = &quot;&quot;): bool" href="vancode/interpreter/sym.html#importModule%2CModule%2CModule%2Cstring">sym: proc importModule(module: Module; other: Module; alias = &quot;&quot;): bool</a></li>
           </ul></dd>
 <dt><a name="infix" href="#infix"><span>infix:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1125,7 +1179,9 @@
           </ul></dd>
 <dt><a name="load" href="#load"><span>load:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="sym: proc load(module: Module; other: Module; fromOtherModule: static bool = false): bool" href="vancode/interpreter/sym.html#load%2CModule%2CModule%2Cstaticbool">sym: proc load(module: Module; other: Module; fromOtherModule: static bool = false): bool</a></li>
+          data-doc-search-tag="sym: proc load(module: Module; other: Module; fromOtherModule: static bool = false;
+     alias = &quot;&quot;): bool" href="vancode/interpreter/sym.html#load%2CModule%2CModule%2Cstaticbool%2Cstring">sym: proc load(module: Module; other: Module; fromOtherModule: static bool = false;
+     alias = &quot;&quot;): bool</a></li>
           </ul></dd>
 <dt><a name="loadModule" href="#loadModule"><span>loadModule:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1135,9 +1191,19 @@
 <li><a class="reference external"
           data-doc-search-tag="packager: proc loadPackages[C](pkgr: Packager[C])" href="vancode/manager/packager.html#loadPackages%2CPackager%5BC%5D">packager: proc loadPackages[C](pkgr: Packager[C])</a></li>
           </ul></dd>
+<dt><a name="lookupQualifiedType" href="#lookupQualifiedType"><span>lookupQualifiedType:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="codegen: proc lookupQualifiedType(gen: CodeGen; symName: Node): Sym" href="vancode/interpreter/codegen.html#lookupQualifiedType%2CCodeGen%2CNode">codegen: proc lookupQualifiedType(gen: CodeGen; symName: Node): Sym</a></li>
+          </ul></dd>
 <dt><a name="lowerName" href="#lowerName"><span>lowerName:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="codegen: proc lowerName(s: string): string" href="vancode/interpreter/codegen.html#lowerName%2Cstring">codegen: proc lowerName(s: string): string</a></li>
+          data-doc-search-tag="sym: proc lowerName(s: string): string" href="vancode/interpreter/sym.html#lowerName%2Cstring">sym: proc lowerName(s: string): string</a></li>
+          </ul></dd>
+<dt><a name="mergeModule" href="#mergeModule"><span>mergeModule:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="sym: proc mergeModule(module: Module; other: Module; fromOtherModule: static bool;
+            alias, key: string): bool" href="vancode/interpreter/sym.html#mergeModule%2CModule%2CModule%2Cstaticbool%2Cstring%2Cstring">sym: proc mergeModule(module: Module; other: Module; fromOtherModule: static bool;
+            alias, key: string): bool</a></li>
           </ul></dd>
 <dt><a name="Module" href="#Module"><span>Module:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1239,6 +1305,10 @@
 <li><a class="reference external"
           data-doc-search-tag="chunk: proc newScript(main: Chunk): Script" href="vancode/interpreter/chunk.html#newScript%2CChunk">chunk: proc newScript(main: Chunk): Script</a></li>
           </ul></dd>
+<dt><a name="newStamp" href="#newStamp"><span>newStamp:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="sym: proc newStamp(src: Option[string]; ordinal: uint32): Stamp" href="vancode/interpreter/sym.html#newStamp%2COption%5Bstring%5D%2Cuint32">sym: proc newStamp(src: Option[string]; ordinal: uint32): Stamp</a></li>
+          </ul></dd>
 <dt><a name="newStringLit" href="#newStringLit"><span>newStringLit:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="ast: proc newStringLit(val: string): Node" href="vancode/interpreter/ast.html#newStringLit%2Cstring">ast: proc newStringLit(val: string): Node</a></li>
@@ -1257,7 +1327,9 @@
           </ul></dd>
 <dt><a name="newType" href="#newType"><span>newType:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="sym: proc newType(kind: TypeKind; name: Node; impl: Node = nil): Sym" href="vancode/interpreter/sym.html#newType%2CTypeKind%2CNode%2CNode">sym: proc newType(kind: TypeKind; name: Node; impl: Node = nil): Sym</a></li>
+          data-doc-search-tag="sym: proc newType(kind: TypeKind; name: Node; impl: Node = nil;
+        src: Option[string] = none(string)): Sym" href="vancode/interpreter/sym.html#newType%2CTypeKind%2CNode%2CNode%2COption%5Bstring%5D">sym: proc newType(kind: TypeKind; name: Node; impl: Node = nil;
+        src: Option[string] = none(string)): Sym</a></li>
           </ul></dd>
 <dt><a name="newVirtualMachine" href="#newVirtualMachine"><span>newVirtualMachine:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1535,6 +1607,10 @@
           <li><a class="reference external"
           data-doc-search-tag="sym: proc sameParams(a, b: Sym): bool" href="vancode/interpreter/sym.html#sameParams%2CSym%2CSym">sym: proc sameParams(a, b: Sym): bool</a></li>
           </ul></dd>
+<dt><a name="sameStamp" href="#sameStamp"><span>sameStamp:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="sym: proc sameStamp(a, b: Stamp): bool" href="vancode/interpreter/sym.html#sameStamp%2CStamp%2CStamp">sym: proc sameStamp(a, b: Stamp): bool</a></li>
+          </ul></dd>
 <dt><a name="sameType" href="#sameType"><span>sameType:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="sym: proc sameType(a, b: Sym): bool" href="vancode/interpreter/sym.html#sameType%2CSym%2CSym">sym: proc sameType(a, b: Sym): bool</a></li>
@@ -1647,6 +1723,10 @@
 <li><a class="reference external"
           data-doc-search-tag="value: type StackView" href="vancode/interpreter/value.html#StackView">value: type StackView</a></li>
           </ul></dd>
+<dt><a name="Stamp" href="#Stamp"><span>Stamp:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="sym: object Stamp" href="vancode/interpreter/sym.html#Stamp">sym: object Stamp</a></li>
+          </ul></dd>
 <dt><a name="StandardLibrary" href="#StandardLibrary"><span>StandardLibrary:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="codegen: type StandardLibrary" href="vancode/interpreter/codegen.html#StandardLibrary">codegen: type StandardLibrary</a></li>
@@ -1666,6 +1746,10 @@
 <dt><a name="SymKind" href="#SymKind"><span>SymKind:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="sym: enum SymKind" href="vancode/interpreter/sym.html#SymKind">sym: enum SymKind</a></li>
+          </ul></dd>
+<dt><a name="systemModule" href="#systemModule"><span>systemModule:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="sym: proc systemModule(scope: Module): Module" href="vancode/interpreter/sym.html#systemModule%2CModule">sym: proc systemModule(scope: Module): Module</a></li>
           </ul></dd>
 <dt><a name="TempParamDef" href="#TempParamDef"><span>TempParamDef:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -1795,6 +1879,10 @@
 <li><a class="reference external"
           data-doc-search-tag="value: const tyNil" href="vancode/interpreter/value.html#tyNil">value: const tyNil</a></li>
           </ul></dd>
+<dt><a name="tyObjectStorage" href="#tyObjectStorage"><span>tyObjectStorage:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="value: const tyObjectStorage" href="vancode/interpreter/value.html#tyObjectStorage">value: const tyObjectStorage</a></li>
+          </ul></dd>
 <dt><a name="TypeId" href="#TypeId"><span>TypeId:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="value: type TypeId" href="vancode/interpreter/value.html#TypeId">value: type TypeId</a></li>
@@ -1883,7 +1971,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-10-01 13:42:50 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-10-03 20:54:21 UTC</small>
       </div>
     </div>
   </div>
