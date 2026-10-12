@@ -116,6 +116,11 @@ type
     parserCallback*: ParserCallback
       ## a callback used to parse custom nodes
     stdlibs: StandardLibrary
+    stdlibLoader*: StdlibLoader
+      ## optional lazy stdlib provider, consulted when `import "std/<name>"`
+      ## is not found in `stdlibs`. Lets hosts (e.g. dfkup) load stdlib
+      ## modules on demand (dynamic libraries). Return nil when the stdlib
+      ## cannot be provided; genImport then reports ErrImportError as before.
     triggerFromPath: Option[string]
     allowExprResult*: bool
       # Whether to allow expressions to produce a value in
@@ -140,11 +145,17 @@ type
     fwdDecl: seq[Node]
     # instantiationCache: Table[Hash, Sym]
 
-  ModuleLibrary* = proc(script: Script, systemModule: Module): Module
-    # a procedure where we can add FFI procs and types to a module
+  ModuleLibrary* = proc(script: Script, systemModule: Module): Module {.closure.}
+    # a procedure where we can add FFI procs and types to a module.
+    # Closure-capable so hosts can return stateful lazy factories
+    # (e.g. dynamic-library loaders); plain non-capturing procs still fit.
    
   StandardLibrary* = TableRef[string, ModuleLibrary]
     # a table of standard library modules
+
+  StdlibLoader* = proc(name: string): ModuleLibrary {.closure.}
+    # optional lazy stdlib provider consulted on `std/` import miss.
+    # Return nil when the stdlib cannot be provided.
 
 var codegenCache* = CodeGenCache()
 var vanCodeStmtNodeKinds*: seq[NodeKind] = @[nkFor, nkWhile, nkIf, nkBlock]
@@ -3437,7 +3448,10 @@ proc genObject*(node: Node, isInstantiation = false): Sym {.codegen.} =
 
   # process object fields. `objectId` is the VM's runtime type tag and stays a
   # separate global counter; `stamp` (assigned by `newType`) is the
-  # compile-time identity.
+  # compile-time identity. Id 0 belongs to the built-in `object` top type
+  # (see `sameType`), so the first declaration skips it the same way
+  # `genEnumDef` does; otherwise it would be indistinguishable from it.
+  if globalTypeCounter == 0: inc(globalTypeCounter)
   result.objectId = globalTypeCounter
   inc(globalTypeCounter)
 
@@ -3729,6 +3743,24 @@ proc genImport*(node: Node) {.codegen.} =
           pathNode.error(ErrImportError % "system module is not linked")
         gen.module.load(gen.stdlibs[stdLibName](gen.script, sysMod))
       else:
+        # lazy stdlib provider (e.g. dfkup dynamic libraries). A nil
+        # factory means "cannot provide"; report ErrImportError as before.
+        # Factory failures surface with file/line context.
+        if gen.stdlibLoader != nil:
+          let loaded = gen.stdlibLoader(stdLibName)
+          if loaded != nil:
+            gen.stdlibs[stdLibName] = loaded
+            let sysMod = gen.module.systemModule()
+            if sysMod == nil:
+              pathNode.error(ErrImportError % "system module is not linked")
+            try:
+              gen.module.load(loaded(gen.script, sysMod))
+            except CatchableError as e:
+              pathNode.error(e.msg)
+            # skip the rest of the import handling
+            # as the stdlib is already preloaded
+            # at compile time
+            continue
         pathNode.error(ErrImportError % stdLibName)
       # skip the rest of the import handling
       # as the stdlib is already preloaded
@@ -3806,6 +3838,7 @@ proc genImport*(node: Node) {.codegen.} =
       moduleGen.resolver = gen.resolver
       moduleGen.manager = gen.manager
       moduleGen.stdlibs = gen.stdlibs
+      moduleGen.stdlibLoader = gen.stdlibLoader
       moduleGen.parserCallback = gen.parserCallback
       moduleGen.policy = gen.policy
       when defined(vancodeGradualTypes):
@@ -3991,20 +4024,23 @@ proc initCompiler*(script: Script, module: Module,
           stdlibs: StandardLibrary,
           parserCallback: ParserCallback = nil,
           triggerFromPath: Option[string] = none(string),
-          policy: CompilationPolicy = CompilationPolicy()
+          policy: CompilationPolicy = CompilationPolicy(),
+          stdlibLoader: StdlibLoader = nil
   ): CodeGen =
   ## Initialize a new code generator with a new script and module
   result = initCodeGen(script, module, chunk, manager = manager, policy = policy)
   result.triggerFromPath = triggerFromPath
   result.stdlibs = stdlibs
   result.parserCallback = parserCallback
+  result.stdlibLoader = stdlibLoader
 
 proc initCompilerLegacy*(script: Script, module: Module,
           chunk: Chunk, pkgr: Packager[PackageConfig] = nil,
           stdlibs: StandardLibrary,
           parserCallback: ParserCallback = nil,
           triggerFromPath: Option[string] = none(string),
-          policy: CompilationPolicy = CompilationPolicy()
+          policy: CompilationPolicy = CompilationPolicy(),
+          stdlibLoader: StdlibLoader = nil
   ): CodeGen =
-  result = initCompiler(script, module, chunk, nil, stdlibs, parserCallback, triggerFromPath, policy)
+  result = initCompiler(script, module, chunk, nil, stdlibs, parserCallback, triggerFromPath, policy, stdlibLoader)
   result.pkgr = pkgr

@@ -517,7 +517,11 @@ proc sameType*(a, b: Sym): bool =
           return true
         return true # return a == b
       of ttyObject:
-        # Compare object type ids (structural comparison could be added)
+        # Id 0 is the built-in `object` top type: it accepts any object, so
+        # a user value resolves against e.g. `echo(x: object)`. Declared
+        # types carry distinct nonzero ids and only match themselves, which
+        # is what keeps two same-named types from different files apart.
+        if a.objectId == 0 or b.objectId == 0: return true
         return a.objectId == b.objectId
       of ttyAlias, ttyCustom:
         return a == b

@@ -78,8 +78,18 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
 
   vancode_prologue(addr d)
 
-  for i in 0..<theProc.paramCount:
-    vancode_load_param(addr d, i.cint)
+  # Params already live in flatLocals (rbx) and are read via PushL/PopL/IncL.
+  # Pushing them onto the native operand stack here would leave stale slots
+  # that ReturnVal does not expect (it pops 1 value then saved regs + ret),
+  # corrupting the return address for any proc with paramCount > 0.
+
+  # Static operand-stack depth. Mirrors the interpreter's safe Discard
+  # (`if stack.len >= n`), which is a no-op on underflow. Codegen emits
+  # statement-cleanup `Discard 1` after assignments (e.g. `result = i` ->
+  # PushL/PopL/Discard) where the stack is already empty. Emitting those
+  # unconditionally (`add rsp,n*8`) corrupts the native stack and crashes
+  # on `ret`. Skip no-op discards instead.
+  var stackDepth = 0
 
   for pc in 0..<opCount:
     let oc = cached.opcodes[pc]
@@ -91,50 +101,82 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
       case oc
       of opcPushI:
         vancode_push_i(addr d, cached.getArg1Int(pc).cint)
+        inc stackDepth
       of opcPushTrue:
         vancode_push_true(addr d)
+        inc stackDepth
       of opcPushFalse:
         vancode_push_false(addr d)
+        inc stackDepth
       of opcPushNil:
         vancode_push_nil(addr d)
+        inc stackDepth
       of opcPushL:
         vancode_push_l(addr d, cached.getArg1Int(pc).cint)
+        inc stackDepth
       of opcPopL:
         vancode_pop_l(addr d, cached.getArg1Int(pc).cint)
+        dec stackDepth
       of opcIncL:
         vancode_inc_l(addr d, cached.getArg1Int(pc).cint)
       of opcDecL:
         vancode_dec_l(addr d, cached.getArg1Int(pc).cint)
       of opcAddI:
         vancode_add_i(addr d)
+        dec stackDepth
       of opcSubI:
         vancode_sub_i(addr d)
+        dec stackDepth
       of opcMultI:
         vancode_mul_i(addr d)
+        dec stackDepth
       of opcDivI:
         vancode_div_i(addr d)
+        dec stackDepth
       of opcNegI:
         vancode_neg_i(addr d)
       of opcEqI:
         vancode_eq_i(addr d)
+        dec stackDepth
       of opcLessI:
         vancode_less_i(addr d)
+        dec stackDepth
       of opcGreaterI:
         vancode_greater_i(addr d)
+        dec stackDepth
       of opcInvB:
         vancode_inv_b(addr d)
       of opcDiscard:
-        vancode_discard(addr d, cached.getArg1Int(pc).cint)
+        let n = cached.getArg1Int(pc).int
+        if pc in labelForTarget:
+          # Jump target: condition already popped by jump_fwd_f/t. The
+          # interpreter's trailing Discard would pop it, but native already
+          # did. Skip to keep stack balanced. Depth already accounts for
+          # the pop at the jump, so no change here.
+          discard
+        elif stackDepth >= n and n > 0:
+          vancode_discard(addr d, n.cint)
+          stackDepth -= n
+        else:
+          # No-op in interpreter (`if stack.len >= n`), skip to avoid
+          # corrupting saved regs / return address.
+          discard
       of opcJumpFwd:
         vancode_jump_fwd(addr d, labelForTarget.getOrDefault(jtTargets[pc], 0).cint)
       of opcJumpBack:
         vancode_jump_back(addr d, labelForTarget.getOrDefault(jtTargets[pc], 0).cint)
       of opcJumpFwdF:
         vancode_jump_fwd_f(addr d, labelForTarget.getOrDefault(jtTargets[pc], 0).cint)
+        # Fall-through keeps depth (pop then push back, Discard pops next).
+        # Jump path pops (no push back) and lands on a skipped Discard.
+        # Linear tracking follows fall-through, so no change here.
+        discard
       of opcJumpFwdT:
         vancode_jump_fwd_t(addr d, labelForTarget.getOrDefault(jtTargets[pc], 0).cint)
+        discard
       of opcReturnVal:
         vancode_return_val(addr d)
+        dec stackDepth
       of opcReturnVoid, opcHalt:
         vancode_return_void(addr d)
       of opcNoop:
@@ -142,7 +184,10 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
       of opcCallD:
         let targetProcId = cached.arg2[pc].int
         var nArgs = 0
+        var hasResult = true
         if targetProcId == theProc.procId:
+          nArgs = theProc.paramCount
+          hasResult = theProc.hasResult
           nArgs = theProc.paramCount
           if preAllocBuf != nil and nArgs > 0:
             emitCallArgs(addr d, nArgs)
@@ -172,6 +217,7 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
                 tp = s2.procs[targetProcId]; break
           if tp != nil:
             nArgs = tp.paramCount
+            hasResult = tp.hasResult
           # Host-registered fast path (e.g. bowdy builtins): same invoke
           # sequence, alternate bridge. Misses keep the generic bridge.
           var bridgeFn = cast[pointer](jitCallProcBridgeFlat)
@@ -186,6 +232,10 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
             vancode_call_alloc(addr d, 0)
             vancode_call_invoke(addr d, 0, targetProcId.cint, bridgeFn)
             vancode_call_finish(addr d, 0)
+        # Native call sequence consumes args and pushes result (if any).
+        stackDepth -= nArgs
+        if hasResult:
+          inc stackDepth
       else:
         discard
 
@@ -234,7 +284,7 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
   var maxLocal = theProc.paramCount
   for pc in 0..<opCount:
     let oc = cached.opcodes[pc]
-    if oc == opcPushL or oc == opcPopL:
+    if oc == opcPushL or oc == opcPopL or oc == opcIncL or oc == opcDecL:
       let idx = cached.getArg1Int(pc)
       if idx >= maxLocal: maxLocal = idx + 1
 
