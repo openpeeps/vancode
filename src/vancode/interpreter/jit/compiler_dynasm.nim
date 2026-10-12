@@ -28,7 +28,7 @@ proc jitDynasmSupported*(oc: Opcode): bool =
     case oc
     of opcPushI, opcPushTrue, opcPushFalse,
        opcPushL, opcPopL, opcIncL, opcDecL, opcPushNil,
-       opcAddI, opcSubI, opcMultI, opcDivI, opcNegI,
+       opcAddI, opcSubI, opcMultI, opcDivI, opcModI, opcNegI,
        opcEqI, opcLessI, opcGreaterI,
        opcInvB, opcDiscard,
        opcJumpFwd, opcJumpFwdF, opcJumpFwdT, opcJumpBack,
@@ -132,6 +132,9 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
         dec stackDepth
       of opcDivI:
         vancode_div_i(addr d)
+        dec stackDepth
+      of opcModI:
+        vancode_mod_i(addr d)
         dec stackDepth
       of opcNegI:
         vancode_neg_i(addr d)
@@ -310,7 +313,46 @@ proc compileProc*(vm: Vm, theProc: Proc, isMain = false): ForeignProc =
     if localFn == nil:
       return Value(typeId: tyNil)
     let localMaxLocal = tp.jitMaxLocal
-    var flatLocals = newSeq[int64](max(localMaxLocal, 1))
+    # Hot tiny procs (1-2 int args) must not heap-alloc per call: a stack
+    # buffer covers them, larger frames fall back to a seq. This closure
+    # runs once per interpreted->native call, so the alloc used to cost
+    # ~5-10% of every bridged call.
+    const jitSmallFrame = 8
+    let needLocals = max(localMaxLocal, 1)
+    if needLocals <= jitSmallFrame:
+      var smallBuf: array[jitSmallFrame, int64]
+      for i in 0..<min(argc, localMaxLocal):
+        # Native-stack convention: raw int64 for ints/bools, tagged ring
+        # index for everything else (raw pointers are GC-invisible).
+        if args[i].typeId == tyInt:
+          smallBuf[i] = args[i].intVal
+        elif args[i].typeId == tyBool:
+          smallBuf[i] = args[i].boolVal.ord.int64
+        else:
+          smallBuf[i] = jitRootValue(args[i])
+      if localMaxLocal == 0 and argc > 0:
+        smallBuf[0] = args[0].intVal
+      type JitFn = proc (flatArgs: ptr int64, argc: int): int64 {.cdecl.}
+      let resultI = cast[JitFn](localFn)(addr smallBuf[0], argc)
+      for i in 0..<min(argc, localMaxLocal):
+        if args[i].typeId == tyInt:
+          args[i].intVal = smallBuf[i]
+      if isMain:
+        let vx = cast[Vm](vmPtr)
+        if vx.jit.getOutput != nil:
+          # Main chunks report through the host output buffer (the native
+          # Halt returns 0); interpret()-equivalent result comes from there.
+          return vx.jit.getOutput(vmPtr)
+      if tp.jitReturnString or tp.jitReturnRef:
+        # Non-int/bool results travel as tagged ring indices (bridges root
+        # them); resolve back to the Value for the interpreted caller.
+        result = jitUnrootValue(resultI)
+      elif tp.jitReturnBool:
+        result = Value(typeId: tyBool, boolVal: resultI != 0)
+      else:
+        result = initValue(resultI)
+      return
+    var flatLocals = newSeq[int64](needLocals)
     for i in 0..<min(argc, localMaxLocal):
       # Native-stack convention: raw int64 for ints/bools, tagged ring
       # index for everything else (raw pointers are GC-invisible).

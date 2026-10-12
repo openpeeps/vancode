@@ -38,6 +38,7 @@ proc vancode_add_i*(Dst: ptr ptr dasm_State) {.dynasm, importc: "vancode_add_i".
 proc vancode_sub_i*(Dst: ptr ptr dasm_State) {.dynasm, importc: "vancode_sub_i".}
 proc vancode_mul_i*(Dst: ptr ptr dasm_State) {.dynasm, importc: "vancode_mul_i".}
 proc vancode_div_i*(Dst: ptr ptr dasm_State) {.dynasm, importc: "vancode_div_i".}
+proc vancode_mod_i*(Dst: ptr ptr dasm_State) {.dynasm, importc: "vancode_mod_i".}
 proc vancode_neg_i*(Dst: ptr ptr dasm_State) {.dynasm, importc: "vancode_neg_i".}
 proc vancode_eq_i*(Dst: ptr ptr dasm_State) {.dynasm, importc: "vancode_eq_i".}
 proc vancode_less_i*(Dst: ptr ptr dasm_State) {.dynasm, importc: "vancode_less_i".}

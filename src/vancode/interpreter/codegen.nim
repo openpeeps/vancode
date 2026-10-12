@@ -1386,6 +1386,11 @@ proc infix*(node: Node): Sym {.codegen.} =
       of "-": gen.chunk.emit(if areFloats: opcSubF else: opcSubI)
       of "*": gen.chunk.emit(if areFloats: opcMultF else: opcMultI)
       of "/": gen.chunk.emit(if areFloats: opcDivF else: opcDivI)
+      of "%":
+        # Int-only remainder. Float `%` keeps the legacy user-proc
+        # fallback (noBuiltin) below; there is no opcModF.
+        if areFloats: noBuiltin = true
+        else: gen.chunk.emit(opcModI)
       # relational
       of "==": gen.chunk.emit(if areFloats: opcEqF else: opcEqI)
       of "!=":
@@ -1403,7 +1408,7 @@ proc infix*(node: Node): Sym {.codegen.} =
       result =
         case opKey
         # arithmetic operators return numbers.
-        of "+", "-", "*", "/":
+        of "+", "-", "*", "/", "%":
           if areFloats: gen.module.sym"float"
           else: gen.module.sym"int"
         # relational operators return bools

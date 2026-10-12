@@ -166,6 +166,8 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
         vancode_mul_i(addr d)
       of opcDivI:
         vancode_div_i(addr d)
+      of opcModI:
+        vancode_mod_i(addr d)
       of opcNegI:
         vancode_neg_i(addr d)
       of opcEqI:

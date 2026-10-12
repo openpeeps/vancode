@@ -18,7 +18,7 @@
 #line 4 "vancode_jit_arm64.dasc"
 
 //|.actionlist vancode_actions
-static const unsigned int vancode_actions[320] = {
+static const unsigned int vancode_actions[326] = {
 0xa9bd7bfd,
 0x910003fd,
 0xf9000bf3,
@@ -81,6 +81,12 @@ static const unsigned int vancode_actions[320] = {
 0xf84107e9,
 0xf84107ea,
 0x9ac90d4a,
+0xf81f0fea,
+0x00000000,
+0xf84107e9,
+0xf84107ea,
+0x9ac90d4b,
+0x9b09a96a,
 0xf81f0fea,
 0x00000000,
 0xf84107e9,
@@ -460,12 +466,24 @@ void vancode_div_i(dasm_State** Dst) {
 #line 90 "vancode_jit_arm64.dasc"
 }
 
+// sdiv truncates like x64 idiv, so msub yields the C-style remainder,
+// matching Nim `mod` on ints (and the old div-trick idiom exactly).
+void vancode_mod_i(dasm_State** Dst) {
+  //| ldr x9, [sp], #16
+  //| ldr x10, [sp], #16
+  //| sdiv x11, x10, x9
+  //| msub x10, x11, x9, x10
+  //| str x10, [sp, #-16]!
+  dasm_put(Dst, 64);
+#line 100 "vancode_jit_arm64.dasc"
+}
+
 void vancode_neg_i(dasm_State** Dst) {
   //| ldr x9, [sp], #16
   //| neg x9, x9
   //| str x9, [sp, #-16]!
-  dasm_put(Dst, 64);
-#line 96 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 70);
+#line 106 "vancode_jit_arm64.dasc"
 }
 
 void vancode_eq_i(dasm_State** Dst) {
@@ -474,8 +492,8 @@ void vancode_eq_i(dasm_State** Dst) {
   //| cmp x10, x9
   //| cset w9, eq
   //| str x9, [sp, #-16]!
-  dasm_put(Dst, 68);
-#line 104 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 74);
+#line 114 "vancode_jit_arm64.dasc"
 }
 
 void vancode_less_i(dasm_State** Dst) {
@@ -484,8 +502,8 @@ void vancode_less_i(dasm_State** Dst) {
   //| cmp x10, x9
   //| cset w9, lt
   //| str x9, [sp, #-16]!
-  dasm_put(Dst, 74);
-#line 112 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 80);
+#line 122 "vancode_jit_arm64.dasc"
 }
 
 void vancode_greater_i(dasm_State** Dst) {
@@ -494,8 +512,8 @@ void vancode_greater_i(dasm_State** Dst) {
   //| cmp x10, x9
   //| cset w9, gt
   //| str x9, [sp, #-16]!
-  dasm_put(Dst, 80);
-#line 120 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 86);
+#line 130 "vancode_jit_arm64.dasc"
 }
 
 void vancode_inv_b(dasm_State** Dst) {
@@ -503,27 +521,27 @@ void vancode_inv_b(dasm_State** Dst) {
   //| cmp x9, #0
   //| cset w9, eq
   //| str x9, [sp, #-16]!
-  dasm_put(Dst, 86);
-#line 127 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 92);
+#line 137 "vancode_jit_arm64.dasc"
 }
 
 void vancode_discard(dasm_State** Dst, int n) {
   //| mov x9, #(n*16)
   //| add sp, sp, x9
-  dasm_put(Dst, 91, (n*16));
-#line 132 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 97, (n*16));
+#line 142 "vancode_jit_arm64.dasc"
 }
 
 void vancode_jump_fwd(dasm_State** Dst, int label) {
   //| b =>label
-  dasm_put(Dst, 95, label);
-#line 136 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 101, label);
+#line 146 "vancode_jit_arm64.dasc"
 }
 
 void vancode_jump_back(dasm_State** Dst, int label) {
   //| b =>label
-  dasm_put(Dst, 98, label);
-#line 140 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 104, label);
+#line 150 "vancode_jit_arm64.dasc"
 }
 
 void vancode_jump_fwd_f(dasm_State** Dst, int label) {
@@ -531,8 +549,8 @@ void vancode_jump_fwd_f(dasm_State** Dst, int label) {
   //| cmp x9, #0
   //| beq =>label
   //| str x9, [sp, #-16]!
-  dasm_put(Dst, 101, label);
-#line 147 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 107, label);
+#line 157 "vancode_jit_arm64.dasc"
 }
 
 void vancode_jump_fwd_t(dasm_State** Dst, int label) {
@@ -540,14 +558,14 @@ void vancode_jump_fwd_t(dasm_State** Dst, int label) {
   //| cmp x9, #0
   //| bne =>label
   //| str x9, [sp, #-16]!
-  dasm_put(Dst, 107, label);
-#line 154 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 113, label);
+#line 164 "vancode_jit_arm64.dasc"
 }
 
 void vancode_define_label(dasm_State** Dst, int label) {
   //|=>label:
-  dasm_put(Dst, 113, label);
-#line 158 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 119, label);
+#line 168 "vancode_jit_arm64.dasc"
 }
 
 void vancode_return_val(dasm_State** Dst) {
@@ -555,8 +573,8 @@ void vancode_return_val(dasm_State** Dst) {
   //| ldp x19, x20, [sp, #16]
   //| ldp x29, x30, [sp], #48
   //| ret
-  dasm_put(Dst, 115);
-#line 165 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 121);
+#line 175 "vancode_jit_arm64.dasc"
 }
 
 void vancode_return_void(dasm_State** Dst) {
@@ -564,8 +582,8 @@ void vancode_return_void(dasm_State** Dst) {
   //| ldp x19, x20, [sp, #16]
   //| ldp x29, x30, [sp], #48
   //| ret
-  dasm_put(Dst, 120);
-#line 172 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 126);
+#line 182 "vancode_jit_arm64.dasc"
 }
 
 void vancode_trace_exit(dasm_State** Dst) {
@@ -573,8 +591,8 @@ void vancode_trace_exit(dasm_State** Dst) {
   //| ldp x19, x20, [sp, #16]
   //| ldp x29, x30, [sp], #48
   //| ret
-  dasm_put(Dst, 125);
-#line 179 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 131);
+#line 189 "vancode_jit_arm64.dasc"
 }
 
 void vancode_fib(dasm_State** Dst) {
@@ -595,8 +613,8 @@ void vancode_fib(dasm_State** Dst) {
   //| ret
   //|=>1:
   //| ret
-  dasm_put(Dst, 130, 1, 2, 2, 1);
-#line 199 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 136, 1, 2, 2, 1);
+#line 209 "vancode_jit_arm64.dasc"
 }
 
 void vancode_halt(dasm_State** Dst) {
@@ -604,8 +622,8 @@ void vancode_halt(dasm_State** Dst) {
   //| ldp x19, x20, [sp, #16]
   //| ldp x29, x30, [sp], #48
   //| ret
-  dasm_put(Dst, 150);
-#line 206 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 156);
+#line 216 "vancode_jit_arm64.dasc"
 }
 
 void vancode_pushg(dasm_State** Dst, unsigned long long namePtr,
@@ -620,8 +638,8 @@ void vancode_pushg(dasm_State** Dst, unsigned long long namePtr,
   //| movk x16, #((bridgeFn >> 48) & 0xFFFFULL), lsl #48
   //| blr x16
   //| str x0, [sp, #-16]!
-  dasm_put(Dst, 155, (namePtr & 0xFFFFULL), ((namePtr >> 16) & 0xFFFFULL), ((namePtr >> 32) & 0xFFFFULL), ((namePtr >> 48) & 0xFFFFULL), (bridgeFn & 0xFFFFULL), ((bridgeFn >> 16) & 0xFFFFULL), ((bridgeFn >> 32) & 0xFFFFULL), ((bridgeFn >> 48) & 0xFFFFULL));
-#line 220 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 161, (namePtr & 0xFFFFULL), ((namePtr >> 16) & 0xFFFFULL), ((namePtr >> 32) & 0xFFFFULL), ((namePtr >> 48) & 0xFFFFULL), (bridgeFn & 0xFFFFULL), ((bridgeFn >> 16) & 0xFFFFULL), ((bridgeFn >> 32) & 0xFFFFULL), ((bridgeFn >> 48) & 0xFFFFULL));
+#line 230 "vancode_jit_arm64.dasc"
 }
 
 void vancode_popg(dasm_State** Dst, unsigned long long namePtr,
@@ -637,8 +655,8 @@ void vancode_popg(dasm_State** Dst, unsigned long long namePtr,
   //| movk x16, #((bridgeFn >> 32) & 0xFFFFULL), lsl #32
   //| movk x16, #((bridgeFn >> 48) & 0xFFFFULL), lsl #48
   //| blr x16
-  dasm_put(Dst, 174, (namePtr & 0xFFFFULL), ((namePtr >> 16) & 0xFFFFULL), ((namePtr >> 32) & 0xFFFFULL), ((namePtr >> 48) & 0xFFFFULL), (bridgeFn & 0xFFFFULL), ((bridgeFn >> 16) & 0xFFFFULL), ((bridgeFn >> 32) & 0xFFFFULL), ((bridgeFn >> 48) & 0xFFFFULL));
-#line 235 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 180, (namePtr & 0xFFFFULL), ((namePtr >> 16) & 0xFFFFULL), ((namePtr >> 32) & 0xFFFFULL), ((namePtr >> 48) & 0xFFFFULL), (bridgeFn & 0xFFFFULL), ((bridgeFn >> 16) & 0xFFFFULL), ((bridgeFn >> 32) & 0xFFFFULL), ((bridgeFn >> 48) & 0xFFFFULL));
+#line 245 "vancode_jit_arm64.dasc"
 }
 
 void vancode_pop_host(dasm_State** Dst, unsigned long long namePtr,
@@ -653,8 +671,8 @@ void vancode_pop_host(dasm_State** Dst, unsigned long long namePtr,
   //| movk x16, #((bridgeFn >> 32) & 0xFFFFULL), lsl #32
   //| movk x16, #((bridgeFn >> 48) & 0xFFFFULL), lsl #48
   //| blr x16
-  dasm_put(Dst, 194, (namePtr & 0xFFFFULL), ((namePtr >> 16) & 0xFFFFULL), ((namePtr >> 32) & 0xFFFFULL), ((namePtr >> 48) & 0xFFFFULL), (bridgeFn & 0xFFFFULL), ((bridgeFn >> 16) & 0xFFFFULL), ((bridgeFn >> 32) & 0xFFFFULL), ((bridgeFn >> 48) & 0xFFFFULL));
-#line 249 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 200, (namePtr & 0xFFFFULL), ((namePtr >> 16) & 0xFFFFULL), ((namePtr >> 32) & 0xFFFFULL), ((namePtr >> 48) & 0xFFFFULL), (bridgeFn & 0xFFFFULL), ((bridgeFn >> 16) & 0xFFFFULL), ((bridgeFn >> 32) & 0xFFFFULL), ((bridgeFn >> 48) & 0xFFFFULL));
+#line 259 "vancode_jit_arm64.dasc"
 }
 
 void vancode_bridge_2(dasm_State** Dst, unsigned long long fn) {
@@ -666,8 +684,8 @@ void vancode_bridge_2(dasm_State** Dst, unsigned long long fn) {
   //| movk x16, #((fn >> 48) & 0xFFFFULL), lsl #48
   //| blr x16
   //| str x0, [sp, #-16]!
-  dasm_put(Dst, 213, (fn & 0xFFFFULL), ((fn >> 16) & 0xFFFFULL), ((fn >> 32) & 0xFFFFULL), ((fn >> 48) & 0xFFFFULL));
-#line 260 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 219, (fn & 0xFFFFULL), ((fn >> 16) & 0xFFFFULL), ((fn >> 32) & 0xFFFFULL), ((fn >> 48) & 0xFFFFULL));
+#line 270 "vancode_jit_arm64.dasc"
 }
 
 void vancode_bridge_3_void(dasm_State** Dst, unsigned long long fn) {
@@ -679,8 +697,8 @@ void vancode_bridge_3_void(dasm_State** Dst, unsigned long long fn) {
   //| movk x16, #((fn >> 32) & 0xFFFFULL), lsl #32
   //| movk x16, #((fn >> 48) & 0xFFFFULL), lsl #48
   //| blr x16
-  dasm_put(Dst, 226, (fn & 0xFFFFULL), ((fn >> 16) & 0xFFFFULL), ((fn >> 32) & 0xFFFFULL), ((fn >> 48) & 0xFFFFULL));
-#line 271 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 232, (fn & 0xFFFFULL), ((fn >> 16) & 0xFFFFULL), ((fn >> 32) & 0xFFFFULL), ((fn >> 48) & 0xFFFFULL));
+#line 281 "vancode_jit_arm64.dasc"
 }
 
 void vancode_bridge_3(dasm_State** Dst, unsigned long long fn) {
@@ -693,8 +711,8 @@ void vancode_bridge_3(dasm_State** Dst, unsigned long long fn) {
   //| movk x16, #((fn >> 48) & 0xFFFFULL), lsl #48
   //| blr x16
   //| str x0, [sp, #-16]!
-  dasm_put(Dst, 239, (fn & 0xFFFFULL), ((fn >> 16) & 0xFFFFULL), ((fn >> 32) & 0xFFFFULL), ((fn >> 48) & 0xFFFFULL));
-#line 283 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 245, (fn & 0xFFFFULL), ((fn >> 16) & 0xFFFFULL), ((fn >> 32) & 0xFFFFULL), ((fn >> 48) & 0xFFFFULL));
+#line 293 "vancode_jit_arm64.dasc"
 }
 
 void vancode_bridge_4(dasm_State** Dst, unsigned long long fn) {
@@ -708,8 +726,8 @@ void vancode_bridge_4(dasm_State** Dst, unsigned long long fn) {
   //| movk x16, #((fn >> 48) & 0xFFFFULL), lsl #48
   //| blr x16
   //| str x0, [sp, #-16]!
-  dasm_put(Dst, 253, (fn & 0xFFFFULL), ((fn >> 16) & 0xFFFFULL), ((fn >> 32) & 0xFFFFULL), ((fn >> 48) & 0xFFFFULL));
-#line 296 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 259, (fn & 0xFFFFULL), ((fn >> 16) & 0xFFFFULL), ((fn >> 32) & 0xFFFFULL), ((fn >> 48) & 0xFFFFULL));
+#line 306 "vancode_jit_arm64.dasc"
 }
 
 void vancode_call_alloc(dasm_State** Dst, int nArgs) {
@@ -725,22 +743,22 @@ void vancode_call_alloc(dasm_State** Dst, int nArgs) {
   //| lsr x9, x9, #4
   //| lsl x9, x9, #4
   //| sub sp, sp, x9
-  dasm_put(Dst, 268, nArgs);
-#line 311 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 274, nArgs);
+#line 321 "vancode_jit_arm64.dasc"
 }
 
 void vancode_call_move_one(dasm_State** Dst, int srcDisp, int dstDisp) {
   //| ldr x9, [sp, #srcDisp]
   //| str x9, [sp, #dstDisp]
-  dasm_put(Dst, 276, srcDisp, dstDisp);
-#line 316 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 282, srcDisp, dstDisp);
+#line 326 "vancode_jit_arm64.dasc"
 }
 
 void vancode_call_pop_slot(dasm_State** Dst, int slot) {
   //| ldr x9, [sp], #16
   //| str x9, [sp, #(slot*8)]
-  dasm_put(Dst, 281, (slot*8));
-#line 321 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 287, (slot*8));
+#line 331 "vancode_jit_arm64.dasc"
 }
 
 void vancode_call_invoke(dasm_State** Dst, int nArgs, int procId,
@@ -755,8 +773,8 @@ void vancode_call_invoke(dasm_State** Dst, int nArgs, int procId,
   //| movk x16, #((bridgeFn >> 32) & 0xFFFFULL), lsl #32
   //| movk x16, #((bridgeFn >> 48) & 0xFFFFULL), lsl #48
   //| blr x16
-  dasm_put(Dst, 285, nArgs, procId, (bridgeFn & 0xFFFFULL), ((bridgeFn >> 16) & 0xFFFFULL), ((bridgeFn >> 32) & 0xFFFFULL), ((bridgeFn >> 48) & 0xFFFFULL));
-#line 335 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 291, nArgs, procId, (bridgeFn & 0xFFFFULL), ((bridgeFn >> 16) & 0xFFFFULL), ((bridgeFn >> 32) & 0xFFFFULL), ((bridgeFn >> 48) & 0xFFFFULL));
+#line 345 "vancode_jit_arm64.dasc"
 }
 
 void vancode_call_finish(dasm_State** Dst, int dropBytes) {
@@ -767,8 +785,8 @@ void vancode_call_finish(dasm_State** Dst, int dropBytes) {
   //| mov x9, #dropBytes
   //| add sp, sp, x9
   //| str x0, [sp, #-16]!
-  dasm_put(Dst, 302, dropBytes);
-#line 345 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 308, dropBytes);
+#line 355 "vancode_jit_arm64.dasc"
 }
 
 void vancode_call_self(dasm_State** Dst, int nArgs,
@@ -780,6 +798,6 @@ void vancode_call_self(dasm_State** Dst, int nArgs,
   //| movk x16, #((selfAddr >> 32) & 0xFFFFULL), lsl #32
   //| movk x16, #((selfAddr >> 48) & 0xFFFFULL), lsl #48
   //| blr x16
-  dasm_put(Dst, 307, nArgs, (selfAddr & 0xFFFFULL), ((selfAddr >> 16) & 0xFFFFULL), ((selfAddr >> 32) & 0xFFFFULL), ((selfAddr >> 48) & 0xFFFFULL));
-#line 356 "vancode_jit_arm64.dasc"
+  dasm_put(Dst, 313, nArgs, (selfAddr & 0xFFFFULL), ((selfAddr >> 16) & 0xFFFFULL), ((selfAddr >> 32) & 0xFFFFULL), ((selfAddr >> 48) & 0xFFFFULL));
+#line 366 "vancode_jit_arm64.dasc"
 }

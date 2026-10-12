@@ -94,6 +94,17 @@ void vancode_div_i(dasm_State** Dst) {
   | push rax
 }
 
+// NOTE: mirrors div_i — idiv by zero raises SIGFPE (native crash), while
+// the interpreter arm raises a catchable DivByZeroDefect. Same pre-existing
+// asymmetry as div_i; a zero divisor in JITed code is fatal either way.
+void vancode_mod_i(dasm_State** Dst) {
+  | pop r12
+  | pop rax
+  | cqo
+  | idiv r12
+  | push rdx
+}
+
 void vancode_neg_i(dasm_State** Dst) {
   | pop rax
   | neg rax

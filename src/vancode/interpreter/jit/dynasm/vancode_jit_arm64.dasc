@@ -89,6 +89,16 @@ void vancode_div_i(dasm_State** Dst) {
   | str x10, [sp, #-16]!
 }
 
+// sdiv truncates like x64 idiv, so msub yields the C-style remainder,
+// matching Nim `mod` on ints (and the old div-trick idiom exactly).
+void vancode_mod_i(dasm_State** Dst) {
+  | ldr x9, [sp], #16
+  | ldr x10, [sp], #16
+  | sdiv x11, x10, x9
+  | msub x10, x11, x9, x10
+  | str x10, [sp, #-16]!
+}
+
 void vancode_neg_i(dasm_State** Dst) {
   | ldr x9, [sp], #16
   | neg x9, x9

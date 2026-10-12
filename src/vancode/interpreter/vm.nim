@@ -104,6 +104,19 @@ type
   ArgKind = enum
     akNone, akInt, akFloat, akString
 
+  CallSite = object
+    ## Resolved opcCallD target, cached per (chunk, pc). Chunk bytecode is
+    ## immutable and module mappings are fixed once compilation finishes,
+    ## so a successful resolution never goes stale within a run. Only
+    ## populated on success — resolution failures raise before caching.
+
+    resolved*: bool
+    target*: Script
+    targetProc*: Proc
+    calleeOps*: CachedOps
+      ## CachedOps for `targetProc.chunk` (native procs only), so repeated
+      ## calls skip the `getCachedOps` hash lookup per activation.
+
   CachedOps* = ref object
     opcodes*: seq[Opcode]
     arg1*: seq[int64]
@@ -112,6 +125,7 @@ type
     byteOffsets*: seq[int]
     jumpTargets*: seq[int]
     strKeys*: seq[seq[uint16]]
+    callSites*: seq[CallSite]
 
   Vm* {.acyclic.} = ref object
     ## The main VM object that holds the execution state and caches
@@ -403,7 +417,8 @@ proc parseChunk(currentChunk: Chunk): CachedOps =
     flags: flags,
     byteOffsets: byteOffsets,
     jumpTargets: jumpTargets,
-    strKeys: strKeys
+    strKeys: strKeys,
+    callSites: newSeq[CallSite](opcodes.len)
   )
 
 #
@@ -715,7 +730,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           if nidx + 1 > traceNumLocals: traceNumLocals = nidx + 1
         if notTakenOc notin {opcPushI, opcPushTrue, opcPushFalse, opcPushNil,
                              opcPushL, opcPopL, opcIncL, opcDecL,
-                             opcAddI, opcSubI, opcMultI, opcDivI, opcNegI,
+                             opcAddI, opcSubI, opcMultI, opcDivI, opcModI, opcNegI,
                              opcEqI, opcLessI, opcGreaterI,
                              opcInvB, opcDiscard,
                              opcJumpFwd, opcJumpFwdF, opcJumpFwdT,
@@ -742,7 +757,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
               traceNumLocals = idx + 1
           if oc notin {opcPushI, opcPushTrue, opcPushFalse, opcPushNil,
                        opcPushL, opcPopL, opcIncL, opcDecL,
-                       opcAddI, opcSubI, opcMultI, opcDivI, opcNegI,
+                       opcAddI, opcSubI, opcMultI, opcDivI, opcModI, opcNegI,
                        opcEqI, opcLessI, opcGreaterI,
                        opcInvB, opcDiscard,
                        opcJumpFwd, opcJumpFwdF, opcJumpFwdT, opcJumpBack,
@@ -800,13 +815,13 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       of opcIncL:
         let idx = co.getArg1Int(pcIdx)
         ensureLocal(idx)
-        let old = stack[stackBottom + idx]
-        stack[stackBottom + idx] = Value(typeId: tyInt, intVal: old.intVal + 1)
+        let sIncL = cast[ptr UncheckedArray[Value]](addr stack[0])
+        stack[stackBottom + idx] = initValue(sIncL[stackBottom + idx].intVal + 1)
       of opcDecL:
         let idx = co.getArg1Int(pcIdx)
         ensureLocal(idx)
-        let old = stack[stackBottom + idx]
-        stack[stackBottom + idx] = Value(typeId: tyInt, intVal: old.intVal - 1)
+        let sDecL = cast[ptr UncheckedArray[Value]](addr stack[0])
+        stack[stackBottom + idx] = initValue(sDecL[stackBottom + idx].intVal - 1)
       #
       # Arrays / Objects
       #
@@ -820,15 +835,38 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           stack.setLen(stack.len - count)
         stack.push(arr)
       of opcGetI:
-        let idxVal = stack.pop()
-        let arr = stack.pop()
-        stack.push(arr.objectVal.fields[idxVal.intVal].toValue)
+        if stack.len < 2:
+          raise newException(IndexDefect, "stack underflow in opcGetI")
+        let sGetI = cast[ptr UncheckedArray[Value]](addr stack[0])
+        let nGetI = stack.len
+        let idxGetI = sGetI[nGetI - 1].intVal
+        stack[nGetI - 2] = sGetI[nGetI - 2].objectVal.fields[idxGetI].toValue
+        stack.setLen(nGetI - 1)
       of opcSetI:
-        let
-          val = stack.pop()
-          idxVal = stack.pop()
-          arr = stack.pop()
-        arr.objectVal.fields[idxVal.intVal] = val.toStorage
+        if stack.len < 3:
+          raise newException(IndexDefect, "stack underflow in opcSetI")
+        let sSetI = cast[ptr UncheckedArray[Value]](addr stack[0])
+        let nSetI = stack.len
+        let idxSetI = sSetI[nSetI - 2].intVal
+        # Inline toStorage with raw reads: no temp retains. Value fields
+        # are value-copied; only a stored ref takes exactly one retain.
+        case sSetI[nSetI - 1].typeId
+        of tyInt:
+          sSetI[nSetI - 3].objectVal.fields[idxSetI] =
+            ValueStorage(typeId: tyInt, intVal: sSetI[nSetI - 1].intVal)
+        of tyBool:
+          sSetI[nSetI - 3].objectVal.fields[idxSetI] =
+            ValueStorage(typeId: tyBool, boolVal: sSetI[nSetI - 1].boolVal)
+        of tyFloat:
+          sSetI[nSetI - 3].objectVal.fields[idxSetI] =
+            ValueStorage(typeId: tyFloat, floatVal: sSetI[nSetI - 1].floatVal)
+        of tyNil:
+          sSetI[nSetI - 3].objectVal.fields[idxSetI] = ValueStorage(typeId: tyNil)
+        else:
+          let vvSetI = sSetI[nSetI - 1]
+          sSetI[nSetI - 3].objectVal.fields[idxSetI] =
+            ValueStorage(typeId: vvSetI.typeId, refVal: vvSetI)
+        stack.setLen(nSetI - 3)
       of opcConstrObj:
         let count = co.getArg1Int(pcIdx)
         var obj = initObject(tyObjectStorage, count)
@@ -846,15 +884,35 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         stack.push(obj)
       
       of opcGetF:
+        if stack.len < 1:
+          raise newException(IndexDefect, "stack underflow in opcGetF")
         let fld = co.getArg1Int(pcIdx)
-        let obj = stack.pop()
-        stack.push(obj.objectVal.fields[fld].toValue)
-      
+        let sGetF = cast[ptr UncheckedArray[Value]](addr stack[0])
+        stack[stack.len - 1] = sGetF[stack.len - 1].objectVal.fields[fld].toValue
+
       of opcSetF:
+        if stack.len < 2:
+          raise newException(IndexDefect, "stack underflow in opcSetF")
         let fld = co.getArg1Int(pcIdx)
-        let val = stack.pop()
-        let obj = stack.pop()
-        obj.objectVal.fields[fld] = val.toStorage
+        let sSetF = cast[ptr UncheckedArray[Value]](addr stack[0])
+        let nSetF = stack.len
+        case sSetF[nSetF - 1].typeId
+        of tyInt:
+          sSetF[nSetF - 2].objectVal.fields[fld] =
+            ValueStorage(typeId: tyInt, intVal: sSetF[nSetF - 1].intVal)
+        of tyBool:
+          sSetF[nSetF - 2].objectVal.fields[fld] =
+            ValueStorage(typeId: tyBool, boolVal: sSetF[nSetF - 1].boolVal)
+        of tyFloat:
+          sSetF[nSetF - 2].objectVal.fields[fld] =
+            ValueStorage(typeId: tyFloat, floatVal: sSetF[nSetF - 1].floatVal)
+        of tyNil:
+          sSetF[nSetF - 2].objectVal.fields[fld] = ValueStorage(typeId: tyNil)
+        else:
+          let vvSetF = sSetF[nSetF - 1]
+          sSetF[nSetF - 2].objectVal.fields[fld] =
+            ValueStorage(typeId: vvSetF.typeId, refVal: vvSetF)
+        stack.setLen(nSetF - 2)
       
       #
       # JSON (placeholders)
@@ -883,30 +941,56 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       # Arithmetic
       #
       of opcNegI:
-        let a = stack.pop(); stack.push(initValue(-a.intVal))
-      of opcAddI, opcSubI, opcMultI, opcDivI:
-        let b = stack.pop() # rhs arg
-        let a = stack.pop() # lhs arg
-        case oc
-          of opcAddI: stack.push(initValue(a.intVal + b.intVal))
-          of opcSubI: stack.push(initValue(a.intVal - b.intVal))
-          of opcMultI: stack.push(initValue(a.intVal * b.intVal))
-          of opcDivI: stack.push(initValue(a.intVal div b.intVal))
-          else: discard
+        # Fast path: same FieldDefect behavior as pop/push on mistyped
+        # values, but no pop/push calls, one length change, no slot churn.
+        # Raw slot reads skip ARC retain/release pairs (atomic under
+        # --threads:on); the result alloc is still required because stack
+        # slots may alias locals (pushL shares the ref), so in-place
+        # mutation of operands would be observable. See Ph1 notes.
+        if stack.len < 1:
+          raise newException(IndexDefect, "stack underflow in opcNegI")
+        let sNegI = cast[ptr UncheckedArray[Value]](addr stack[0])
+        stack[stack.len - 1] = initValue(-sNegI[stack.len - 1].intVal)
+      of opcAddI, opcSubI, opcMultI, opcDivI, opcModI:
+        if stack.len < 2:
+          raise newException(IndexDefect, "stack underflow in int arithmetic")
+        let sAI = cast[ptr UncheckedArray[Value]](addr stack[0])
+        let nAI = stack.len
+        let bAI = sAI[nAI - 1].intVal
+        let aAI = sAI[nAI - 2].intVal
+        let rAI = case oc
+          of opcAddI: aAI + bAI
+          of opcSubI: aAI - bAI
+          of opcMultI: aAI * bAI
+          of opcDivI: aAI div bAI
+          of opcModI: aAI mod bAI
+          else: 0
+        # Operands fully consumed into locals before any store, so
+        # div-by-zero/overflow leave the stack untouched, as before.
+        stack[nAI - 2] = initValue(rAI)
+        stack.setLen(nAI - 1)
       of opcNegF:
-        let a = stack.pop()
-        stack.push(initValue(-a.floatVal))
+        if stack.len < 1:
+          raise newException(IndexDefect, "stack underflow in opcNegF")
+        let sNegF = cast[ptr UncheckedArray[Value]](addr stack[0])
+        stack[stack.len - 1] = initValue(-sNegF[stack.len - 1].floatVal)
       of opcAddF, opcSubF, opcMultF, opcDivF:
-        let b = stack.pop()
-        let a = stack.pop()
-        let av = if a.typeId == tyInt: a.intVal.toFloat else: a.floatVal
-        let bv = if b.typeId == tyInt: b.intVal.toFloat else: b.floatVal
-        case oc
-          of opcAddF: stack.push(initValue(av + bv))
-          of opcSubF: stack.push(initValue(av - bv))
-          of opcMultF: stack.push(initValue(av * bv))
-          of opcDivF: stack.push(initValue(av / bv))
-          else: discard
+        if stack.len < 2:
+          raise newException(IndexDefect, "stack underflow in float arithmetic")
+        let sAF = cast[ptr UncheckedArray[Value]](addr stack[0])
+        let nAF = stack.len
+        let bAF = sAF[nAF - 1]
+        let aAF = sAF[nAF - 2]
+        let av = if aAF.typeId == tyInt: aAF.intVal.toFloat else: aAF.floatVal
+        let bv = if bAF.typeId == tyInt: bAF.intVal.toFloat else: bAF.floatVal
+        let rAF = case oc
+          of opcAddF: av + bv
+          of opcSubF: av - bv
+          of opcMultF: av * bv
+          of opcDivF: av / bv
+          else: 0.0
+        stack[nAF - 2] = initValue(rAF)
+        stack.setLen(nAF - 1)
       #
       # String operations
       #
@@ -921,42 +1005,66 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       # Logic
       #
       of opcInvB:
-        let a = stack.pop()
-        stack.push(initValue(not a.boolVal))
+        if stack.len < 1:
+          raise newException(IndexDefect, "stack underflow in opcInvB")
+        let sInvB = cast[ptr UncheckedArray[Value]](addr stack[0])
+        stack[stack.len - 1] = initValue(not sInvB[stack.len - 1].boolVal)
       of opcEqB:
-        let b = stack.pop()
-        let a = stack.pop()
-        stack.push(initValue(a.boolVal == b.boolVal))
+        if stack.len < 2:
+          raise newException(IndexDefect, "stack underflow in opcEqB")
+        let sEqB = cast[ptr UncheckedArray[Value]](addr stack[0])
+        let nEqB = stack.len
+        let rEqB = sEqB[nEqB - 2].boolVal == sEqB[nEqB - 1].boolVal
+        stack[nEqB - 2] = initValue(rEqB)
+        stack.setLen(nEqB - 1)
       of opcEqI:
-        let b = stack.pop()
-        let a = stack.pop()
-        stack.push(initValue(a.intVal == b.intVal))
+        if stack.len < 2:
+          raise newException(IndexDefect, "stack underflow in opcEqI")
+        let sEqI = cast[ptr UncheckedArray[Value]](addr stack[0])
+        let nEqI = stack.len
+        let rEqI = sEqI[nEqI - 2].intVal == sEqI[nEqI - 1].intVal
+        stack[nEqI - 2] = initValue(rEqI)
+        stack.setLen(nEqI - 1)
       of opcLessI:
-        let b = stack.pop()
-        let a = stack.pop()
-        stack.push(initValue(a.intVal < b.intVal))
+        if stack.len < 2:
+          raise newException(IndexDefect, "stack underflow in opcLessI")
+        let sLessI = cast[ptr UncheckedArray[Value]](addr stack[0])
+        let nLessI = stack.len
+        let rLessI = sLessI[nLessI - 2].intVal < sLessI[nLessI - 1].intVal
+        stack[nLessI - 2] = initValue(rLessI)
+        stack.setLen(nLessI - 1)
       of opcGreaterI:
-        let b = stack.pop()
-        let a = stack.pop()
-        stack.push(initValue(a.intVal > b.intVal))
+        if stack.len < 2:
+          raise newException(IndexDefect, "stack underflow in opcGreaterI")
+        let sGreaterI = cast[ptr UncheckedArray[Value]](addr stack[0])
+        let nGreaterI = stack.len
+        let rGreaterI = sGreaterI[nGreaterI - 2].intVal > sGreaterI[nGreaterI - 1].intVal
+        stack[nGreaterI - 2] = initValue(rGreaterI)
+        stack.setLen(nGreaterI - 1)
       of opcEqF, opcLessF, opcGreaterF:
-        let b = stack.pop()
-        let a = stack.pop()
-        let 
-          av = if a.typeId == tyInt: a.intVal.toFloat else: a.floatVal
-          bv = if b.typeId == tyInt: b.intVal.toFloat else: b.floatVal
-        case oc
-          of opcEqF:
-            stack.push(initValue(av == bv))
-          of opcLessF:
-            stack.push(initValue(av < bv))
-          of opcGreaterF:
-            stack.push(initValue(av > bv))
-          else: discard
+        if stack.len < 2:
+          raise newException(IndexDefect, "stack underflow in float comparison")
+        let sCmpF = cast[ptr UncheckedArray[Value]](addr stack[0])
+        let nCmpF = stack.len
+        let bCmpF = sCmpF[nCmpF - 1]
+        let aCmpF = sCmpF[nCmpF - 2]
+        let
+          av = if aCmpF.typeId == tyInt: aCmpF.intVal.toFloat else: aCmpF.floatVal
+          bv = if bCmpF.typeId == tyInt: bCmpF.intVal.toFloat else: bCmpF.floatVal
+        let rCmpF = case oc
+          of opcEqF: av == bv
+          of opcLessF: av < bv
+          else: av > bv
+        stack[nCmpF - 2] = initValue(rCmpF)
+        stack.setLen(nCmpF - 1)
       of opcEqS:
-        let b = stack.pop()
-        let a = stack.pop()
-        stack.push(initValue(a.stringVal[] == b.stringVal[]))
+        if stack.len < 2:
+          raise newException(IndexDefect, "stack underflow in opcEqS")
+        let sEqS = cast[ptr UncheckedArray[Value]](addr stack[0])
+        let nEqS = stack.len
+        let rEqS = sEqS[nEqS - 2].stringVal[] == sEqS[nEqS - 1].stringVal[]
+        stack[nEqS - 2] = initValue(rEqS)
+        stack.setLen(nEqS - 1)
       #
       # Modules
       #
@@ -1084,31 +1192,44 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           stderr.writeLine "jumpBack: pc=", pcIdx, " stack.len=", stack.len
       of opcCallD:
         # The `opcCallD` calls a procedure defined
-        # in the current or another chunk.
-        let chunkPath = co.getArg1Str(pcIdx, currentChunk)
+        # in the current or another chunk. Resolution (string interning,
+        # path compare, module tables, bounds checks) runs once per site;
+        # steady-state calls hit the cache below.
+        var targetScript: Script
+        var p: Proc
         let procId = co.arg2[pcIdx].int
-        # Resolve initial target script by path or current
-        var targetScript =
-          if chunkPath == currentChunk.file: script
-          else:
-            if chunkPath in script.scripts:
-              script.scripts[chunkPath]
+        if co.callSites[pcIdx].resolved:
+          targetScript = co.callSites[pcIdx].target
+          p = co.callSites[pcIdx].targetProc
+        else:
+          let chunkPath = co.getArg1Str(pcIdx, currentChunk)
+          # Resolve initial target script by path or current
+          targetScript =
+            if chunkPath == currentChunk.file: script
             else:
-              # fallback to vm.importedModules if present
-              if chunkPath in vm.importedModules:
-                vm.importedModules[chunkPath]
+              if chunkPath in script.scripts:
+                script.scripts[chunkPath]
               else:
-                raise newException(ValueError,
-                  "opcCallD: target module not found: " & chunkPath)
+                # fallback to vm.importedModules if present
+                if chunkPath in vm.importedModules:
+                  vm.importedModules[chunkPath]
+                else:
+                  raise newException(ValueError,
+                    "opcCallD: target module not found: " & chunkPath)
 
-        # Bounds-check rather than let the index raise. A wrong script here used
-        # to surface as a bare IndexDefect, which said nothing about which
-        # script was asked for which proc.
-        if procId < 0 or procId >= targetScript.procs.len:
-          raise newException(ValueError,
-            "opcCallD: proc " & $procId & " not found in '" & chunkPath &
-            "' (" & $targetScript.procs.len & " procs)")
-        let p = targetScript.procs[procId]
+          # Bounds-check rather than let the index raise. A wrong script here used
+          # to surface as a bare IndexDefect, which said nothing about which
+          # script was asked for which proc.
+          if procId < 0 or procId >= targetScript.procs.len:
+            raise newException(ValueError,
+              "opcCallD: proc " & $procId & " not found in '" & chunkPath &
+              "' (" & $targetScript.procs.len & " procs)")
+          p = targetScript.procs[procId]
+          co.callSites[pcIdx].target = targetScript
+          co.callSites[pcIdx].targetProc = p
+          if p.kind == pkNative and p.chunk != nil:
+            co.callSites[pcIdx].calleeOps = vm.getCachedOps(p.chunk)
+          co.callSites[pcIdx].resolved = true
         vm.markHotProc(p)
         when defined(vancodeJitDynasm):
           if p.kind == pkNative and p.jitForeign == nil and
@@ -1134,7 +1255,9 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
               "Not enough arguments on stack for call to " & p.name & ": need " & $p.paramCount & ", have " & $stack.len)
           stackBottom = stack.len - p.paramCount
           currentChunk = p.chunk
-          cached = vm.getCachedOps(currentChunk)
+          let siteOpsTail = co.callSites[pcIdx].calleeOps
+          cached = if siteOpsTail != nil: siteOpsTail
+                   else: vm.getCachedOps(currentChunk)
           co = cached
           pcIdx = 0
           continue
@@ -1163,16 +1286,28 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         if jitFnPtr != nil:
           type AsyncJitFn = proc (flatArgs: ptr int64, argc: int): int64 {.cdecl.}
           let fn = cast[AsyncJitFn](jitFnPtr)
-          var flatArgs = newSeq[int64](max(max(p.jitMaxLocal, p.paramCount), 1))
-          for i in 0..<p.paramCount:
-            let a = stack[stack.len - p.paramCount + i]
-            if a.typeId == tyInt:
-              flatArgs[i] = a.intVal
-            elif a.typeId == tyBool:
-              flatArgs[i] = a.boolVal.ord.int64
-            else:
-              flatArgs[i] = jitRootValue(a)
-          let resultI = fn(addr flatArgs[0], p.paramCount)
+          # Stack buffer for small frames: this path runs per call and the
+          # old newSeq allocated on every invocation.
+          const jitSmallFrame = 8
+          let needArgs = max(max(p.jitMaxLocal, p.paramCount), 1)
+          template fillFlat(buf: untyped) =
+            for i in 0..<p.paramCount:
+              let a = stack[stack.len - p.paramCount + i]
+              if a.typeId == tyInt:
+                buf[i] = a.intVal
+              elif a.typeId == tyBool:
+                buf[i] = a.boolVal.ord.int64
+              else:
+                buf[i] = jitRootValue(a)
+          var resultI: int64
+          if needArgs <= jitSmallFrame:
+            var smallBuf: array[jitSmallFrame, int64]
+            fillFlat(smallBuf)
+            resultI = fn(addr smallBuf[0], p.paramCount)
+          else:
+            var flatArgs = newSeq[int64](needArgs)
+            fillFlat(flatArgs)
+            resultI = fn(addr flatArgs[0], p.paramCount)
           restoreFrame()
           if p.hasResult:
             if p.jitReturnBool:
@@ -1205,11 +1340,13 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
 
         when defined(hayaVmWriteStackOps):
           display(span("opc:", fgGreen), span("<" & $opcCallD & ">"),
-            span("filePath=" & chunkPath & " procId=" & $procId & " name=" & p.name & " paramCount=" & $p.paramCount)) 
+            span(" procId=" & $procId & " name=" & p.name & " paramCount=" & $p.paramCount)) 
         case p.kind
         of pkNative:
           currentChunk = p.chunk
-          cached = vm.getCachedOps(currentChunk)
+          let siteOps = co.callSites[pcIdx].calleeOps
+          cached = if siteOps != nil: siteOps
+                   else: vm.getCachedOps(currentChunk)
           co = cached
           pcIdx = 0
           continue
