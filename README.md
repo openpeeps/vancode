@@ -144,5 +144,5 @@ Notes:
 - 👋 Wanna help? [Fork it!](https://github.com/openpeeps/vancode/fork)
 
 ### 🎩 License
-LGPLv3 license. [Made by Humans from OpenPeeps](https://github.com/openpeeps).<br>
+MIT license. [Made by Humans from OpenPeeps](https://github.com/openpeeps).<br>
 Copyright OpenPeeps & Contributors &mdash; All rights reserved.
