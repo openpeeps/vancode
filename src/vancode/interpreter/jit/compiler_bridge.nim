@@ -114,6 +114,7 @@ proc jitFillTmpBuf*(arr: ptr UncheckedArray[int64], argc: int32,
       case types[i]
       of tyInt: jitBridgeTmpBuf[i] = initValue(arr[i])
       of tyBool: jitBridgeTmpBuf[i] = Value(typeId: tyBool, boolVal: arr[i] != 0)
+      of tyFloat: jitBridgeTmpBuf[i] = initValue(cast[float64](arr[i]))
       else: jitBridgeTmpBuf[i] = jitUnpackArg(arr[i])
 
 var jitHostBridges = initTable[string, pointer]()
@@ -479,6 +480,60 @@ proc jitSetFieldSlow*(objSlot, valSlot: int64, fieldId: int32,
   else:
     obj.objectVal.fields[fieldId] = ValueStorage(typeId: vv.typeId, refVal: vv)
   result = 0
+
+proc jitFloatArg*(slot: int64, kind: int32): float64 {.inline.} =
+  ## Read one float-ALU operand: raw ints convert (matching the
+  ## interpreter's mixed-tolerance `AddF`), raw float bits reinterpret,
+  ## everything else resolves to a `Value` that converts (int) or reads
+  ## `floatVal` (union read, exactly like the interpreter — including its
+  ## garbage tolerance; nil dereferences raise the same `NilAccessDefect`).
+  ## NOTE: an `unknown` slot holding raw float BITS (loop-carried locals
+  ## before their type is established) cannot resolve — the compilers must
+  ## never emit `unknown` for float-consumed slots (recording-seeded types
+  ## in traces, loop bail-out in methods).
+  case kind
+  of tyInt: slot.float
+  of tyFloat: cast[float64](slot)
+  else:
+    let vv = jitSlotToValue(slot, kind)
+    if vv.typeId == tyInt: vv.intVal.float
+    else: vv.floatVal
+
+proc jitFloatAdd*(a, b: int64, kinds: int32): int64 {.cdecl, exportc.} =
+  ## Float `a + b` on bit-cast slots; result travels as bits (no boxing).
+  result = cast[int64](jitFloatArg(a, kinds and 0xFF) +
+    jitFloatArg(b, (kinds shr 8) and 0xFF))
+
+proc jitFloatSub*(a, b: int64, kinds: int32): int64 {.cdecl, exportc.} =
+  result = cast[int64](jitFloatArg(a, kinds and 0xFF) -
+    jitFloatArg(b, (kinds shr 8) and 0xFF))
+
+proc jitFloatMul*(a, b: int64, kinds: int32): int64 {.cdecl, exportc.} =
+  result = cast[int64](jitFloatArg(a, kinds and 0xFF) *
+    jitFloatArg(b, (kinds shr 8) and 0xFF))
+
+proc jitFloatDiv*(a, b: int64, kinds: int32): int64 {.cdecl, exportc.} =
+  result = cast[int64](jitFloatArg(a, kinds and 0xFF) /
+    jitFloatArg(b, (kinds shr 8) and 0xFF))
+
+proc jitFloatEq*(a, b: int64, kinds: int32): int64 {.cdecl, exportc.} =
+  result = if jitFloatArg(a, kinds and 0xFF) ==
+      jitFloatArg(b, (kinds shr 8) and 0xFF): 1 else: 0
+
+proc jitFloatLess*(a, b: int64, kinds: int32): int64 {.cdecl, exportc.} =
+  result = if jitFloatArg(a, kinds and 0xFF) <
+      jitFloatArg(b, (kinds shr 8) and 0xFF): 1 else: 0
+
+proc jitFloatGreater*(a, b: int64, kinds: int32): int64 {.cdecl, exportc.} =
+  result = if jitFloatArg(a, kinds and 0xFF) >
+      jitFloatArg(b, (kinds shr 8) and 0xFF): 1 else: 0
+
+proc jitFloatNeg*(a: int64, kind: int32): int64 {.cdecl, exportc.} =
+  ## Float negation mirrors `opcNegF` (union read, no int conversion).
+  if kind == tyFloat:
+    result = cast[int64](-cast[float64](a))
+  else:
+    result = cast[int64](-jitSlotToValue(a, kind).floatVal)
 
 proc jitImmortalTypes*(kinds: openArray[int32]): pointer =
   ## Immortal per-`CallD`-site arg-kind array for typed native calls

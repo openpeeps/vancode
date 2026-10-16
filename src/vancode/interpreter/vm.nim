@@ -735,6 +735,9 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         if notTakenOc notin {opcPushI, opcPushTrue, opcPushFalse, opcPushNil,
                              opcPushL, opcPopL, opcIncL, opcDecL,
                              opcPushG, opcPopG,
+                             opcPushF, opcNegF,
+                             opcAddF, opcSubF, opcMultF, opcDivF,
+                             opcEqF, opcLessF, opcGreaterF,
                              opcAddI, opcSubI, opcMultI, opcDivI, opcModI, opcNegI,
                              opcEqI, opcLessI, opcGreaterI,
                              opcInvB, opcDiscard,
@@ -773,6 +776,9 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           if oc notin {opcPushI, opcPushTrue, opcPushFalse, opcPushNil,
                        opcPushL, opcPopL, opcIncL, opcDecL,
                        opcPushG, opcPopG,
+                       opcPushF, opcNegF,
+                       opcAddF, opcSubF, opcMultF, opcDivF,
+                       opcEqF, opcLessF, opcGreaterF,
                        opcAddI, opcSubI, opcMultI, opcDivI, opcModI, opcNegI,
                        opcEqI, opcLessI, opcGreaterI,
                        opcInvB, opcDiscard,
@@ -1163,6 +1169,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                     case stack[idx].typeId
                     of tyInt: stack[idx].intVal
                     of tyBool: stack[idx].boolVal.ord.int64
+                    of tyFloat: cast[int64](stack[idx].floatVal)
                     else: jitRootValue(stack[idx])
                   else: 0
               type TraceFn = proc (locals: ptr int64, count: cint): int64 {.cdecl.}
@@ -1187,6 +1194,8 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                   case traceOrigTypes[j]
                   of tyInt: stack[idx] = initValue(traceFlatLocals[j])
                   of tyBool: stack[idx] = initValue(traceFlatLocals[j] != 0)
+                  of tyFloat:
+                    stack[idx] = initValue(cast[float64](traceFlatLocals[j]))
                   else:
                     # Ref locals (arrays, objects): the native code mutates
                     # them in place and never reassigns the slot, so the
@@ -1205,6 +1214,21 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
             elif traceState == tsRecording and tgt == traceStartPc:
               traceBuf.anchorPc = tgt
               traceBuf.numLocals = traceNumLocals
+              # Sample steady-state local types at the loop top for the
+              # compiler's type seeding (loop-carried locals keep the
+              # observed types across laps; ints/bools/floats seed
+              # precise kinds, everything else stays unknown).
+              traceBuf.initLocalKinds = newSeq[int32](traceNumLocals)
+              for li in 0 ..< traceNumLocals:
+                let lidx = stackBottom + li
+                traceBuf.initLocalKinds[li] =
+                  if lidx < stack.len:
+                    case stack[lidx].typeId
+                    of tyInt: tyInt.int32
+                    of tyBool: tyBool.int32
+                    of tyFloat: tyFloat.int32
+                    else: tyAny.int32
+                  else: tyAny.int32
               let code =
                 if vm.jit.compileTrace != nil:
                   vm.jit.compileTrace(cast[pointer](traceBuf))
@@ -1377,6 +1401,8 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
               stack.push(Value(typeId: tyBool, boolVal: resultI != 0))
             elif p.jitReturnString or p.jitReturnRef:
               stack.push(jitUnrootValue(resultI))
+            elif p.jitReturnFloat:
+              stack.push(initValue(cast[float64](resultI)))
             else:
               stack.push(initValue(resultI))
           inc(pcIdx)

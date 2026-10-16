@@ -1613,3 +1613,97 @@ proc ncallInvokeTyped*(a: var Assembler, nArgs: int, procId: int,
       movk x16, r2, lsl, 32
       movk x16, r3, lsl, 48
       blr x16
+
+proc npushF*(a: var Assembler, bits: int64) =
+  ## Push a float constant as raw bits (bit-cast doubles travel on the
+  ## int64 native stack; arithmetic happens in float bridges or, later,
+  ## native SSE). Net stack effect +1.
+  when defined(amd64):
+    dynasm a:
+      arch x64
+      movabs rax, bits
+      push rax
+  else:
+    let b0 = int(cast[uint64](bits) and 0xFFFF'u64)
+    let b1 = int((cast[uint64](bits) shr 16) and 0xFFFF'u64)
+    let b2 = int((cast[uint64](bits) shr 32) and 0xFFFF'u64)
+    let b3 = int((cast[uint64](bits) shr 48) and 0xFFFF'u64)
+    dynasm a:
+      arch aarch64
+      movz x9, b0
+      movk x9, b1, lsl, 16
+      movk x9, b2, lsl, 32
+      movk x9, b3, lsl, 48
+      str x9, [sp, -16], pre
+
+proc nfloatBinop*(a: var Assembler, fn: pointer, kinds: int32) =
+  ## Float binary op through a bridge (`jitFloatAdd/Sub/Mul/Div/Eq/Less/
+  ## Greater`): pops b, a; calls fn(a, b, kinds); pushes the bit-cast
+  ## result (0/1 for comparisons). Net stack effect -1. `kinds` packs the
+  ## compiler-baked operand kinds (a in bits 0-7, b in bits 8-15) so
+  ## mixed int/float operands convert exactly like the interpreter.
+  let fnAddr = cast[int64](fn)
+  when defined(amd64):
+    dynasm a:
+      arch x64
+      pop rsi
+      pop rdi
+      mov edx, kinds
+      push rbx
+      mov rbx, rsp
+      `and` rsp, -16
+      movabs rax, fnAddr
+      call rax
+      mov rsp, rbx
+      pop rbx
+      push rax
+  else:
+    let f0 = int(cast[uint64](fnAddr) and 0xFFFF'u64)
+    let f1 = int((cast[uint64](fnAddr) shr 16) and 0xFFFF'u64)
+    let f2 = int((cast[uint64](fnAddr) shr 32) and 0xFFFF'u64)
+    let f3 = int((cast[uint64](fnAddr) shr 48) and 0xFFFF'u64)
+    let kk0 = int(kinds and 0xFFFF)
+    dynasm a:
+      arch aarch64
+      ldr x1, [sp], 16
+      ldr x0, [sp], 16
+      movz x2, kk0
+      movz x16, f0
+      movk x16, f1, lsl, 16
+      movk x16, f2, lsl, 32
+      movk x16, f3, lsl, 48
+      blr x16
+      str x0, [sp, -16], pre
+
+proc nfloatNeg*(a: var Assembler, fn: pointer, kind: int32) =
+  ## Float negation through `jitFloatNeg`: pops a; calls fn(a, kind);
+  ## pushes the bit-cast result. Net stack effect 0.
+  let fnAddr = cast[int64](fn)
+  when defined(amd64):
+    dynasm a:
+      arch x64
+      pop rdi
+      mov esi, kind
+      push rbx
+      mov rbx, rsp
+      `and` rsp, -16
+      movabs rax, fnAddr
+      call rax
+      mov rsp, rbx
+      pop rbx
+      push rax
+  else:
+    let f0 = int(cast[uint64](fnAddr) and 0xFFFF'u64)
+    let f1 = int((cast[uint64](fnAddr) shr 16) and 0xFFFF'u64)
+    let f2 = int((cast[uint64](fnAddr) shr 32) and 0xFFFF'u64)
+    let f3 = int((cast[uint64](fnAddr) shr 48) and 0xFFFF'u64)
+    dynasm a:
+      arch aarch64
+      ldr x0, [sp], 16
+      mov x1, kind
+      movz x16, f0
+      movk x16, f1, lsl, 16
+      movk x16, f2, lsl, 32
+      movk x16, f3, lsl, 48
+      blr x16
+      str x0, [sp, -16], pre

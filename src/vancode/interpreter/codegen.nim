@@ -456,6 +456,7 @@ proc newProc*(script: Script, name, impl: Node,
         paramCount: params.len,
         hasResult: hasReturnType,
         jitReturnBool: returnTy.kind == skType and returnTy.tyKind == ttyBool,
+        jitReturnFloat: returnTy.kind == skType and returnTy.tyKind == ttyFloat,
         jitReturnString: returnTy.kind == skType and returnTy.tyKind == ttyString,
         jitReturnRef: returnTy.kind == skType and returnTy.tyKind notin
           {ttyVoid, ttyBool, ttyString, ttyInt, ttyFloat}

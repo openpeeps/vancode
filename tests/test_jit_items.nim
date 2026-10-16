@@ -235,6 +235,44 @@ when defined(vancodeJitNim):
       (tyAny.int32 or (tyInt.int32 shl 8)).int32)
     check obj.objectVal.fields[0].intVal == 77
     check obj.objectVal.fields[0].typeId == tyInt
+
+  test "float binops roundtrip bit-cast doubles":
+    var s = initNimJit()
+    nprologue(s.a)
+    npushF(s.a, cast[int64](1.5))
+    npushF(s.a, cast[int64](2.5))
+    nfloatBinop(s.a, jitFloatAdd,
+      (tyFloat.int32 or (tyFloat.int32 shl 8)).int32)
+    nreturnVal(s.a)
+    var buf = nimJitFinish(s)
+    let f = cast[JitFn](buf.ptrAt(AssemblyOffset(0)))
+    check cast[float64](f(nil, 0)) == 4.0
+    buf.destroy()
+
+  test "float comparisons and mixed int float operands":
+    var s = initNimJit()
+    nprologue(s.a)
+    npushI(s.a, 2)
+    npushF(s.a, cast[int64](0.5))
+    nfloatBinop(s.a, jitFloatAdd,
+      (tyInt.int32 or (tyFloat.int32 shl 8)).int32)
+    npushF(s.a, cast[int64](2.5))
+    nfloatBinop(s.a, jitFloatEq,
+      (tyFloat.int32 or (tyFloat.int32 shl 8)).int32)
+    nreturnVal(s.a)
+    var buf = nimJitFinish(s)
+    let f = cast[JitFn](buf.ptrAt(AssemblyOffset(0)))
+    check f(nil, 0) == 1
+    buf.destroy()
+    # direct bridge checks incl. negation and ordering
+    check cast[float64](jitFloatMul(cast[int64](3.0), cast[int64](2.0),
+      (tyFloat.int32 or (tyFloat.int32 shl 8)).int32)) == 6.0
+    check jitFloatLess(cast[int64](1.0), cast[int64](2.0),
+      (tyFloat.int32 or (tyFloat.int32 shl 8)).int32) == 1
+    check jitFloatGreater(cast[int64](1.0), cast[int64](2.0),
+      (tyFloat.int32 or (tyFloat.int32 shl 8)).int32) == 0
+    check cast[float64](jitFloatNeg(cast[int64](1.25),
+      tyFloat.int32)) == -1.25
 else:
   test "jit items disabled":
     skip()

@@ -35,6 +35,12 @@ type
     selfProcId*: int    # procId for self-recursive call detection (-1 = none)
     selfParamCount*: int  # param count for self-recursive calls
     selfHasResult*: bool  # whether a self-call leaves a result behind
+    initLocalKinds*: seq[int32]  # steady-state local types sampled at
+      ## recording completion (loop-top): seeds the compilers' type
+      ## analysis so loop-carried locals (e.g. floats holding raw bits
+      ## from the previous lap) compile with precise kinds instead of
+      ## `unknown`, which cannot resolve bit-cast slots. Stored as
+      ## `TypeId`s (`tyAny` = unknown).
     failKind*: TraceFailKind  # set by compileTrace on failure (tfNone = ok)
 
   TraceExitReason* = enum

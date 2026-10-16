@@ -28,6 +28,9 @@ proc jitNimSupported*(oc: Opcode): bool =
     of opcPushI, opcPushTrue, opcPushFalse,
        opcPushL, opcPopL, opcIncL, opcDecL, opcPushNil,
        opcPushG, opcPopG,
+       opcPushF, opcNegF,
+       opcAddF, opcSubF, opcMultF, opcDivF,
+       opcEqF, opcLessF, opcGreaterF,
        opcAddI, opcSubI, opcMultI, opcDivI, opcModI, opcNegI,
        opcEqI, opcLessI, opcGreaterI,
        opcInvB, opcDiscard,
@@ -77,6 +80,7 @@ proc procResultKind*(tp: Proc): SlotKind =
   if tp == nil: return skUnknown
   if tp.jitReturnBool: skBool
   elif tp.jitReturnString or tp.jitReturnRef: skRef
+  elif tp.jitReturnFloat: skFloat
   else: skInt
 
 proc tpush*(s: var seq[SlotKind], k: SlotKind) {.inline.} =
@@ -99,6 +103,8 @@ const maxInlineOps* = 24
 
 const inlineLeafOps* = {opcPushI, opcPushTrue, opcPushFalse, opcPushNil,
   opcPushL, opcPopL, opcIncL, opcDecL, opcPushG, opcPopG,
+  opcPushF, opcNegF, opcAddF, opcSubF, opcMultF, opcDivF,
+  opcEqF, opcLessF, opcGreaterF,
   opcAddI, opcSubI, opcMultI, opcDivI, opcModI, opcNegI,
   opcEqI, opcLessI, opcGreaterI, opcInvB, opcDiscard, opcNoop}
   ## Ops allowed inside an inlined body: pure stack/local/global effects.
@@ -189,6 +195,8 @@ proc publishNimCode(theProc: Proc, codeBuf: ExecutableBuffer,
         result = jitUnrootValue(resultI)
       elif tp.jitReturnBool:
         result = Value(typeId: tyBool, boolVal: resultI != 0)
+      elif tp.jitReturnFloat:
+        result = initValue(cast[float64](resultI))
       else:
         result = initValue(resultI)
       return
@@ -221,6 +229,8 @@ proc publishNimCode(theProc: Proc, codeBuf: ExecutableBuffer,
       result = jitUnrootValue(resultI)
     elif tp.jitReturnBool:
       result = Value(typeId: tyBool, boolVal: resultI != 0)
+    elif tp.jitReturnFloat:
+      result = initValue(cast[float64](resultI))
     else:
       result = initValue(resultI)
 
@@ -322,6 +332,16 @@ proc compileProcNim*(vm: Vm, theProc: Proc,
     var localTypes: seq[SlotKind] = @[]
     let callerMaxLocal = maxLocalFor(cached, theProc.paramCount)
     var inlineHigh = callerMaxLocal
+    # Loop-carried float locals defeat single-pass typing (a use precedes
+    # the PopL establishing its kind, so loop laps would feed raw bits to
+    # `unknown` slots): bail float loops with imprecise operands back to
+    # the interpreter instead of miscompiling. Straight-line float code
+    # is unaffected (untagged slots there always resolve).
+    var hasBackEdge = false
+    for oc in cached.opcodes:
+      if oc == opcJumpBack:
+        hasBackEdge = true
+        break
 
     for pc in 0 ..< opCount:
       let oc = cached.opcodes[pc]
@@ -458,6 +478,94 @@ proc compileProcNim*(vm: Vm, theProc: Proc,
             setFObjK.kindToTypeId or (setFValK.kindToTypeId shl 8),
             cached.getArg1Int(pc).int, pc)
           stackDepth -= 2
+        of opcPushF:
+          npushF(jit.a, cast[int64](cached.getArg1Float(pc)))
+          inc stackDepth
+          typeStack.tpush(skFloat)
+        of opcNegF:
+          let negFK = typeStack.tpop()
+          if hasBackEdge and negFK notin {skInt, skBool, skFloat}:
+            jit.a.execBuf.destroy()
+            return nil
+          typeStack.tpush(skFloat)
+          nfloatNeg(jit.a, jitFloatNeg, negFK.kindToTypeId)
+        of opcAddF:
+          let addFBK = typeStack.tpop()
+          let addFAK = typeStack.tpop()
+          if hasBackEdge and (addFAK notin {skInt, skBool, skFloat} or
+              addFBK notin {skInt, skBool, skFloat}):
+            jit.a.execBuf.destroy()
+            return nil
+          typeStack.tpush(skFloat)
+          nfloatBinop(jit.a, jitFloatAdd,
+            addFAK.kindToTypeId or (addFBK.kindToTypeId shl 8))
+          dec stackDepth
+        of opcSubF:
+          let subFBK = typeStack.tpop()
+          let subFAK = typeStack.tpop()
+          if hasBackEdge and (subFAK notin {skInt, skBool, skFloat} or
+              subFBK notin {skInt, skBool, skFloat}):
+            jit.a.execBuf.destroy()
+            return nil
+          typeStack.tpush(skFloat)
+          nfloatBinop(jit.a, jitFloatSub,
+            subFAK.kindToTypeId or (subFBK.kindToTypeId shl 8))
+          dec stackDepth
+        of opcMultF:
+          let mulFBK = typeStack.tpop()
+          let mulFAK = typeStack.tpop()
+          if hasBackEdge and (mulFAK notin {skInt, skBool, skFloat} or
+              mulFBK notin {skInt, skBool, skFloat}):
+            jit.a.execBuf.destroy()
+            return nil
+          typeStack.tpush(skFloat)
+          nfloatBinop(jit.a, jitFloatMul,
+            mulFAK.kindToTypeId or (mulFBK.kindToTypeId shl 8))
+          dec stackDepth
+        of opcDivF:
+          let divFBK = typeStack.tpop()
+          let divFAK = typeStack.tpop()
+          if hasBackEdge and (divFAK notin {skInt, skBool, skFloat} or
+              divFBK notin {skInt, skBool, skFloat}):
+            jit.a.execBuf.destroy()
+            return nil
+          typeStack.tpush(skFloat)
+          nfloatBinop(jit.a, jitFloatDiv,
+            divFAK.kindToTypeId or (divFBK.kindToTypeId shl 8))
+          dec stackDepth
+        of opcEqF:
+          let eqFBK = typeStack.tpop()
+          let eqFAK = typeStack.tpop()
+          if hasBackEdge and (eqFAK notin {skInt, skBool, skFloat} or
+              eqFBK notin {skInt, skBool, skFloat}):
+            jit.a.execBuf.destroy()
+            return nil
+          typeStack.tpush(skBool)
+          nfloatBinop(jit.a, jitFloatEq,
+            eqFAK.kindToTypeId or (eqFBK.kindToTypeId shl 8))
+          dec stackDepth
+        of opcLessF:
+          let lessFBK = typeStack.tpop()
+          let lessFAK = typeStack.tpop()
+          if hasBackEdge and (lessFAK notin {skInt, skBool, skFloat} or
+              lessFBK notin {skInt, skBool, skFloat}):
+            jit.a.execBuf.destroy()
+            return nil
+          typeStack.tpush(skBool)
+          nfloatBinop(jit.a, jitFloatLess,
+            lessFAK.kindToTypeId or (lessFBK.kindToTypeId shl 8))
+          dec stackDepth
+        of opcGreaterF:
+          let greaterFBK = typeStack.tpop()
+          let greaterFAK = typeStack.tpop()
+          if hasBackEdge and (greaterFAK notin {skInt, skBool, skFloat} or
+              greaterFBK notin {skInt, skBool, skFloat}):
+            jit.a.execBuf.destroy()
+            return nil
+          typeStack.tpush(skBool)
+          nfloatBinop(jit.a, jitFloatGreater,
+            greaterFAK.kindToTypeId or (greaterFBK.kindToTypeId shl 8))
+          dec stackDepth
         of opcDiscard:
           let n = cached.getArg1Int(pc).int
           if pc in labelForTarget:
@@ -670,6 +778,33 @@ proc compileProcNim*(vm: Vm, theProc: Proc,
                         ndiscard(jit.a, ibN)
                         stackDepth -= ibN
                         typeStack.tpopN(ibN)
+                    of opcPushF:
+                      npushF(jit.a, cast[int64](cCached.getArg1Float(cpc)))
+                      inc stackDepth
+                      typeStack.tpush(skFloat)
+                    of opcNegF:
+                      let ibFNK = typeStack.tpop()
+                      typeStack.tpush(skFloat)
+                      nfloatNeg(jit.a, jitFloatNeg, ibFNK.kindToTypeId)
+                    of opcAddF, opcSubF, opcMultF, opcDivF,
+                        opcEqF, opcLessF, opcGreaterF:
+                      let ibFBFn = case cOps[cpc]
+                        of opcAddF: jitFloatAdd
+                        of opcSubF: jitFloatSub
+                        of opcMultF: jitFloatMul
+                        of opcDivF: jitFloatDiv
+                        of opcEqF: jitFloatEq
+                        of opcLessF: jitFloatLess
+                        else: jitFloatGreater
+                      let ibFBT = typeStack.tpop()
+                      let ibFAT = typeStack.tpop()
+                      if cOps[cpc] in {opcEqF, opcLessF, opcGreaterF}:
+                        typeStack.tpush(skBool)
+                      else:
+                        typeStack.tpush(skFloat)
+                      nfloatBinop(jit.a, ibFBFn,
+                        ibFAT.kindToTypeId or (ibFBT.kindToTypeId shl 8))
+                      dec stackDepth
                     of opcNoop:
                       discard
                     else:
@@ -815,7 +950,11 @@ proc compileTraceNim*(vm: Vm, trace: TraceBuffer): pointer =
   var jit = initNimJit()
   var selfHoles: seq[int] = @[]
   var traceTypeStack: seq[SlotKind] = @[]
+  # Seed local types from the recording-time sample (loop-carried values
+  # keep steady-state types across laps); unobserved slots stay unknown.
   var traceLocalTypes: seq[SlotKind] = @[]
+  for k in trace.initLocalKinds:
+    traceLocalTypes.add(kindFromTypeId(k))
   try:
     nprologue(jit.a)
     ndefLabel(jit.a, 0)
@@ -925,6 +1064,55 @@ proc compileTraceNim*(vm: Vm, trace: TraceBuffer): pointer =
           nsetF(jit.a, jitSetFieldSlow,
             tSetFObjK.kindToTypeId or (tSetFValK.kindToTypeId shl 8),
             cached.getArg1Int(pc).int, pc)
+        of opcPushF:
+          npushF(jit.a, cast[int64](cached.getArg1Float(pc)))
+          traceTypeStack.tpush(skFloat)
+        of opcNegF:
+          let tNegFK = traceTypeStack.tpop()
+          traceTypeStack.tpush(skFloat)
+          nfloatNeg(jit.a, jitFloatNeg, tNegFK.kindToTypeId)
+        of opcAddF:
+          let tAddFBK = traceTypeStack.tpop()
+          let tAddFAK = traceTypeStack.tpop()
+          traceTypeStack.tpush(skFloat)
+          nfloatBinop(jit.a, jitFloatAdd,
+            tAddFAK.kindToTypeId or (tAddFBK.kindToTypeId shl 8))
+        of opcSubF:
+          let tSubFBK = traceTypeStack.tpop()
+          let tSubFAK = traceTypeStack.tpop()
+          traceTypeStack.tpush(skFloat)
+          nfloatBinop(jit.a, jitFloatSub,
+            tSubFAK.kindToTypeId or (tSubFBK.kindToTypeId shl 8))
+        of opcMultF:
+          let tMulFBK = traceTypeStack.tpop()
+          let tMulFAK = traceTypeStack.tpop()
+          traceTypeStack.tpush(skFloat)
+          nfloatBinop(jit.a, jitFloatMul,
+            tMulFAK.kindToTypeId or (tMulFBK.kindToTypeId shl 8))
+        of opcDivF:
+          let tDivFBK = traceTypeStack.tpop()
+          let tDivFAK = traceTypeStack.tpop()
+          traceTypeStack.tpush(skFloat)
+          nfloatBinop(jit.a, jitFloatDiv,
+            tDivFAK.kindToTypeId or (tDivFBK.kindToTypeId shl 8))
+        of opcEqF:
+          let tEqFBK = traceTypeStack.tpop()
+          let tEqFAK = traceTypeStack.tpop()
+          traceTypeStack.tpush(skBool)
+          nfloatBinop(jit.a, jitFloatEq,
+            tEqFAK.kindToTypeId or (tEqFBK.kindToTypeId shl 8))
+        of opcLessF:
+          let tLessFBK = traceTypeStack.tpop()
+          let tLessFAK = traceTypeStack.tpop()
+          traceTypeStack.tpush(skBool)
+          nfloatBinop(jit.a, jitFloatLess,
+            tLessFAK.kindToTypeId or (tLessFBK.kindToTypeId shl 8))
+        of opcGreaterF:
+          let tGreaterFBK = traceTypeStack.tpop()
+          let tGreaterFAK = traceTypeStack.tpop()
+          traceTypeStack.tpush(skBool)
+          nfloatBinop(jit.a, jitFloatGreater,
+            tGreaterFAK.kindToTypeId or (tGreaterFBK.kindToTypeId shl 8))
         of opcDiscard:
           if pc in labelForTarget:
             discard traceTypeStack.tpop()  # jump already popped natively

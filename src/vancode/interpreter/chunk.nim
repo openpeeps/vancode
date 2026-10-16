@@ -172,6 +172,7 @@ type
     jitCodePtr*: pointer  ## JIT-compiled function pointer, set atomically
     jitMaxLocal*: int     ## Max local slots used by JIT code
     jitReturnBool*: bool   ## Whether the JIT-compiled proc returns bool
+    jitReturnFloat*: bool  ## Whether it returns float (bit-cast int64)
     jitReturnString*: bool ## Whether the JIT-compiled proc returns string
     jitReturnRef*: bool    ## Whether it returns another ref type (array,
                            ## object, host value): result travels as a tagged
