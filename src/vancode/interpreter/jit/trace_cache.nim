@@ -30,10 +30,25 @@ proc newTraceCache*(): TraceCache =
   TraceCache(entries: initTable[(int, pointer), TraceEntry]())
 
 proc have*(cache: TraceCache, pc: int, chunk: pointer): bool =
-  cache.entries.hasKey((pc, chunk))
+  ## Runnable entry only: failed-loop markers (`code == nil`, see
+  ## `addFailed`) are invisible here so the execute path never sees them.
+  cache.entries.hasKey((pc, chunk)) and
+    cache.entries[(pc, chunk)].code != nil
+
+proc haveFailed*(cache: TraceCache, pc: int, chunk: pointer): bool =
+  cache.entries.hasKey((pc, chunk)) and
+    cache.entries[(pc, chunk)].code == nil
 
 proc get*(cache: TraceCache, pc: int, chunk: pointer): TraceEntry =
   cache.entries[(pc, chunk)]
 
 proc add*(cache: TraceCache, entry: TraceEntry) =
   cache.entries[(entry.anchorPc, entry.chunk)] = entry
+
+proc addFailed*(cache: TraceCache, anchorPc: int, chunk: pointer) =
+  ## Negative marker for a loop whose compile failure is stable across
+  ## recordings (unsupported opcode, resource exhaustion). Stored in the
+  ## same table so the hot-loop gate skips re-recording it; `code == nil`
+  ## marks failure. Shape failures are never marked (see TraceFailKind).
+  cache.entries[(anchorPc, chunk)] = TraceEntry(code: nil, codeSize: 0,
+    anchorPc: anchorPc, numLocals: 0, chunk: chunk)

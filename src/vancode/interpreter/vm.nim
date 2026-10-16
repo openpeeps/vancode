@@ -1172,13 +1172,26 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                 if vm.traceCache == nil:
                   vm.traceCache = newTraceCache()
                 vm.traceCache.add(TraceEntry(code: code, anchorPc: tgt, numLocals: traceNumLocals, chunk: cast[pointer](currentChunk)))
+              else:
+                # Stable compile failures (unsupported opcode in the loop
+                # body, resource exhaustion): every recording of this loop
+                # fails the same way, so leave a negative marker and never
+                # re-record it. Without this every back-edge re-ran the
+                # full DynASM attempt (mmap/codegen/munmap). Shape failures
+                # (branch-dependent) are deliberately NOT marked: a later
+                # window may capture a compilable path.
+                if traceBuf.failKind in {tfOpcode, tfResource}:
+                  if vm.traceCache == nil:
+                    vm.traceCache = newTraceCache()
+                  vm.traceCache.addFailed(tgt, cast[pointer](currentChunk))
               traceState = tsIdle
               pcIdx = tgt - 1
             elif traceState == tsIdle and vm.preferences.enableHotCodeDetection:
               loopHotCount += 1
               let hotThreshold = 50
               if loopHotCount >= hotThreshold and
-                 (vm.traceCache == nil or not vm.traceCache.have(tgt, cast[pointer](currentChunk))):
+                 (vm.traceCache == nil or (not vm.traceCache.have(tgt, cast[pointer](currentChunk)) and
+                  not vm.traceCache.haveFailed(tgt, cast[pointer](currentChunk)))):
                 traceState = tsRecording
                 traceStartPc = tgt
                 traceBuf = TraceBuffer(pcs: @[], anchorPc: tgt, cached: cast[pointer](co), chunk: cast[pointer](currentChunk), selfProcId: -1)

@@ -445,6 +445,30 @@ proc jitBridgeCallI*(procRefVal: int64, flatArgs: ptr int64, argc: int32, argTyp
     jitBridgeTmpBuf[i] = nil
   result = jitPackResult(callResult)
 
+proc callJitNative(fnPtr: pointer, theProc: Proc, flatArgs: ptr int64,
+    argc: int32): int64 =
+  ## Invoke compiled-native `theProc` on a correctly sized frame. The
+  ## caller's operand array holds `argc` slots, but the callee addresses
+  ## `jitMaxLocal` locals through rbx: running it directly on a short
+  ## caller array would stomp the caller's native frame (saved regs and
+  ## spill area live just above the array). Re-home into scratch when the
+  ## callee frame is wider than the argument list.
+  type JitFn = proc (flatArgs: ptr int64, argc: int): int64 {.cdecl.}
+  let needFrame = if theProc != nil: theProc.jitMaxLocal else: argc.int
+  if needFrame > argc.int:
+    const jitBridgeSmall = 8
+    let src = cast[ptr UncheckedArray[int64]](flatArgs)
+    if needFrame <= jitBridgeSmall:
+      var smallFrame: array[jitBridgeSmall, int64]
+      for i in 0..<min(argc.int, needFrame):
+        smallFrame[i] = src[i]
+      return cast[JitFn](fnPtr)(addr smallFrame[0], argc)
+    var bigFrame = newSeq[int64](needFrame)
+    for i in 0..<min(argc.int, needFrame):
+      bigFrame[i] = src[i]
+    return cast[JitFn](fnPtr)(addr bigFrame[0], argc)
+  return cast[JitFn](fnPtr)(flatArgs, argc)
+
 proc jitCallProcBridgeFlat*(procId: int32, flatArgs: ptr int64, argc: int32, argTypes: ptr int32): int64 {.cdecl, exportc.} =
   ## JIT bridge: call a proc by procId with flat int64 args (used by opcCallD JIT codegen)
   let fnPtr = jitFnTable[procId]
@@ -454,8 +478,7 @@ proc jitCallProcBridgeFlat*(procId: int32, flatArgs: ptr int64, argc: int32, arg
       p.jitCallCount += 1
       if p.jitCallCount >= hotRecompileThreshold:
         if jitRecompileHook != nil: jitRecompileHook(p)
-    type JitFn = proc (flatArgs: ptr int64, argc: int): int64 {.cdecl.}
-    return cast[JitFn](fnPtr)(flatArgs, argc)
+    return callJitNative(fnPtr, p, flatArgs, argc)
   let theProc =
     if jitProcCache[procId] != nil:
       cast[Proc](jitProcCache[procId])
@@ -474,8 +497,7 @@ proc jitCallProcBridgeFlat*(procId: int32, flatArgs: ptr int64, argc: int32, arg
       theProc.jitCallCount += 1
       if theProc.jitCallCount >= hotRecompileThreshold:
         if jitRecompileHook != nil: jitRecompileHook(theProc)
-    type JitFn = proc (flatArgs: ptr int64, argc: int): int64 {.cdecl.}
-    return cast[JitFn](fnPtr2)(flatArgs, argc)
+    return callJitNative(fnPtr2, theProc, flatArgs, argc)
   if argc > 256: return 0
   let arr = cast[ptr UncheckedArray[int64]](flatArgs)
   jitFillTmpBuf(arr, argc, argTypes)

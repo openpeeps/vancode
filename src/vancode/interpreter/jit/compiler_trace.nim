@@ -63,7 +63,10 @@ proc compileRecursiveIterative*(cached: CachedOps): pointer =
 proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
   let cached = cast[CachedOps](trace.cached)
   let opCount = trace.pcs.len
-  if opCount == 0: return nil
+  trace.failKind = tfNone
+  if opCount == 0:
+    trace.failKind = tfShape
+    return nil
 
   if hasBinaryRecursiveArith(cached):
     let fibCode = compileRecursiveIterative(cached)
@@ -90,7 +93,9 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
   var numJBack = 0
   for p in trace.pcs:
     if cached.opcodes[p] == opcJumpBack: inc numJBack
-  if numJBack > 1: return nil
+  if numJBack > 1:
+    trace.failKind = tfShape
+    return nil
 
   # Reject traces where a conditional forward jump has its target inside the
   # recorded Pc range but the Pc immediately after the jump (the discard that
@@ -108,10 +113,12 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
           block targetCheck:
             for tp in trace.pcs:
               if tp == tgt: break targetCheck
+            trace.failKind = tfShape
             return nil
           block nextPcCheck:
             for tp in trace.pcs:
               if tp == pc + 1: break nextPcCheck
+            trace.failKind = tfShape
             return nil
 
   var d: ptr dasm_State = nil
@@ -123,6 +130,7 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
 
   var codeBuf = allocJitCode(maxCodeSize)
   if codeBuf == nil:
+    trace.failKind = tfResource
     dasm_free(addr d)
     return nil
 
@@ -221,9 +229,41 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
             vancode_call_self(addr d, 0, selfAddr)
             vancode_call_finish(addr d, 0)
         else:
-          freeJitCode(codeBuf, maxCodeSize)
-          dasm_free(addr d)
-          return nil
+          # Cross-proc call inside a hot loop: emit the same bridge
+          # sequence whole-proc compilation uses (see compiler_dynasm).
+          # The bridge resolves the callee per call and goes direct once
+          # the target itself is compiled, so `hammer`/`collatz`-style
+          # loops run fully native instead of staying interpreted.
+          var tp: Proc = nil
+          let ch = cast[Chunk](trace.chunk)
+          let fpIdx = cached.arg1[pc].uint16
+          if ch != nil and fpIdx.int < ch.strings.len:
+            let cpStr = ch.strings[fpIdx]
+            if cpStr in vm.importedModules:
+              let s2 = vm.importedModules[cpStr]
+              if targetProc >= 0 and targetProc < s2.procs.len:
+                tp = s2.procs[targetProc]
+          if tp == nil:
+            for _, s2 in vm.importedModules:
+              if targetProc >= 0 and targetProc < s2.procs.len:
+                tp = s2.procs[targetProc]; break
+          if tp == nil:
+            trace.failKind = tfOpcode
+            freeJitCode(codeBuf, maxCodeSize)
+            dasm_free(addr d)
+            return nil
+          let nArgs = tp.paramCount
+          var bridgeFn = cast[pointer](jitCallProcBridgeFlat)
+          let fastFn = findJitForeignFast(tp.name, nArgs)
+          if fastFn != nil: bridgeFn = fastFn
+          if nArgs > 0:
+            emitCallArgs(addr d, nArgs)
+            vancode_call_invoke(addr d, nArgs.cint, targetProc.cint, bridgeFn)
+            vancode_call_finish(addr d, jitCallDropBytes(nArgs).cint)
+          else:
+            vancode_call_alloc(addr d, 0)
+            vancode_call_invoke(addr d, 0, targetProc.cint, bridgeFn)
+            vancode_call_finish(addr d, 0)
       of opcReturnVal:
         vancode_return_val(addr d)
       of opcReturnVoid, opcHalt:
@@ -231,6 +271,7 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
       of opcNoop:
         discard
       else:
+        trace.failKind = tfOpcode
         freeJitCode(codeBuf, maxCodeSize)
         dasm_free(addr d)
         return nil
@@ -242,11 +283,13 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
   var sz: csize_t
   let linkErr = dasm_link(addr d, addr sz)
   if linkErr != 0 or sz == 0:
+    trace.failKind = tfResource
     freeJitCode(codeBuf, maxCodeSize)
     dasm_free(addr d)
     return nil
 
   if sz > maxCodeSize:
+    trace.failKind = tfShape
     freeJitCode(codeBuf, maxCodeSize)
     dasm_free(addr d)
     return nil
@@ -256,6 +299,7 @@ proc compileTrace*(vm: Vm, trace: TraceBuffer): pointer =
   flushJitCodeCache(codeBuf, maxCodeSize)
   makeJitCodeExecutable(codeBuf)
   if encodeErr != 0:
+    trace.failKind = tfResource
     freeJitCode(codeBuf, maxCodeSize)
     dasm_free(addr d)
     return nil

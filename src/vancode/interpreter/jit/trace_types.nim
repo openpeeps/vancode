@@ -34,7 +34,19 @@ type
     chunk*: pointer     # raw Chunk pointer (for string table access)
     selfProcId*: int    # procId for self-recursive call detection (-1 = none)
     selfParamCount*: int  # param count for self-recursive calls
+    failKind*: TraceFailKind  # set by compileTrace on failure (tfNone = ok)
 
   TraceExitReason* = enum
     terNormal
     terGuardFail
+
+  TraceFailKind* = enum
+    ## Why a trace compile failed. Opcode/resource failures are stable
+    ## across recordings of the same loop (same body), so the VM may
+    ## permanently stop retrying them. Shape failures depend on which
+    ## branch paths a recording window happened to capture, so a later
+    ## window may still compile: never mark those.
+    tfNone
+    tfOpcode
+    tfShape
+    tfResource
