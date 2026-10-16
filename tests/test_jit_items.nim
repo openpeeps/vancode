@@ -197,6 +197,44 @@ when defined(vancodeJitNim):
     # with the pushing finish the sentinel 999 would surface instead of 1
     check f(nil, 0) == 1
     buf.destroy()
+
+  test "ngetF nsetF fast paths roundtrip object fields":
+    let obj = initObject(tyObjectStorage, 2)
+    obj.objectVal.fields[0] = ValueStorage(typeId: tyInt, intVal: 111)
+    obj.objectVal.fields[1] = ValueStorage(typeId: tyInt, intVal: 222)
+    let tag = jitRootValue(obj)
+    var s = initNimJit()
+    nprologue(s.a)
+    npushL(s.a, 0)
+    ngetF(s.a, jitGetFieldSlow, tyAny.int32, 1, 7011)
+    npopL(s.a, 1)
+    npushL(s.a, 0)
+    npushI(s.a, 42)
+    nsetF(s.a, jitSetFieldSlow,
+      (tyAny.int32 or (tyInt.int32 shl 8)).int32, 0, 7012)
+    npushL(s.a, 1)
+    nreturnVal(s.a)
+    var buf = nimJitFinish(s)
+    let f = cast[JitFn](buf.ptrAt(AssemblyOffset(0)))
+    var locals = @[tag, 0i64]
+    check f(addr locals[0], 2) == 222
+    check obj.objectVal.fields[0].intVal == 42
+    check obj.objectVal.fields[0].typeId == tyInt
+    buf.destroy()
+
+  test "field slow bridges match interpreter semantics":
+    let obj = initObject(tyObjectStorage, 1)
+    obj.objectVal.fields[0] = ValueStorage(typeId: tyInt, intVal: 5)
+    let tag = jitRootValue(obj)
+    check jitGetFieldSlow(tag, 0, tyAny.int32) == 5
+    expect IndexDefect:
+      discard jitGetFieldSlow(tag, 9, tyAny.int32)
+    expect FieldDefect:
+      discard jitGetFieldSlow(7, 0, tyInt.int32)
+    discard jitSetFieldSlow(tag, 77, 0,
+      (tyAny.int32 or (tyInt.int32 shl 8)).int32)
+    check obj.objectVal.fields[0].intVal == 77
+    check obj.objectVal.fields[0].typeId == tyInt
 else:
   test "jit items disabled":
     skip()

@@ -23,21 +23,21 @@ type
     numLocals*: int
     chunk*: pointer
 
-const maxShapeRetries* = 5
-  ## Bounds futile re-recordings of shape-unstable loops (e.g. a branch
-  ## whose untaken side never executes in any window, or nested loops).
-  ## Past the cap the anchor is marked failed like a stable failure:
-  ## correctness never depends on tracing, and recording itself (pc
-  ## appends per lap) is the dominant cost of retrying forever.
+const maxTraceWork* = 100_000
+  ## Bounds total recorded-but-uncompilable operations per anchor. A loop
+  ## whose windows never compile (one-sided branches, nesting) stops being
+  ## re-recorded after this much futile work — while phased loops (rare
+  ## paths every N laps) accumulate far less and still compile on their
+  ## diamond window. Attempt counts alone cannot tell these apart.
 
 type
   TraceCache* = ref object
     entries*: Table[(int, pointer), TraceEntry]
-    shapeFails*: Table[(int, pointer), int]
+    traceWork*: Table[(int, pointer), int]
 
 proc newTraceCache*(): TraceCache =
   TraceCache(entries: initTable[(int, pointer), TraceEntry](),
-    shapeFails: initTable[(int, pointer), int]())
+    traceWork: initTable[(int, pointer), int]())
 
 proc have*(cache: TraceCache, pc: int, chunk: pointer): bool =
   ## Runnable entry only: failed-loop markers (`code == nil`, see
@@ -75,13 +75,11 @@ proc addFailed*(cache: TraceCache, anchorPc: int, chunk: pointer) =
   cache.entries[(anchorPc, chunk)] = TraceEntry(code: nil, codeSize: 0,
     anchorPc: anchorPc, numLocals: 0, chunk: chunk)
 
-proc noteShapeFail*(cache: TraceCache, anchorPc: int,
-    chunk: pointer): bool =
-  ## Count one shape failure for an anchor; returns true when it just hit
-  ## the retry cap and the caller should mark it failed. Shape failures
-  ## depend on the recorded window, so early ones are retried — but a loop
-  ## that never yields a compilable window must stop being re-recorded.
+proc noteTraceWork*(cache: TraceCache, anchorPc: int, chunk: pointer,
+    pcs: int): bool =
+  ## Add one failed window's operation count; returns true when the anchor
+  ## just exceeded the futile-work budget and should be marked failed.
   let k = (anchorPc, chunk)
-  let n = cache.shapeFails.getOrDefault(k, 0) + 1
-  cache.shapeFails[k] = n
-  result = n >= maxShapeRetries
+  let n = cache.traceWork.getOrDefault(k, 0) + pcs
+  cache.traceWork[k] = n
+  result = n >= maxTraceWork

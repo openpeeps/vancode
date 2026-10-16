@@ -739,6 +739,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                              opcEqI, opcLessI, opcGreaterI,
                              opcInvB, opcDiscard,
                              opcGetI, opcSetI,
+                             opcGetF, opcSetF,
                              opcJumpFwd, opcJumpFwdF, opcJumpFwdT,
                              opcReturnVal, opcReturnVoid, opcHalt, opcNoop}:
           traceState = tsIdle
@@ -755,6 +756,14 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       if traceState == tsRecording:
         if currentChunk != cast[Chunk](traceBuf.chunk):
           traceState = tsIdle
+        elif oc == opcJumpBack and
+            co.jumpTargets[pcIdx] != traceStartPc and
+            traceBuf.selfProcId == -1:
+          # Nested loop inside a plain loop recording: the compiler only
+          # accepts single-back-edge traces, so drop this window now
+          # instead of recording tens of thousands of pcs that are
+          # rejected at completion anyway.
+          traceState = tsIdle
         else:
           traceBuf.pcs.add(pcIdx)
           if oc in {opcPushL, opcPopL, opcIncL, opcDecL}:
@@ -768,6 +777,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                        opcEqI, opcLessI, opcGreaterI,
                        opcInvB, opcDiscard,
                        opcGetI, opcSetI,
+                       opcGetF, opcSetF,
                        opcJumpFwd, opcJumpFwdF, opcJumpFwdT, opcJumpBack,
                        opcCallD, opcReturnVal, opcReturnVoid, opcHalt,
                        opcNoop}:
@@ -1167,19 +1177,25 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                 discard fnPtr(addr traceNoLocals, 0)
               for j in 0..<numLocals:
                 let idx = stackBottom + j
-                ensureLocal(j)
-                case traceOrigTypes[j]
-                of tyInt: stack[idx] = initValue(traceFlatLocals[j])
-                of tyBool: stack[idx] = initValue(traceFlatLocals[j] != 0)
-                else:
-                  # Ref locals (arrays, objects): the native code mutates
-                  # them in place and never reassigns the slot, so the
-                  # tagged entry index still resolves to the same Value.
-                  # A replaced slot resolves to its new Value; a raw int
-                  # left behind boxes as before.
-                  let (rv, rok) = jitTryUnroot(traceFlatLocals[j])
-                  if rok: stack[idx] = rv
-                  else: stack[idx] = initValue(traceFlatLocals[j])
+                # Only sync slots the interpreter materialized. Growing the
+                # stack here for never-touched locals (e.g. a variable
+                # inside an untaken branch) leaves debris that the
+                # interpreter never has — and `interpret` returns the top
+                # of stack as the main result. Skipping matches nojit
+                # exactly: both observe the placeholder on first read.
+                if idx < stack.len:
+                  case traceOrigTypes[j]
+                  of tyInt: stack[idx] = initValue(traceFlatLocals[j])
+                  of tyBool: stack[idx] = initValue(traceFlatLocals[j] != 0)
+                  else:
+                    # Ref locals (arrays, objects): the native code mutates
+                    # them in place and never reassigns the slot, so the
+                    # tagged entry index still resolves to the same Value.
+                    # A replaced slot resolves to its new Value; a raw int
+                    # left behind boxes as before.
+                    let (rv, rok) = jitTryUnroot(traceFlatLocals[j])
+                    if rok: stack[idx] = rv
+                    else: stack[idx] = initValue(traceFlatLocals[j])
               # Skip trailing discards that the guard already consumed
               var scanPc = pcIdx + 1
               while scanPc < co.opcodes.len and co.opcodes[scanPc] == opcDiscard:
@@ -1205,9 +1221,10 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                 # fails the same way, so leave a negative marker and never
                 # re-record it. Without this every back-edge re-ran the
                 # full JIT attempt (mmap/codegen/munmap). Shape failures
-                # (branch-dependent) are retried a few times — a later
-                # window may capture a compilable path — then capped, so
-                # permanently one-sided loops stop being re-recorded.
+                # (branch-dependent) are retried while cheap — a later
+                # window may capture a compilable path — but total futile
+                # work per anchor is bounded, so permanently one-sided or
+                # nested loops stop being re-recorded.
                 if traceBuf.failKind in {tfOpcode, tfResource}:
                   if vm.traceCache == nil:
                     vm.traceCache = newTraceCache()
@@ -1215,8 +1232,8 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                 elif traceBuf.failKind == tfShape:
                   if vm.traceCache == nil:
                     vm.traceCache = newTraceCache()
-                  if vm.traceCache.noteShapeFail(tgt,
-                      cast[pointer](currentChunk)):
+                  if vm.traceCache.noteTraceWork(tgt,
+                      cast[pointer](currentChunk), traceBuf.pcs.len):
                     vm.traceCache.addFailed(tgt, cast[pointer](currentChunk))
               traceState = tsIdle
               pcIdx = tgt - 1

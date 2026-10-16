@@ -443,6 +443,43 @@ proc jitSetItemSlow*(arrSlot, idxSlot, valSlot: int64,
     arr.objectVal.fields[idx] = ValueStorage(typeId: vv.typeId, refVal: vv)
   result = 0
 
+proc jitGetFieldSlow*(objSlot: int64, fieldId: int32,
+    objKind: int32): int64 {.cdecl, exportc.} =
+  ## Slow path for JIT `GetF`: byte-for-byte interpreter semantics
+  ## (`opcGetF`), including raised defects. The inline fast path handles
+  ## tagged-object/int-element; everything else (arrays, exotic slots)
+  ## lands here.
+  let (ov, ook) = jitTryUnroot(objSlot)
+  let obj =
+    if ook: ov
+    else: jitSlotToValue(objSlot, objKind)
+  result = jitPackResult(obj.objectVal.fields[fieldId].toValue)
+
+proc jitSetFieldSlow*(objSlot, valSlot: int64, fieldId: int32,
+    kinds: int32): int64 {.cdecl, exportc.} =
+  ## Slow path for JIT `SetF`: mirrors the `opcSetF` store switch exactly.
+  ## `kinds` packs obj/val slot kinds (bits 0-7/8-15).
+  let (ov, ook) = jitTryUnroot(objSlot)
+  let obj =
+    if ook: ov
+    else: jitSlotToValue(objSlot, kinds and 0xFF)
+  let (vv0, vok) = jitTryUnroot(valSlot)
+  let vv =
+    if vok: vv0
+    else: jitSlotToValue(valSlot, (kinds shr 8) and 0xFF)
+  case vv.typeId
+  of tyInt:
+    obj.objectVal.fields[fieldId] = ValueStorage(typeId: tyInt, intVal: vv.intVal)
+  of tyBool:
+    obj.objectVal.fields[fieldId] = ValueStorage(typeId: tyBool, boolVal: vv.boolVal)
+  of tyFloat:
+    obj.objectVal.fields[fieldId] = ValueStorage(typeId: tyFloat, floatVal: vv.floatVal)
+  of tyNil:
+    obj.objectVal.fields[fieldId] = ValueStorage(typeId: tyNil)
+  else:
+    obj.objectVal.fields[fieldId] = ValueStorage(typeId: vv.typeId, refVal: vv)
+  result = 0
+
 proc jitImmortalTypes*(kinds: openArray[int32]): pointer =
   ## Immortal per-`CallD`-site arg-kind array for typed native calls
   ## (mirrors `jitImmortalFloat`). Content-deduplicated; freed at

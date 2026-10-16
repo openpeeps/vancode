@@ -32,6 +32,7 @@ proc jitNimSupported*(oc: Opcode): bool =
        opcEqI, opcLessI, opcGreaterI,
        opcInvB, opcDiscard,
        opcGetI, opcSetI,
+       opcGetF, opcSetF,
        opcJumpFwd, opcJumpFwdF, opcJumpFwdT, opcJumpBack,
        opcReturnVal, opcReturnVoid, opcHalt,
        opcNoop, opcCallD:
@@ -445,6 +446,18 @@ proc compileProcNim*(vm: Vm, theProc: Proc,
             setArrK.kindToTypeId or (setIdxK.kindToTypeId shl 8) or
             (setValK.kindToTypeId shl 16), pc)
           stackDepth -= 3
+        of opcGetF:
+          let getObjK = typeStack.tpop()
+          typeStack.tpush(skInt)
+          ngetF(jit.a, jitGetFieldSlow, getObjK.kindToTypeId,
+            cached.getArg1Int(pc).int, pc)
+        of opcSetF:
+          let setFValK = typeStack.tpop()
+          let setFObjK = typeStack.tpop()
+          nsetF(jit.a, jitSetFieldSlow,
+            setFObjK.kindToTypeId or (setFValK.kindToTypeId shl 8),
+            cached.getArg1Int(pc).int, pc)
+          stackDepth -= 2
         of opcDiscard:
           let n = cached.getArg1Int(pc).int
           if pc in labelForTarget:
@@ -901,6 +914,17 @@ proc compileTraceNim*(vm: Vm, trace: TraceBuffer): pointer =
           nsetI(jit.a, jitSetItemSlow,
             tSetArrK.kindToTypeId or (tSetIdxK.kindToTypeId shl 8) or
             (tSetValK.kindToTypeId shl 16), pc)
+        of opcGetF:
+          let tGetFObjK = traceTypeStack.tpop()
+          traceTypeStack.tpush(skInt)
+          ngetF(jit.a, jitGetFieldSlow, tGetFObjK.kindToTypeId,
+            cached.getArg1Int(pc).int, pc)
+        of opcSetF:
+          let tSetFValK = traceTypeStack.tpop()
+          let tSetFObjK = traceTypeStack.tpop()
+          nsetF(jit.a, jitSetFieldSlow,
+            tSetFObjK.kindToTypeId or (tSetFValK.kindToTypeId shl 8),
+            cached.getArg1Int(pc).int, pc)
         of opcDiscard:
           if pc in labelForTarget:
             discard traceTypeStack.tpop()  # jump already popped natively
