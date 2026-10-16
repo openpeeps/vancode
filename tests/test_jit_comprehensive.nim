@@ -323,6 +323,46 @@ suite "jit: VM fast paths":
     else:
       skip()
 
+  test "jit inlines straight-line leaf calls":
+    when defined(vancodeJitNim):
+      # callee addtwo(a, b) = a + b + 1 (6 ops, leaf); caller passes
+      # (n, 10). A bridge call would yield 0 (callee never compiled),
+      # so 16 proves inline expansion with remapped locals.
+      var main = newChunk("inl")
+      let s = newScript(main)
+      s.mainChunk.file = "inl"
+      var ac = newChunk("inl")
+      ac.file = "inl"
+      ac.emit(opcPushL); ac.emit(0u8)
+      ac.emit(opcPushL); ac.emit(1u8)
+      ac.emit(opcAddI)
+      ac.emit(opcPushI); ac.emit(1i64)
+      ac.emit(opcAddI)
+      ac.emit(opcReturnVal)
+      let callee = Proc(name: "addtwo", kind: pkNative, chunk: ac,
+        paramCount: 2, hasResult: true)
+      callee.procId = 1
+      var cc = newChunk("inl")
+      cc.file = "inl"
+      let inlName = cc.getString("inl")
+      cc.emit(opcPushL); cc.emit(0u8)
+      cc.emit(opcPushI); cc.emit(10i64)
+      cc.emit(opcCallD); cc.emit(inlName); cc.emit(1u16)
+      cc.emit(opcReturnVal)
+      let caller = Proc(name: "callit", kind: pkNative, chunk: cc,
+        paramCount: 1, hasResult: true)
+      caller.procId = 0
+      s.procs.add(caller)
+      s.procs.add(callee)
+      let vm = newVm()
+      vm.importedModules["inl"] = s
+      let fn = cnim.compileProcNim(vm, caller)
+      check fn != nil
+      var five = [initValue(5i64)]
+      check fn(cast[StackView](addr five[0]), 1).intVal == 16
+    else:
+      skip()
+
 suite "jit: installJit & hot threshold integration":
   test "installJit sets hooks and compileTrace":
     when defined(vancodeJitNim):

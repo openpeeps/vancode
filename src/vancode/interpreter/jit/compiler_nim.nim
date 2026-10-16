@@ -61,6 +61,15 @@ proc kindToTypeId*(k: SlotKind): int32 =
   of skFloat: tyFloat.int32
   else: tyAny.int32
 
+proc kindFromTypeId*(t: int32): SlotKind =
+  ## Inverse for inlined call args (conservative: anything exotic is
+  ## unknown; slow paths stay sound through resolve-first).
+  case t
+  of tyInt.int32: skInt
+  of tyBool.int32: skBool
+  of tyFloat.int32: skFloat
+  else: skUnknown
+
 proc procResultKind*(tp: Proc): SlotKind =
   ## Abstract result type from the callee's static return flags
   ## (set by codegen). All-false = int, matching the JIT closures.
@@ -82,6 +91,27 @@ proc tpopN*(s: var seq[SlotKind], n: int) {.inline.} =
 proc localKind*(locals: var seq[SlotKind], idx: int): SlotKind {.inline.} =
   while locals.len <= idx: locals.add(skUnknown)
   result = locals[idx]
+
+const maxInlineOps* = 24
+  ## Largest callee body eligible for inline expansion: small enough to
+  ## keep code growth negligible, large enough for tiny predicates.
+
+const inlineLeafOps* = {opcPushI, opcPushTrue, opcPushFalse, opcPushNil,
+  opcPushL, opcPopL, opcIncL, opcDecL, opcPushG, opcPopG,
+  opcAddI, opcSubI, opcMultI, opcDivI, opcModI, opcNegI,
+  opcEqI, opcLessI, opcGreaterI, opcInvB, opcDiscard, opcNoop}
+  ## Ops allowed inside an inlined body: pure stack/local/global effects.
+  ## No jumps (caller label space), no calls (single-level only), no
+  ## item/field access (their pc-suffixed slow labels would collide).
+
+proc maxLocalFor*(cached: CachedOps, paramCount: int): int =
+  ## Highest local slot index + 1 over the op stream (frame width).
+  result = paramCount
+  for pc in 0 ..< cached.opcodes.len:
+    let oc = cached.opcodes[pc]
+    if oc == opcPushL or oc == opcPopL or oc == opcIncL or oc == opcDecL:
+      let idx = cached.getArg1Int(pc)
+      if idx + 1 > result: result = idx + 1
 
 proc publishNimCode(theProc: Proc, codeBuf: ExecutableBuffer,
     opcodes: seq[Opcode], cached: CachedOps, opCount: int,
@@ -289,6 +319,8 @@ proc compileProcNim*(vm: Vm, theProc: Proc,
     var stackDepth = 0
     var typeStack: seq[SlotKind] = @[]
     var localTypes: seq[SlotKind] = @[]
+    let callerMaxLocal = maxLocalFor(cached, theProc.paramCount)
+    var inlineHigh = callerMaxLocal
 
     for pc in 0 ..< opCount:
       let oc = cached.opcodes[pc]
@@ -480,30 +512,180 @@ proc compileProcNim*(vm: Vm, theProc: Proc,
                 ncallFinish(jit.a, 0)
               else:
                 ncallFinishVoid(jit.a, 0)
-          elif callee.nArgs > 0:
-            emitCallArgsNim(jit.a, callee.nArgs)
-            ncallInvokeTyped(jit.a, callee.nArgs, targetProcId,
-              callee.bridgeFn, callTypes)
+            # Native self-call consumes args and pushes result (if any).
+            stackDepth -= callee.nArgs
             if callee.hasResult:
-              ncallFinish(jit.a, jitCallDropBytes(callee.nArgs))
-            else:
-              ncallFinishVoid(jit.a, jitCallDropBytes(callee.nArgs))
-          else:
-            ncallAlloc(jit.a, 0)
-            ncallInvokeTyped(jit.a, 0, targetProcId, callee.bridgeFn,
-              callTypes)
-            if callee.hasResult:
-              ncallFinish(jit.a, 0)
-            else:
-              ncallFinishVoid(jit.a, 0)
-          # Native call sequence consumes args and pushes result (if any).
-          stackDepth -= callee.nArgs
-          if callee.hasResult:
-            inc stackDepth
-            if targetProcId == theProc.procId:
+              inc stackDepth
               typeStack.tpush(theProc.procResultKind)
-            else:
-              typeStack.tpush(callee.tp.procResultKind)
+          else:
+            # Non-self call: try inline expansion first for tiny
+            # straight-line leaf callees (e.g. a predicate called per loop
+            # iteration), bridge otherwise. Inlining removes the per-call
+            # frame/bridge round trip; locals remap above the caller's.
+            var didInline = false
+            if callee.tp != nil and callee.tp.kind == pkNative and
+                callee.tp.chunk != nil:
+              let cCached = vm.getCachedOps(callee.tp.chunk)
+              let cOps = cCached.opcodes
+              let cCount = cOps.len
+              if cCount >= 2 and cCount <= maxInlineOps and
+                  (cOps[^1] == opcReturnVal or cOps[^1] == opcReturnVoid):
+                var leafOk = true
+                for cpc in 0 ..< cCount - 1:
+                  if cOps[cpc] notin inlineLeafOps:
+                    leafOk = false
+                    break
+                if leafOk:
+                  didInline = true
+                  let base = inlineHigh
+                  inlineHigh = base + maxLocalFor(cCached,
+                    callee.tp.paramCount)
+                  for ai in countdown(callee.nArgs - 1, 0):
+                    npopL(jit.a, base + ai)
+                  stackDepth -= callee.nArgs
+                  for ai in 0 ..< callee.nArgs:
+                    while localTypes.len <= base + ai:
+                      localTypes.add(skUnknown)
+                    localTypes[base + ai] = kindFromTypeId(callArgKinds[ai])
+                  for cpc in 0 ..< cCount - 1:
+                    case cOps[cpc]
+                    of opcPushI:
+                      npushI(jit.a, cCached.getArg1Int(cpc).int)
+                      inc stackDepth
+                      typeStack.tpush(skInt)
+                    of opcPushTrue:
+                      npushTrue(jit.a)
+                      inc stackDepth
+                      typeStack.tpush(skBool)
+                    of opcPushFalse:
+                      npushFalse(jit.a)
+                      inc stackDepth
+                      typeStack.tpush(skBool)
+                    of opcPushNil:
+                      npushNil(jit.a)
+                      inc stackDepth
+                      typeStack.tpush(skRef)
+                    of opcPushL:
+                      let ibL = cCached.getArg1Int(cpc).int + base
+                      npushL(jit.a, ibL)
+                      inc stackDepth
+                      typeStack.tpush(localTypes.localKind(ibL))
+                    of opcPopL:
+                      let ibP = cCached.getArg1Int(cpc).int + base
+                      npopL(jit.a, ibP)
+                      dec stackDepth
+                      while localTypes.len <= ibP:
+                        localTypes.add(skUnknown)
+                      localTypes[ibP] = typeStack.tpop()
+                    of opcIncL:
+                      let ibI = cCached.getArg1Int(cpc).int + base
+                      nincL(jit.a, ibI)
+                      while localTypes.len <= ibI:
+                        localTypes.add(skUnknown)
+                      localTypes[ibI] = skInt
+                    of opcDecL:
+                      let ibD = cCached.getArg1Int(cpc).int + base
+                      ndecL(jit.a, ibD)
+                      while localTypes.len <= ibD:
+                        localTypes.add(skUnknown)
+                      localTypes[ibD] = skInt
+                    of opcPushG:
+                      npushG(jit.a,
+                        jitImmortalStr(cCached.getArg1Str(cpc,
+                          callee.tp.chunk)),
+                        cast[pointer](jitBridgePushG))
+                      inc stackDepth
+                      typeStack.tpush(skUnknown)
+                    of opcPopG:
+                      let ibGKind = typeStack.tpop().kindToTypeId
+                      npopG(jit.a,
+                        jitImmortalStr(cCached.getArg1Str(cpc,
+                          callee.tp.chunk)),
+                        cast[pointer](jitBridgePopG), ibGKind)
+                      dec stackDepth
+                    of opcAddI:
+                      naddI(jit.a)
+                      dec stackDepth
+                      typeStack.tpopN(2)
+                      typeStack.tpush(skInt)
+                    of opcSubI:
+                      nsubI(jit.a)
+                      dec stackDepth
+                      typeStack.tpopN(2)
+                      typeStack.tpush(skInt)
+                    of opcMultI:
+                      nmulI(jit.a)
+                      dec stackDepth
+                      typeStack.tpopN(2)
+                      typeStack.tpush(skInt)
+                    of opcDivI:
+                      ndivI(jit.a)
+                      dec stackDepth
+                      typeStack.tpopN(2)
+                      typeStack.tpush(skInt)
+                    of opcModI:
+                      nmodI(jit.a)
+                      dec stackDepth
+                      typeStack.tpopN(2)
+                      typeStack.tpush(skInt)
+                    of opcNegI:
+                      nnegI(jit.a)
+                      discard typeStack.tpop()
+                      typeStack.tpush(skInt)
+                    of opcEqI:
+                      neqI(jit.a)
+                      dec stackDepth
+                      typeStack.tpopN(2)
+                      typeStack.tpush(skBool)
+                    of opcLessI:
+                      nlessI(jit.a)
+                      dec stackDepth
+                      typeStack.tpopN(2)
+                      typeStack.tpush(skBool)
+                    of opcGreaterI:
+                      ngreaterI(jit.a)
+                      dec stackDepth
+                      typeStack.tpopN(2)
+                      typeStack.tpush(skBool)
+                    of opcInvB:
+                      ninvB(jit.a)
+                      discard typeStack.tpop()
+                      typeStack.tpush(skBool)
+                    of opcDiscard:
+                      let ibN = cCached.getArg1Int(cpc).int
+                      if stackDepth >= ibN and ibN > 0:
+                        ndiscard(jit.a, ibN)
+                        stackDepth -= ibN
+                        typeStack.tpopN(ibN)
+                    of opcNoop:
+                      discard
+                    else:
+                      discard
+                  # Terminal ReturnVal/ReturnVoid: the result value (and its
+                  # kind) is already on top from the body ops — nothing to
+                  # emit, depth and types already account for it.
+            if not didInline:
+              if callee.nArgs > 0:
+                emitCallArgsNim(jit.a, callee.nArgs)
+                ncallInvokeTyped(jit.a, callee.nArgs, targetProcId,
+                  callee.bridgeFn, callTypes)
+                if callee.hasResult:
+                  ncallFinish(jit.a, jitCallDropBytes(callee.nArgs))
+                else:
+                  ncallFinishVoid(jit.a, jitCallDropBytes(callee.nArgs))
+              else:
+                ncallAlloc(jit.a, 0)
+                ncallInvokeTyped(jit.a, 0, targetProcId, callee.bridgeFn,
+                  callTypes)
+                if callee.hasResult:
+                  ncallFinish(jit.a, 0)
+                else:
+                  ncallFinishVoid(jit.a, 0)
+              # Native call sequence consumes args and pushes result.
+              stackDepth -= callee.nArgs
+              if callee.hasResult:
+                inc stackDepth
+                typeStack.tpush(callee.tp.procResultKind)
         else:
           discard
 
@@ -514,6 +696,10 @@ proc compileProcNim*(vm: Vm, theProc: Proc,
     patchSelfCalls(codeBuf, selfHoles)
     result = publishNimCode(theProc, codeBuf, cached.opcodes, cached,
       opCount, vm, isMain)
+    # Inlined bodies address remapped locals above the caller's frame:
+    # widen the published frame when inlining reserved more.
+    if inlineHigh > theProc.jitMaxLocal:
+      theProc.jitMaxLocal = inlineHigh
   except DynasmError as e:
     when defined(vancodeJitLog):
       stderr.writeLine "[jit-nim] proc compile failed: ", theProc.name,
