@@ -41,6 +41,7 @@ proc nprologue*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Frame setup: save rbp/rbx/r12, point rbx at the flatArgs base
       push rbp
       mov rbp, rsp
       push rbx
@@ -49,6 +50,7 @@ proc nprologue*(a: var Assembler) =
   else:
     dynasm a:
       arch aarch64
+      # Frame setup: save fp/lr plus x19/x20, point x19 at flatArgs
       stp x29, x30, [sp, -48], pre
       mov x29, sp
       str x19, [sp, 16]
@@ -60,10 +62,12 @@ proc nloadParam*(a: var Assembler, slot: int) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Push flatArgs[slot] (caller-provided argument) onto the operand stack
       push qword [rbx + disp]
   else:
     dynasm a:
       arch aarch64
+      # Same, using a 16-byte operand slot on arm64
       ldr x9, [x19, disp]
       str x9, [sp, -16], pre
 
@@ -71,6 +75,7 @@ proc npushI*(a: var Assembler, value: int) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Push a signed 64-bit constant (movabs covers the full range)
       mov rax, value
       push rax
   else:
@@ -78,6 +83,7 @@ proc npushI*(a: var Assembler, value: int) =
     let hi = (value shr 16) and 0xFFFF
     dynasm a:
       arch aarch64
+      # Build a 32-bit constant from two halfwords, then sign-extend it
       movz x9, lo
       movk x9, hi, lsl, 16
       # sxtw x9, w9 via shifts (standalone sxtw not in the ISA yet)
@@ -89,6 +95,7 @@ proc npushTrue*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Booleans travel raw as 0/1, just like ints
       push 1
   else:
     dynasm a:
@@ -100,6 +107,7 @@ proc npushFalse*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # False and nil share the zero slot encoding on the native stack
       push 0
   else:
     dynasm a:
@@ -110,6 +118,7 @@ proc npushNil*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Nil is also a zero slot; bridges re-box it on the way out
       push 0
   else:
     dynasm a:
@@ -121,6 +130,7 @@ proc npushL*(a: var Assembler, slot: int) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Push local slot (flatArgs area addressed through rbx)
       push qword [rbx + disp]
   else:
     dynasm a:
@@ -133,6 +143,7 @@ proc npopL*(a: var Assembler, slot: int) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Pop the top operand back into a local slot
       pop rax
       mov [rbx + disp], rax
   else:
@@ -146,6 +157,7 @@ proc nincL*(a: var Assembler, slot: int) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # In-place counter bump, no stack traffic at all
       inc qword [rbx + disp]
   else:
     dynasm a:
@@ -159,6 +171,7 @@ proc ndecL*(a: var Assembler, slot: int) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # In-place counter drop, mirrors nincL
       dec qword [rbx + disp]
   else:
     dynasm a:
@@ -171,6 +184,7 @@ proc naddI*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Pop b, a (a was pushed first so it sits deeper); push a + b
       pop rax
       pop r12
       add rax, r12
@@ -178,6 +192,7 @@ proc naddI*(a: var Assembler) =
   else:
     dynasm a:
       arch aarch64
+      # Same shape with 16-byte slots: x9 = b, x10 = a
       ldr x9, [sp], 16
       ldr x10, [sp], 16
       add x10, x10, x9
@@ -187,6 +202,7 @@ proc nsubI*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Order matters here: pop divisor-side first so rax holds a
       pop r12
       pop rax
       sub rax, r12
@@ -203,6 +219,7 @@ proc nmulI*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Signed 64-bit multiply, low half kept (wraps like the interpreter)
       pop rax
       pop r12
       imul rax, r12
@@ -219,6 +236,7 @@ proc ndivI*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Signed divide: sign-extend rax into rdx:rax, quotient lands in rax
       pop r12
       pop rax
       cqo
@@ -227,6 +245,7 @@ proc ndivI*(a: var Assembler) =
   else:
     dynasm a:
       arch aarch64
+      # sdiv truncates toward zero, matching idiv/Nim div on ints
       ldr x9, [sp], 16
       ldr x10, [sp], 16
       sdiv x10, x10, x9
@@ -236,6 +255,7 @@ proc nmodI*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Same divide setup, but the remainder in rdx is the result
       pop r12
       pop rax
       cqo
@@ -246,6 +266,7 @@ proc nmodI*(a: var Assembler) =
     # remainder, matching Nim `mod` on ints.
     dynasm a:
       arch aarch64
+      # No remainder instruction: quotient via sdiv, then x10 - q*x9
       ldr x9, [sp], 16
       ldr x10, [sp], 16
       sdiv x11, x10, x9
@@ -256,6 +277,7 @@ proc nnegI*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Unary minus in place: pop, negate, push back
       pop rax
       neg rax
       push rax
@@ -270,6 +292,7 @@ proc neqI*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Compare and push 0/1: sete sets the low byte, movzx widens it
       pop rax
       pop r12
       cmp rax, r12
@@ -279,6 +302,7 @@ proc neqI*(a: var Assembler) =
   else:
     dynasm a:
       arch aarch64
+      # cset writes 0/1 directly from the condition flags
       ldr x9, [sp], 16
       ldr x10, [sp], 16
       cmp x10, x9
@@ -289,6 +313,7 @@ proc nlessI*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Signed less-than: compare second-popped against top, push 0/1
       pop rax
       pop r12
       cmp r12, rax
@@ -308,6 +333,7 @@ proc ngreaterI*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Signed greater-than, same 0/1 push discipline as the other tests
       pop rax
       pop r12
       cmp r12, rax
@@ -327,6 +353,7 @@ proc ninvB*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Logical not: 0 becomes 1, anything else becomes 0
       pop rax
       test rax, rax
       sete al
@@ -345,11 +372,13 @@ proc ndiscard*(a: var Assembler, n: int) =
     let bytes = n * 8
     dynasm a:
       arch x64
+      # Drop n operand slots by rewinding rsp (8 bytes each on x64)
       add rsp, bytes
   else:
     let bytes = n * 16
     dynasm a:
       arch aarch64
+      # Same, but arm64 slots are 16 bytes wide
       mov x9, bytes
       add sp, sp, x9
 
@@ -358,6 +387,7 @@ proc njumpFwd*(a: var Assembler, target: int) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Unconditional forward jump to a VanCode-numbered label
       jmp fwd(lbl)
   else:
     dynasm a:
@@ -369,6 +399,7 @@ proc njumpBack*(a: var Assembler, target: int) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Unconditional backward jump (loop back-edge)
       jmp bwd(lbl)
   else:
     dynasm a:
@@ -380,6 +411,8 @@ proc njumpFwdF*(a: var Assembler, target: int) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Jump-if-false: consume the condition; taken path leaves the stack
+      # popped, fallthrough pushes the value back for the trailing Discard
       pop rax
       test rax, rax
       jz fwd(lbl)
@@ -397,6 +430,7 @@ proc njumpFwdT*(a: var Assembler, target: int) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Jump-if-true: mirror of the false case, branching on nonzero
       pop rax
       test rax, rax
       jnz fwd(lbl)
@@ -413,6 +447,7 @@ proc nreturnVal*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Return the top operand in rax, then tear down the frame
       pop rax
       pop r12
       pop rbx
@@ -421,6 +456,7 @@ proc nreturnVal*(a: var Assembler) =
   else:
     dynasm a:
       arch aarch64
+      # Same: result to x0, restore saved regs and frame in reverse order
       ldr x0, [sp], 16
       ldp x19, x20, [sp, 16]
       ldp x29, x30, [sp], 48
@@ -430,6 +466,7 @@ proc nreturnVoid*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Void return reports 0; frame teardown identical to nreturnVal
       `xor` eax, eax
       pop r12
       pop rbx
@@ -447,6 +484,8 @@ proc ntraceExit*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Trace side-exit: same teardown as a void return; the VM resumes
+      # the interpreter past the loop instead of returning a value
       pop r12
       pop rbx
       pop rbp
@@ -466,11 +505,13 @@ proc nfib*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Fast path for n <= 1: fib(0) = 0, fib(1) = 1, return as-is
       mov rax, [rdi]
       test rax, rax
       jz fwd("fib_done")
       cmp rax, 1
       jle fwd("fib_done")
+      # Iterative walk: r8 = prev, r9 = current, rcx = steps left
       `xor` r8d, r8d
       mov r9d, 1
       mov rcx, rax
@@ -488,6 +529,7 @@ proc nfib*(a: var Assembler) =
   else:
     dynasm a:
       arch aarch64
+      # Same shape: x8 = prev, x9 = current, x10 = steps left
       ldr x0, [x0]
       cmp x0, 0
       b.le fwd("fib_done")
@@ -510,6 +552,7 @@ proc nhalt*(a: var Assembler) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Halt the chunk: report 0 and tear down like a void return
       `xor` eax, eax
       pop r12
       pop rbx
@@ -529,6 +572,9 @@ proc npushG*(a: var Assembler, namePtr: pointer, bridgeFn: pointer) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Call the host bridge with the immortalized global name in rdi;
+      # rbx is parked so the 16-byte stack alignment survives the call.
+      # The bridge result (raw int or tagged ring index) is pushed.
       push rbx
       mov rbx, rsp
       `and` rsp, -16
@@ -549,6 +595,8 @@ proc npushG*(a: var Assembler, namePtr: pointer, bridgeFn: pointer) =
     let r3 = int((cast[uint64](bridgeFn) shr 48) and 0xFFFF'u64)
     dynasm a:
       arch aarch64
+      # Same call through x0/x16; 64-bit addresses need four movz/movk
+      # halfwords each because arm64 has no movabs
       movz x0, p0
       movk x0, p1, lsl, 16
       movk x0, p2, lsl, 32
@@ -567,6 +615,8 @@ proc npopG*(a: var Assembler, namePtr: pointer, bridgeFn: pointer,
   when defined(amd64):
     dynasm a:
       arch x64
+      # Pop the value into rsi, pass name + baked slot kind so the bridge
+      # boxes raw slots exactly; nothing is pushed back (net -1)
       pop rsi
       movabs rdi, nameAddr
       mov edx, kind
@@ -583,6 +633,7 @@ proc npopG*(a: var Assembler, namePtr: pointer, bridgeFn: pointer,
     let r3 = int((cast[uint64](bridgeFn) shr 48) and 0xFFFF'u64)
     dynasm a:
       arch aarch64
+      # Same triple (name in x0, value in x1, kind in x2), no push back
       ldr x1, [sp], 16
       movz x0, p0
       movk x0, p1, lsl, 16
@@ -601,6 +652,8 @@ proc npopHost*(a: var Assembler, namePtr: pointer, bridgeFn: pointer) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Pop-and-store variant of npushG: value in rsi, name in rdi,
+      # no result is pushed back
       pop rsi
       push rbx
       mov rbx, rsp
@@ -637,6 +690,7 @@ proc nbridge2*(a: var Assembler, fn: pointer) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Two stack slots become rdi/rsi for a host call; result is pushed
       pop rsi
       pop rdi
       push rbx
@@ -668,6 +722,7 @@ proc nbridge3Void*(a: var Assembler, fn: pointer) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Three slots into rdi/rsi/rcx, result discarded (void host call)
       pop rcx
       pop rsi
       pop rdi
@@ -699,6 +754,7 @@ proc nbridge3*(a: var Assembler, fn: pointer) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Three slots into rdi/rsi/rcx, result pushed back
       pop rcx
       pop rsi
       pop rdi
@@ -732,6 +788,7 @@ proc nbridge4*(a: var Assembler, fn: pointer) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Four slots into rdi/rsi/rdx/rcx, result pushed back
       pop rcx
       pop rdx
       pop rsi
@@ -767,6 +824,7 @@ proc ncallAlloc*(a: var Assembler, nArgs: int) =
     let bytes = nArgs * 8
     dynasm a:
       arch x64
+      # Reserve room below the operands for the flatArgs array the bridge reads
       sub rsp, bytes
   else:
     # Round up to 16 bytes (Apple Silicon faults on misaligned
@@ -781,6 +839,7 @@ proc ncallMoveOne*(a: var Assembler, srcDisp: int, dstDisp: int) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Shuffle one operand down into its flatArgs slot (deepest first)
       mov rax, [rsp + srcDisp]
       mov [rsp + dstDisp], rax
   else:
@@ -794,6 +853,7 @@ proc ncallPopSlot*(a: var Assembler, slot: int) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Pop the top operand into a reserved frame slot below it
       pop rax
       mov [rsp + disp], rax
   else:
@@ -808,6 +868,8 @@ proc ncallInvoke*(a: var Assembler, nArgs: int, procId: int,
   when defined(amd64):
     dynasm a:
       arch x64
+      # Bridge ABI: procId in edi, flatArgs base in rsi, argc in edx,
+      # arg-types nil (untyped call: everything boxes as int or unpacks)
       push rbx
       mov rbx, rsp
       `and` rsp, -16
@@ -826,6 +888,8 @@ proc ncallInvoke*(a: var Assembler, nArgs: int, procId: int,
     let r3 = int((cast[uint64](bridgeFn) shr 48) and 0xFFFF'u64)
     dynasm a:
       arch aarch64
+      # Same ABI through x0-x3: procId, flatArgs, argc, nil types.
+      # x20 snapshots sp because blr needs the array base in x1.
       mov x20, sp
       mov x2, nArgs
       mov x3, 0
@@ -841,6 +905,8 @@ proc ncallFinish*(a: var Assembler, dropBytes: int) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Drop the flatArgs array plus the stale operand slots above it,
+      # then push the bridge result sitting in rax
       add rsp, dropBytes
       push rax
   else:
@@ -858,6 +924,7 @@ proc ncallFinishVoid*(a: var Assembler, dropBytes: int) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Same cleanup, but the bridge result in rax is simply dropped
       add rsp, dropBytes
   else:
     dynasm a:
@@ -871,6 +938,8 @@ proc ncallSelf*(a: var Assembler, nArgs: int, selfAddr: int64) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Direct self-call: rsp-relative frame plus arg count, no bridge.
+      # Reuses the caller's operand area as the callee frame.
       mov rdi, rsp
       mov esi, nArgs
       movabs rax, selfAddr
@@ -948,12 +1017,15 @@ proc ngetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Pop index (r12) and container slot (rsi, kept for the slow path)
       pop r12
       pop rsi
+      # Stage 1: split the tagged slot; epoch 0 means a raw int, not a ref
       mov rax, rsi
       `shr` rax, 32
       test eax, eax
       jz fwd(slowLbl)
+      # Stage 2: resolve the ring slot and validate its epoch inline
       mov ecx, esi
       `and` ecx, jitRingMask
       `shl` rcx, 3
@@ -965,6 +1037,7 @@ proc ngetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
       add r8, rcx
       cmp [r8], eax
       jne fwd(slowLbl)
+      # Stage 3: container must be a live non-foreign array object
       mov rax, [r9]
       cmp rax, tyArrayObject
       jne fwd(slowLbl)
@@ -973,11 +1046,14 @@ proc ngetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
       jz fwd(slowLbl)
       cmp byte [r8], 0
       jne fwd(slowLbl)
+      # Stage 4: bounds check against the inline length (no seq deref yet)
       mov r10, [r8 + offObjFields]
       cmp r12, 0
       jl fwd(slowLbl)
       cmp r12, r10
       jge fwd(slowLbl)
+      # Stage 5: element address = block + idx * 16 + data offset;
+      # fast path only serves int elements, rest goes to the bridge
       mov r8, [r8 + offObjFieldsPtr]
       test r8, r8
       jz fwd(slowLbl)
@@ -994,6 +1070,7 @@ proc ngetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
     a.localLabel(slowLbl)
     dynasm a:
       arch x64
+      # Slow path: full opcGetI semantics (incl. raised defects) via bridge
       mov rdi, rsi
       mov rsi, r12
       mov edx, kinds
@@ -1022,6 +1099,8 @@ proc ngetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
     let kk0 = int(kinds and 0xFFFF)
     dynasm a:
       arch aarch64
+      # Same five stages as x64: pop idx (x9) and slot (x10), epoch check,
+      # ring resolve, container checks, bounds, element load
       ldr x9, [sp], 16
       ldr x10, [sp], 16
       lsr x11, x10, 32
@@ -1048,7 +1127,8 @@ proc ngetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
       b.ne fwd(slowLbl)
       ldr x13, [x14, offValObj]
       cbz x13, fwd(slowLbl)
-      ldrb w14, [x13]
+      ldr w14, [x13]
+      `and` w14, w14, 0xFF
       cbnz w14, fwd(slowLbl)
       ldr x14, [x13, offObjFields]
       cmp x9, 0
@@ -1069,6 +1149,7 @@ proc ngetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
     a.localLabel(slowLbl)
     dynasm a:
       arch aarch64
+      # Slow path: object slot in x0, index in x1, packed kinds in x2
       mov x0, x10
       mov x1, x9
       movz x2, kk0
@@ -1095,6 +1176,8 @@ proc nsetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
     if valKind == tyInt.int32 or valKind == tyBool.int32:
       dynasm a:
         arch x64
+        # Pop value (r11), index (r12), container (rsi); same resolve +
+        # bounds chain as ngetI, then store tag + payload inline
         pop r11
         pop r12
         pop rsi
@@ -1133,6 +1216,7 @@ proc nsetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
         `shl` r10, 4
         add r10, r8
         add r10, blockDataOff
+        # Store the compiler-proven tag plus the raw payload, no boxing
         mov rax, valKind
         mov [r10], rax
         mov [r10 + offVsInt], r11
@@ -1140,6 +1224,7 @@ proc nsetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
       a.localLabel(slowLbl)
       dynasm a:
         arch x64
+        # Slow path: container, index, value plus packed kinds to bridge
         mov rdi, rsi
         mov rsi, r12
         mov rdx, r11
@@ -1155,6 +1240,7 @@ proc nsetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
     else:
       dynasm a:
         arch x64
+        # Non-int/bool values always go through the bridge (needs rooting)
         pop r11
         pop r12
         pop rsi
@@ -1187,6 +1273,8 @@ proc nsetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
     if valKind == tyInt.int32 or valKind == tyBool.int32:
       dynasm a:
         arch aarch64
+        # Pops: value x9, index x10, container x11; then the ngetI-style
+        # resolve + bounds chain, ending with an inline tag + payload store
         ldr x9, [sp], 16
         ldr x10, [sp], 16
         ldr x11, [sp], 16
@@ -1214,7 +1302,8 @@ proc nsetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
         b.ne fwd(slowLbl)
         ldr x14, [x15, offValObj]
         cbz x14, fwd(slowLbl)
-        ldrb w15, [x14]
+        ldr w15, [x14]
+        `and` w15, w15, 0xFF
         cbnz w15, fwd(slowLbl)
         ldr x15, [x14, offObjFields]
         cmp x10, 0
@@ -1233,6 +1322,7 @@ proc nsetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
       a.localLabel(slowLbl)
       dynasm a:
         arch aarch64
+        # Slow path: container x0, index x1, value x2, kinds x3
         mov x0, x11
         mov x1, x10
         mov x2, x9
@@ -1247,6 +1337,7 @@ proc nsetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
     else:
       dynasm a:
         arch aarch64
+        # Non-int/bool values always go through the bridge (needs rooting)
         ldr x9, [sp], 16
         ldr x10, [sp], 16
         ldr x11, [sp], 16
@@ -1275,11 +1366,15 @@ proc ngetF*(a: var Assembler, slowFn: pointer, objKind: int32,
   when defined(amd64):
     dynasm a:
       arch x64
+      # Pop the container (kept in rsi for the slow path); no index slot
+      # here, the field id is baked in as an immediate below
       pop rsi
+      # Stage 1: split the tag; epoch 0 means a raw int, not a ref
       mov rax, rsi
       `shr` rax, 32
       test eax, eax
       jz fwd(slowLbl)
+      # Stage 2: resolve the ring slot and validate its epoch inline
       mov ecx, esi
       `and` ecx, jitRingMask
       `shl` rcx, 3
@@ -1291,6 +1386,8 @@ proc ngetF*(a: var Assembler, slowFn: pointer, objKind: int32,
       add r8, rcx
       cmp [r8], eax
       jne fwd(slowLbl)
+      # Stage 3: field access needs an object (arrays go to the bridge,
+      # which reproduces opcGetF on them exactly)
       mov rax, [r9]
       cmp rax, tyObjectStorage
       jne fwd(slowLbl)
@@ -1299,9 +1396,13 @@ proc ngetF*(a: var Assembler, slowFn: pointer, objKind: int32,
       jz fwd(slowLbl)
       cmp byte [r8], 0
       jne fwd(slowLbl)
+      # Stage 4: field id against the inline length (always >= 0,
+      # it comes from a uint8 operand)
       mov r10, [r8 + offObjFields]
       cmp r10, fieldId
       jle fwd(slowLbl)
+      # Stage 5: static element offset (fieldId * 16 + data); fast path
+      # only serves int fields
       mov r8, [r8 + offObjFieldsPtr]
       test r8, r8
       jz fwd(slowLbl)
@@ -1318,6 +1419,7 @@ proc ngetF*(a: var Assembler, slowFn: pointer, objKind: int32,
     a.localLabel(slowLbl)
     dynasm a:
       arch x64
+      # Slow path: container, field id, and baked obj kind to the bridge
       mov rdi, rsi
       mov esi, fieldId
       mov edx, objKind
@@ -1346,6 +1448,8 @@ proc ngetF*(a: var Assembler, slowFn: pointer, objKind: int32,
     let elemOff = blockDataOff + fieldId * sizeVs
     dynasm a:
       arch aarch64
+      # Same five stages as x64: container in x10, baked field id,
+      # object guard, inline length check, static element offset
       ldr x10, [sp], 16
       lsr x11, x10, 32
       cbz x11, fwd(slowLbl)
@@ -1371,13 +1475,15 @@ proc ngetF*(a: var Assembler, slowFn: pointer, objKind: int32,
       b.ne fwd(slowLbl)
       ldr x13, [x14, offValObj]
       cbz x13, fwd(slowLbl)
-      ldrb w14, [x13]
+      ldr w14, [x13]
+      `and` w14, w14, 0xFF
       cbnz w14, fwd(slowLbl)
       ldr x14, [x13, offObjFields]
       cmp x14, fieldId
       b.le fwd(slowLbl)
       ldr x15, [x13, offObjFieldsPtr]
       cbz x15, fwd(slowLbl)
+      # Static offset (fieldId * 16 + data) fits an add immediate
       add x14, x15, elemOff
       ldr x11, [x14]
       cmp x11, tyInt
@@ -1388,6 +1494,7 @@ proc ngetF*(a: var Assembler, slowFn: pointer, objKind: int32,
     a.localLabel(slowLbl)
     dynasm a:
       arch aarch64
+      # Slow path: container x0, field id x1, baked kind x2
       mov x0, x10
       mov x1, fieldId
       movz x2, objKind
@@ -1414,6 +1521,8 @@ proc nsetF*(a: var Assembler, slowFn: pointer, kinds: int32,
     if valKind == tyInt.int32 or valKind == tyBool.int32:
       dynasm a:
         arch x64
+        # Pop value (r11) and container (rsi); same resolve + bounds
+        # chain as ngetF, then store tag + payload inline, no boxing
         pop r11
         pop rsi
         mov rax, rsi
@@ -1456,6 +1565,7 @@ proc nsetF*(a: var Assembler, slowFn: pointer, kinds: int32,
       a.localLabel(slowLbl)
       dynasm a:
         arch x64
+        # Slow path: container, value, field id plus packed kinds
         mov rdi, rsi
         mov rsi, r11
         mov edx, fieldId
@@ -1471,6 +1581,7 @@ proc nsetF*(a: var Assembler, slowFn: pointer, kinds: int32,
     else:
       dynasm a:
         arch x64
+        # Non-int/bool values always go through the bridge (needs rooting)
         pop r11
         pop rsi
         mov rdi, rsi
@@ -1502,6 +1613,7 @@ proc nsetF*(a: var Assembler, slowFn: pointer, kinds: int32,
     if valKind == tyInt.int32 or valKind == tyBool.int32:
       dynasm a:
         arch aarch64
+        # Pops: value x9, container x11; resolve + bounds, inline store
         ldr x9, [sp], 16
         ldr x11, [sp], 16
         lsr x12, x11, 32
@@ -1528,13 +1640,15 @@ proc nsetF*(a: var Assembler, slowFn: pointer, kinds: int32,
         b.ne fwd(slowLbl)
         ldr x14, [x15, offValObj]
         cbz x14, fwd(slowLbl)
-        ldrb w15, [x14]
+        ldr w15, [x14]
+        `and` w15, w15, 0xFF
         cbnz w15, fwd(slowLbl)
         ldr x15, [x14, offObjFields]
         cmp x15, fieldId
         b.le fwd(slowLbl)
         ldr x14, [x14, offObjFieldsPtr]
         cbz x14, fwd(slowLbl)
+        # Static element offset again, then tag + payload store
         add x15, x14, elemOffS
         mov x14, valKind
         str x14, [x15]
@@ -1543,6 +1657,7 @@ proc nsetF*(a: var Assembler, slowFn: pointer, kinds: int32,
       a.localLabel(slowLbl)
       dynasm a:
         arch aarch64
+        # Slow path: container x0, value x1, field id x2, kinds x3
         mov x0, x11
         mov x1, x9
         mov x2, fieldId
@@ -1556,6 +1671,7 @@ proc nsetF*(a: var Assembler, slowFn: pointer, kinds: int32,
     else:
       dynasm a:
         arch aarch64
+        # Non-int/bool values always go through the bridge (needs rooting)
         ldr x9, [sp], 16
         ldr x11, [sp], 16
         mov x0, x11
@@ -1578,6 +1694,8 @@ proc ncallInvokeTyped*(a: var Assembler, nArgs: int, procId: int,
   when defined(amd64):
     dynasm a:
       arch x64
+      # Same shape as ncallInvoke, but rcx carries the kinds array
+      # instead of nil so the bridge can box each slot exactly
       push rbx
       mov rbx, rsp
       `and` rsp, -16
@@ -1600,6 +1718,7 @@ proc ncallInvokeTyped*(a: var Assembler, nArgs: int, procId: int,
     let t3 = int((cast[uint64](typesAddr) shr 48) and 0xFFFF'u64)
     dynasm a:
       arch aarch64
+      # Same triple as ncallInvoke, but x3 carries the kinds array
       mov x20, sp
       mov x2, nArgs
       movz x3, t0
@@ -1621,19 +1740,24 @@ proc npushF*(a: var Assembler, bits: int64) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Any 64-bit pattern embeds directly, NaNs included
       movabs rax, bits
       push rax
   else:
-    let b0 = int(cast[uint64](bits) and 0xFFFF'u64)
-    let b1 = int((cast[uint64](bits) shr 16) and 0xFFFF'u64)
-    let b2 = int((cast[uint64](bits) shr 32) and 0xFFFF'u64)
-    let b3 = int((cast[uint64](bits) shr 48) and 0xFFFF'u64)
+    # NOTE: named fb* on purpose — b0..b3 are ARM FP registers and the
+    # DSL would read them as such instead of our immediates.
+    let fbu = cast[uint64](bits)
+    let fb0 = int(fbu and 0xFFFF'u64)
+    let fb1 = int((fbu shr 16) and 0xFFFF'u64)
+    let fb2 = int((fbu shr 32) and 0xFFFF'u64)
+    let fb3 = int((fbu shr 48) and 0xFFFF'u64)
     dynasm a:
       arch aarch64
-      movz x9, b0
-      movk x9, b1, lsl, 16
-      movk x9, b2, lsl, 32
-      movk x9, b3, lsl, 48
+      # Same four-halfword build as any other baked 64-bit address
+      movz x9, fb0
+      movk x9, fb1, lsl, 16
+      movk x9, fb2, lsl, 32
+      movk x9, fb3, lsl, 48
       str x9, [sp, -16], pre
 
 proc nfloatBinop*(a: var Assembler, fn: pointer, kinds: int32) =
@@ -1646,6 +1770,8 @@ proc nfloatBinop*(a: var Assembler, fn: pointer, kinds: int32) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Pop b (rsi) then a (rdi) for the (a, b, kinds) bridge; the bit-cast
+      # result comes back in rax and is pushed
       pop rsi
       pop rdi
       mov edx, kinds
@@ -1665,6 +1791,7 @@ proc nfloatBinop*(a: var Assembler, fn: pointer, kinds: int32) =
     let kk0 = int(kinds and 0xFFFF)
     dynasm a:
       arch aarch64
+      # Same triple through x0/x1/x2: a, b, then packed kinds
       ldr x1, [sp], 16
       ldr x0, [sp], 16
       movz x2, kk0
@@ -1682,6 +1809,7 @@ proc nfloatNeg*(a: var Assembler, fn: pointer, kind: int32) =
   when defined(amd64):
     dynasm a:
       arch x64
+      # Unary variant: popped slot in rdi, baked kind in esi
       pop rdi
       mov esi, kind
       push rbx
@@ -1699,6 +1827,7 @@ proc nfloatNeg*(a: var Assembler, fn: pointer, kind: int32) =
     let f3 = int((cast[uint64](fnAddr) shr 48) and 0xFFFF'u64)
     dynasm a:
       arch aarch64
+      # Same pair through x0/x1: slot, then kind
       ldr x0, [sp], 16
       mov x1, kind
       movz x16, f0
