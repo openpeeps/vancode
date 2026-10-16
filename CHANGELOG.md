@@ -1,3 +1,18 @@
+# Unreleased
+
+- **BREAKING:** Removed the Lua DynASM backend entirely. The `vancodeJitDynasm`
+  flag is gone; `vancodeJitNim` is the single JIT flag. All associated files
+  (`compiler_dynasm.nim`, `compiler_trace.nim`, `jit_mem.nim`, `vc_jit_mem.h`,
+  the vendored `dynasm/` Lua/C sources and generated `vancode_jit*.c`) have been
+  deleted. New files: `emit_nim.nim` (all 40 emitter actions, x64+arm64) and
+  `compiler_nim.nim` (method, trace and fib compilers). Host extension anchors
+  are renamed (`vmJitNimAllowCase`, `vmJitNimEmitCase`, `vmJitNimTraceEmitCase`)
+  with matching `host_emit` helpers; the fixed 128KB pre-alloc/spare-buffer
+  scheme is replaced by growable `ExecutableBuffer`s with post-finalize
+  back-patching for self-calls. Requires `dynasm >= 0.1.0` (includes the new
+  `setcc`/`cset`, `push m64` and SP-based `add`/`sub` instructions added for
+  this port) and `nim >= 2.2.0`.
+
 # v0.2.1 - 2026-07-11
 
 # v0.2.0 - 2026-07-08

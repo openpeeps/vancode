@@ -1,15 +1,11 @@
 ## Pure-Nim JIT emitter backend for VanCode.
 ##
-## Line-by-line translation of `dynasm/vancode_jit.dasc` (x64) and
-## `dynasm/vancode_jit_arm64.dasc` (arm64) onto the dynasm-nim DSL.
-## Semantics are intentionally identical to the Lua DynASM templates:
-## same registers, same stack discipline, same calling convention
+## Assembly routines for the method, trace and fib compilers below,
+## written against the dynasm-nim DSL. Semantics: same registers, same
+## stack discipline, same calling convention on both architectures
 ## (rdi=flatArgs, rsi=argc, rax=result, rbx=args-ptr, r12=scratch on
 ## x64; x0=flatArgs, x1=argc, x0=result, x19=args, x20=scratch on
 ## arm64 with 16-byte operand slots).
-##
-## Only compiled under `-d:vancodeJitNim`. The old Lua backend stays
-## available behind `-d:vancodeJitDynasm` until parity is proven.
 ##
 ## Sessions: one NimJit per compiled function. `nFib` needs a fresh
 ## session (it is a standalone entry point, like vancode_fib).
@@ -880,7 +876,9 @@ when defined(amd64):
     ## Emit a self-call with a zero address; returns the final-buffer
     ## offset of the 8-byte address field for `ncallSelfPatch`.
     ncallSelf(a, nArgs, 0)
-    result = int(a.offset()) - 8
+    # movabs is 10 bytes and `call rax` follows it: the imm64 field
+    # starts 10 bytes before the end.
+    result = int(a.offset()) - 10
     # movabs rax is REX.W + B8 + imm64; assert the shape so a future
     # encoder change fails loudly instead of patching the wrong bytes.
     assert a.staging[result - 2] == 0x48'u8
@@ -898,7 +896,9 @@ else:
     ## Emit a self-call with a zero address; returns the final-buffer
     ## offset of the 16-byte movz/movk sequence for `ncallSelfPatch`.
     ncallSelf(a, nArgs, 0)
-    result = int(a.offset()) - 16
+    # The movz/movk sequence is 16 bytes and `blr x16` follows it:
+    # the sequence starts 20 bytes before the end.
+    result = int(a.offset()) - 20
     # movz x16 followed by 3x movk x16; op halfwords are fixed.
     assert a.staging[result + 2] == 0x80'u8
     assert a.staging[result + 3] == 0xD2'u8

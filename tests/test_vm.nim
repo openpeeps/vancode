@@ -1,7 +1,7 @@
 import unittest
 import std/[monotimes, times, math]
 import ../src/vancode/interpreter/[ast, chunk, value, vm, sym]
-when defined(vancodeJitDynasm) and defined(vancodeJitTests):
+when defined(vancodeJitNim) and defined(vancodeJitTests):
   import ../src/vancode/interpreter/jit/jit
   import ../src/vancode/interpreter/jit/compiler as jitcompiler
 
@@ -79,7 +79,7 @@ suite "hotCode":
     discard vm.interpret(script, chunk)
     check vm.getHotProcCount("threshold") == 3
 
-when defined(vancodeJitDynasm) and defined(vancodeJitTests):
+when defined(vancodeJitNim) and defined(vancodeJitTests):
   suite "JIT":
     test "JIT module initializes and compiles a trivial proc":
       var chunk = newChunk("jit_test")
@@ -289,7 +289,7 @@ suite "perf":
     let e = getMonoTime() - t
     echo "  interpreted (arithmetic 100)  ", e.inMicroseconds, " us (", e.inNanoseconds div perfIter, " ns/call)"
 
-  when defined(vancodeJitDynasm) and defined(vancodeJitTests):
+  when defined(vancodeJitNim) and defined(vancodeJitTests):
     test "JIT (simple return)":
       var chunk = newChunk("perf")
       let script = newScript(chunk)

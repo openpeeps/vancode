@@ -6,21 +6,16 @@
 # (c) 2025 George Lemon | MIT License
 #          Made by Humans from OpenPeeps
 #          https://github.com/openpeeps/vancode
-## Dispatches `compileProc` to the active JIT backend. Currently routes to
-## `compiler_dynasm` for DynASM-based native code generation.
+## Dispatches `compileProc` to the pure-Nim JIT backend
+## (`compiler_nim`: native code generation via the dynasm package).
 
 import ../[chunk, vm, value]
-import ./compiler_dynasm
-when defined(vancodeJitNim):
-  import ./compiler_nim
+import ./compiler_nim
 
 proc compileProc*(vm: Vm, theProc: Proc,
     isMain = false): ForeignProc =
   if theProc == nil or theProc.kind != pkNative or theProc.chunk == nil: return nil
-  when defined(vancodeJitNim):
-    compiler_nim.compileProcNim(vm, theProc, isMain)
-  else:
-    compiler_dynasm.compileProc(vm, theProc, isMain)
+  compiler_nim.compileProcNim(vm, theProc, isMain)
 
 proc compileMainHookImpl*(vm: Vm, script: Script, main: Chunk): ForeignProc =
   ## Eagerly JIT-compile a main chunk so hosts can run it natively instead

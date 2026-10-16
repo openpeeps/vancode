@@ -3,9 +3,9 @@ import std/[options, tables]
 import ../src/vancode/interpreter/[ast, codegen, chunk, value, vm, sym]
 import ../src/vancode/interpreter/stdlib/syslib
 import ../src/vancode/interpreter/stdlib/utils
-when defined(vancodeJitDynasm):
+when defined(vancodeJitNim):
   import ../src/vancode/interpreter/jit/jit as jitmod
-  import ../src/vancode/interpreter/jit/compiler_dynasm as cdyn
+  import ../src/vancode/interpreter/jit/compiler_nim as cnim
   import ../src/vancode/interpreter/jit/compiler as comp
 
 # helpers ---------------------------------------------------------------
@@ -44,22 +44,22 @@ proc buildProc(script: Script, name: string, paramCount: int, hasResult: bool, b
   ch.file = script.mainChunk.file
   p
 
-suite "jit: compileProc gating (dynasm path)":
+suite "jit: compileProc gating (nim path)":
   test "compileProc returns nil for foreign proc / nil chunk":
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       let vm = newVm()
       var ch = newChunk("x")
       let s = newScript(ch)
       let pForeign = Proc(name:"foreign", kind: pkForeign, foreign: proc(a:StackView,c:int):Value = initValue(1i64), paramCount:0, hasResult:true)
-      check cdyn.compileProc(vm, pForeign) == nil
+      check cnim.compileProcNim(vm, pForeign) == nil
       var emptyCh = newChunk("empty")
       let pNilChunk = Proc(name:"nilchunk", kind: pkNative, chunk: nil, paramCount:0, hasResult:false)
-      check cdyn.compileProc(vm, pNilChunk) == nil
+      check cnim.compileProcNim(vm, pNilChunk) == nil
     else:
       skip()
 
   test "compileProc returns nil for empty chunk":
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       var ch = newChunk("empty")
       let s = newScript(ch)
       var empty = newChunk("empty")
@@ -69,14 +69,14 @@ suite "jit: compileProc gating (dynasm path)":
       let vm = newVm()
       s.procs.add(p)
       # empty with only Halt should still compile but we check it doesn't crash; original expects nil for truly empty (no code) – skip strict check
-      let res = cdyn.compileProc(vm, p)
+      let res = cnim.compileProcNim(vm, p)
       # may be whitelisted (Halt is allowed) so could be non-nil; just ensure no crash
       check true
     else:
       skip()
 
   test "compileProc returns nil for unsupported opcode PushS":
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       var main = newChunk("jit")
       let s = newScript(main)
       var pc = newChunk("jit")
@@ -87,12 +87,12 @@ suite "jit: compileProc gating (dynasm path)":
       s.procs.add(p)
       let vm = newVm()
       # need to register script in vm's importedModules for chunk file lookup? compileProc uses vm.getCachedOps only, not importedModules
-      check cdyn.compileProc(vm, p) == nil
+      check cnim.compileProcNim(vm, p) == nil
     else:
       skip()
 
   test "compileProc returns nil for unsupported ConstrObj":
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       var main = newChunk("jit")
       let s = newScript(main)
       var pc = newChunk("jit")
@@ -101,12 +101,12 @@ suite "jit: compileProc gating (dynasm path)":
       let p = Proc(name:"obj", kind: pkNative, chunk: pc, paramCount:0, hasResult:true)
       p.procId = s.procs.len; s.procs.add(p)
       let vm = newVm()
-      check cdyn.compileProc(vm, p) == nil
+      check cnim.compileProcNim(vm, p) == nil
     else:
       skip()
 
   test "compileProc succeeds for simple PushI ReturnVal":
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       var main = newChunk("jit")
       let s = newScript(main)
       var pc = newChunk("jit")
@@ -115,7 +115,7 @@ suite "jit: compileProc gating (dynasm path)":
       let p = Proc(name:"simple", kind: pkNative, chunk: pc, paramCount:0, hasResult:true)
       p.procId = s.procs.len; s.procs.add(p)
       let vm = newVm()
-      let fn = cdyn.compileProc(vm, p)
+      let fn = cnim.compileProcNim(vm, p)
       check fn != nil
       # closure should produce correct value when invoked
       let r = fn(nil, 0)
@@ -124,7 +124,7 @@ suite "jit: compileProc gating (dynasm path)":
       skip()
 
   test "compileProc with locals PushL/PopL IncL DecL":
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       var main = newChunk("jit")
       let s = newScript(main)
       var pc = newChunk("jit")
@@ -139,7 +139,7 @@ suite "jit: compileProc gating (dynasm path)":
       let p = Proc(name:"inc", kind: pkNative, chunk: pc, paramCount:1, hasResult:true)
       p.procId = s.procs.len; s.procs.add(p)
       let vm = newVm()
-      let fn = cdyn.compileProc(vm, p)
+      let fn = cnim.compileProcNim(vm, p)
       check fn != nil
       # test via direct closure: need to handle args marshaling via flatLocals
       # Instead test via VM fast path (see later)
@@ -147,7 +147,7 @@ suite "jit: compileProc gating (dynasm path)":
       skip()
 
   test "compileProc with jumps (conditional) succeeds":
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       var main = newChunk("jit")
       let s = newScript(main)
       var pc = newChunk("jit")
@@ -176,7 +176,7 @@ suite "jit: compileProc gating (dynasm path)":
       let p = getProc(e.script, "looper")
       check p != nil
       let vm = newVm()
-      let fn = cdyn.compileProc(vm, p)
+      let fn = cnim.compileProcNim(vm, p)
       # may be nil if proc contains unsupported patterns? Should not be nil for simple int loop
       if fn == nil:
         echo "  skip – loop not JIT-able in current whitelist"
@@ -186,7 +186,7 @@ suite "jit: compileProc gating (dynasm path)":
       skip()
 
   test "compileProc with CallD unsupported except self recursion? Actually CallD is whitelisted now":
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       var main = newChunk("jit")
       let s = newScript(main)
       s.mainChunk.file = "jit"
@@ -202,17 +202,17 @@ suite "jit: compileProc gating (dynasm path)":
       callerCh.emit(opcReturnVal)
       let caller = Proc(name:"caller", kind: pkNative, chunk: callerCh, paramCount:0, hasResult:true)
       caller.procId = s.procs.len; s.procs.add(caller)
-      # need importedModules mapping for CallD target resolution inside compiler_dynasm
+      # need importedModules mapping for CallD target resolution inside compiler_nim
       let vm = newVm()
       vm.importedModules["jit"] = s
-      let fn = cdyn.compileProc(vm, caller)
+      let fn = cnim.compileProcNim(vm, caller)
       check fn != nil
     else:
       skip()
 
 suite "jit: VM fast paths":
   test "p.jitForeign closure fast path via interpret (CallD)":
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       var ch = newChunk("jit_fast")
       let s = newScript(ch)
       s.mainChunk.file = "jit_fast"
@@ -224,7 +224,7 @@ suite "jit: VM fast paths":
       ch.emit(opcCallD); ch.emit(ch.getString("jit_fast")); ch.emit(p.procId.uint16); ch.emit(opcHalt)
       let vm = newVm()
       vm.importedModules["jit_fast"] = s
-      let fn = cdyn.compileProc(vm, p)
+      let fn = cnim.compileProcNim(vm, p)
       check fn != nil
       p.jitForeign = fn
       let res = newVm().interpret(s, ch)
@@ -233,7 +233,7 @@ suite "jit: VM fast paths":
       skip()
 
   test "jitCodePtr atomic fast path (async JIT) via CallD":
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       var ch = newChunk("jit_async")
       let s = newScript(ch)
       s.mainChunk.file = "jit_async"
@@ -245,7 +245,7 @@ suite "jit: VM fast paths":
       ch.emit(opcCallD); ch.emit(ch.getString("jit_async")); ch.emit(p.procId.uint16); ch.emit(opcHalt)
       let vm = newVm()
       vm.importedModules["jit_async"] = s
-      let fn = cdyn.compileProc(vm, p)
+      let fn = cnim.compileProcNim(vm, p)
       check fn != nil
       # Simulate async compilation by setting jitCodePtr (compiler does it); after compile jitCodePtr is set
       check p.jitCodePtr != nil
@@ -255,7 +255,7 @@ suite "jit: VM fast paths":
       skip()
 
   test "jitForeign with bool return type":
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       var ch = newChunk("jit_bool")
       let s = newScript(ch)
       s.mainChunk.file = "jit_bool"
@@ -268,7 +268,7 @@ suite "jit: VM fast paths":
       ch.emit(opcCallD); ch.emit(ch.getString("jit_bool")); ch.emit(p.procId.uint16); ch.emit(opcHalt)
       let vm = newVm()
       vm.importedModules["jit_bool"] = s
-      let fn = cdyn.compileProc(vm, p)
+      let fn = cnim.compileProcNim(vm, p)
       if fn != nil:
         p.jitForeign = fn
         let res = newVm().interpret(s, ch)
@@ -279,38 +279,53 @@ suite "jit: VM fast paths":
     else:
       skip()
 
-  test "jit self recursion fast path – fact-like iterative?":
-    when defined(vancodeJitDynasm):
-      # Build a simple self-recursive proc that jit can handle (CallSelf)
-      # proc rec(n:int):int = if n==0: return 1 else: return rec(n-1)*n  -> Contains CallD to self -> supported via vancode_call_self
-      # Use codegen to create proc, then compile
-      let e = newEnv("rec")
-      let formal = mkFormal("int", [("n","int")])
-      let cond = newTree(nkInfix, newIdent("=="), newIdent("n"), newIntLit(0))
-      let thenBlk = newTree(nkBlock, newTree(nkReturn, newIntLit(1)))
-      let elseBlk = newTree(nkBlock, newTree(nkReturn, newTree(nkInfix, newIdent("*"), newIdent("n"), newTree(nkCall, newIdent("rec"), newTree(nkInfix, newIdent("-"), newIdent("n"), newIntLit(1))))))
-      let ifNode = newTree(nkIf, cond, thenBlk, elseBlk)
-      let procNode = mkProcNode("rec", "int", formal, newTree(nkBlock, ifNode))
-      let ast = Ast(sourcePath:"rec", nodes: @[procNode])
-      e.gen.genScript(ast, none(string))
-      let p = getProc(e.script, "rec")
-      check p != nil
-      when defined(vancodeJitDynasm):
-        let vm = newVm()
-        vm.importedModules["rec"] = e.script
-        let fn = cdyn.compileProc(vm, p)
-        # recursion proc may still be non-whitelisted due to complex ops, but at least should not crash
-        # If compiled, verify at least fn is not nil; do not execute via JIT if it may segfault – just check compile result
-        if fn == nil:
-          echo "  skip – recursion not JIT-able"
-        else:
-          check fn != nil
+  test "jit self recursion executes patched countdown":
+    when defined(vancodeJitNim):
+      # Hand-built countdown(n) = if n==0: 0 else: countdown(n-1).
+      # Exercises emitCallArgsNim + call_self hole patching + native
+      # recursion end to end (the fib fast path does not cover holes).
+      var main = newChunk("count")
+      let s = newScript(main)
+      s.mainChunk.file = "count"
+      var pc = newChunk("count")
+      pc.file = "count"
+      let selfName = pc.getString("count")
+      pc.emit(opcPushL); pc.emit(0u8)
+      pc.emit(opcPushI); pc.emit(0i64)
+      pc.emit(opcEqI)
+      # Byte layout (op + args): PushL(2) PushI(9) EqI(1)
+      # JumpFwdF(3) Discard(2) PushI(9) JumpFwd(3) Discard(2)
+      # PushL(2) PushI(9) SubI(1) CallD(5) ReturnVal(1).
+      # JumpFwdF at byte 12 (operand 13) -> Discard at 29: dist 17.
+      # JumpFwd at byte 26 (operand 27) -> ReturnVal at 48: dist 22.
+      pc.emit(opcJumpFwdF); pc.emit(17u16)
+      pc.emit(opcDiscard); pc.emit(1u8)
+      pc.emit(opcPushI); pc.emit(0i64)
+      pc.emit(opcJumpFwd); pc.emit(22u16)
+      pc.emit(opcDiscard); pc.emit(1u8)
+      pc.emit(opcPushL); pc.emit(0u8)
+      pc.emit(opcPushI); pc.emit(1i64)
+      pc.emit(opcSubI)
+      pc.emit(opcCallD); pc.emit(selfName); pc.emit(0u16)
+      pc.emit(opcReturnVal)
+      let p = Proc(name: "count", kind: pkNative, chunk: pc,
+        paramCount: 1, hasResult: true)
+      p.procId = 0
+      s.procs.add(p)
+      let vm = newVm()
+      vm.importedModules["count"] = s
+      let fn = cnim.compileProcNim(vm, p)
+      check fn != nil
+      var five = [initValue(5i64)]
+      check fn(cast[StackView](addr five[0]), 1).intVal == 0
+      var zero = [initValue(0i64)]
+      check fn(cast[StackView](addr zero[0]), 1).intVal == 0
     else:
       skip()
 
 suite "jit: installJit & hot threshold integration":
   test "installJit sets hooks and compileTrace":
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       let vm = newVm()
       vm.installJit()
       check vm.jit.getForeign != nil or vm.jit.setGlobalsPtr != nil or vm.jit.compileTrace != nil
@@ -320,7 +335,7 @@ suite "jit: installJit & hot threshold integration":
       skip()
 
   test "hot threshold triggers jit compilation via markHotProc (queueCompile)":
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       var main = newChunk("hot_thresh")
       let s = newScript(main)
       s.mainChunk.file = "hot_thresh"
@@ -344,7 +359,7 @@ suite "jit: installJit & hot threshold integration":
       # After threshold, jit may be set only if queueCompile/getForeign provided; at least hot count verifies
       # Optionally try manual compile to prove path works
       if p.jitForeign == nil and p.jitCodePtr == nil:
-        let fn = cdyn.compileProc(vm, p)
+        let fn = cnim.compileProcNim(vm, p)
         if fn != nil:
           p.jitForeign = fn
           check p.jitForeign != nil or p.jitCodePtr != nil
@@ -352,7 +367,7 @@ suite "jit: installJit & hot threshold integration":
       skip()
 
   test "pre-compiled via getForeign then interpret uses fast path":
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       var main = newChunk("pre")
       let s = newScript(main)
       s.mainChunk.file = "pre"
@@ -365,9 +380,9 @@ suite "jit: installJit & hot threshold integration":
       let vm = newVm()
       vm.installJit()
       check vm.jit.compileTrace != nil
-      # compile via jit path that uses compiler_dynasm directly
-      when defined(vancodeJitDynasm):
-        let fn = cdyn.compileProc(vm, p)
+      # compile via jit path that uses compiler_nim directly
+      when defined(vancodeJitNim):
+        let fn = cnim.compileProcNim(vm, p)
         check fn != nil
         p.jitForeign = fn
         let res = vm.interpret(s, main)
@@ -376,7 +391,7 @@ suite "jit: installJit & hot threshold integration":
       skip()
 
   test "crash repro – compile+call in same interpret after threshold":
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       var main = newChunk("crash")
       let s = newScript(main)
       s.mainChunk.file = "crash"
@@ -397,7 +412,7 @@ suite "jit: installJit & hot threshold integration":
       skip()
 
   test "jit with string return (jitReturnString)":
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       # This tests that initCompiler proc sets jitReturnString for string returns, and that JIT closure handles it
       # We'll create a proc returning string via codegen (if codegen supported string push) – but string not JIT-able so compile should fail
       # So we just verify that a string proc is not JIT compiled (returns nil)
@@ -410,13 +425,13 @@ suite "jit: installJit & hot threshold integration":
       let p = Proc(name:"s", kind: pkNative, chunk: pc, paramCount:0, hasResult:true, jitReturnString:true)
       p.procId = s.procs.len; s.procs.add(p)
       let vm = newVm()
-      check cdyn.compileProc(vm, p) == nil
+      check cnim.compileProcNim(vm, p) == nil
     else:
       skip()
 
 suite "jit: trace & misc":
   test "hot loop detection threshold and trace compilation (if available)":
-    # Without DynASM enabled this test still checks VM doesn't crash
+    # Without the Nim JIT enabled this test still checks VM doesn't crash
     var main = newChunk("loop")
     let s = newScript(main)
     s.mainChunk.file = "loop"
@@ -438,7 +453,7 @@ suite "jit: trace & misc":
     # run via VM with hot enabled – should not crash even without JIT
     let prefs = VMPreferences(enableHotCodeDetection:true, hotProcThreshold:100, hotLoopThreshold:50)
     let vm = newVirtualMachine(prefs)
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       vm.installJit()
     var call = newChunk("loop")
     call.file = "loop"
@@ -447,7 +462,7 @@ suite "jit: trace & misc":
     check res.intVal == 100
 
   test "jit compilation respects MaxLocal tracking":
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       var ch = newChunk("maxlocal")
       let s = newScript(ch)
       s.mainChunk.file = "maxlocal"
@@ -459,7 +474,7 @@ suite "jit: trace & misc":
       let p = Proc(name:"ml", kind: pkNative, chunk: pc, paramCount:1, hasResult:true)
       p.procId = s.procs.len; s.procs.add(p)
       let vm = newVm()
-      let fn = cdyn.compileProc(vm, p)
+      let fn = cnim.compileProcNim(vm, p)
       if fn != nil:
         check p.jitMaxLocal >= 6
       else:

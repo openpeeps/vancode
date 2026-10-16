@@ -128,7 +128,7 @@ Here you can find some cool little projects and DSLs engines.
 - [bowdy Stylesheet](https://github.com/openpeeps/bowdy) - A CSS preprocessor and DSL for writing CSS (alternative to SassC, DartSass)
 
 ## Roadmap
-- [x] JIT compilation using DynASM
+- [x] JIT compilation (pure-Nim backend via the dynasm package)
 - [ ] Self-contained executable generation (Similar to how Node/Bun generate self-contained executables)
 - [ ] VM Hot code optimization
 - [ ] Add more Voodoo flexibility and extensibility features to the AST, Codegen and VM
@@ -136,7 +136,6 @@ Here you can find some cool little projects and DSLs engines.
 Notes:
 - https://vivekn.dev/blog/bytecode-vm-scratch/
 - https://github.com/liquidev/hayago - VanCode contains work from hayago, a very interesting project that is no longer maintained but provides a good reference for Nim-based bytecode VMs. Cheers to the author! 😻
-- https://staff.fnwi.uva.nl/h.vandermeer/docs/lua/luajit/dynasm.html
 - https://blog.reverberate.org/2012/12/hello-jit-world-joy-of-simple-jits.html
 
 ### ❤ Contributions & Support

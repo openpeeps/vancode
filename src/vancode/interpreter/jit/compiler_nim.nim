@@ -7,16 +7,14 @@
 #          Made by Humans from OpenPeeps
 #          https://github.com/openpeeps/vancode
 
-## Pure-Nim JIT compilers (method-at-a-time, traces, fib fast path).
-## Mirrors compiler_dynasm.nim / compiler_trace.nim emission logic on the
-## emit_nim session; only compiled under `-d:vancodeJitNim`. The Lua
-## DynASM backend stays untouched until parity is proven (then deleted).
+## Pure-Nim JIT compilers (method-at-a-time, traces, fib fast path)
+## on emit_nim sessions.
 import std/[tables, sysatomics]
 import pkg/voodoo/extensibles
 import dynasm
 
 import ./compiler_bridge, ./emit_nim, ./host_emit
-import ./trace_types, ./trace_cache, ./compiler_trace
+import ./trace_types, ./trace_cache
 import ../[vm, value, chunk]
 
 proc jitNimSupported*(oc: Opcode): bool =
@@ -380,6 +378,22 @@ proc compileProcNim*(vm: Vm, theProc: Proc,
         ": ", e.msg
     jit.a.execBuf.destroy()
     return nil
+
+proc hasBinaryRecursiveArith*(cached: CachedOps): bool =
+  ## Fib-pattern detector: exactly two self-calls plus add+sub.
+  ## Routes matching procs to the iterative native fib fast path.
+  if cached == nil or cached.opcodes.len < 10: return false
+  let oc = cached.opcodes
+  var callCount = 0
+  for i in 0 ..< oc.len:
+    if oc[i] == opcCallD and cached.arg2[i].int > 0: inc callCount
+  if callCount != 2: return false
+  var hasAdd = false
+  var hasSub = false
+  for i in 0 ..< oc.len:
+    if oc[i] == opcAddI: hasAdd = true
+    if oc[i] == opcSubI: hasSub = true
+  result = hasAdd and hasSub
 
 proc compileRecursiveIterativeNim*(cached: CachedOps): pointer =
   var jit = initNimJit()

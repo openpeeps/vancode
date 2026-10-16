@@ -12,7 +12,7 @@
 
 ## A stack-based Virtual Machine that executes bytecode produced by the
 ## VanCode code generator. The VM features a cached opcode decoder, hot code
-## detection with optional JIT compilation via DynASM, trace-based JIT for hot
+## detection with optional JIT compilation, trace-based JIT for hot
 ## loops, coroutine support (create/resume/yield), an FFI bridge for foreign
 ## functions, tail-call optimization, and a module import system. It is designed
 ## to be embeddable in any Nim application for building DSL features on top of
@@ -561,7 +561,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
   # enabling stateful REPL sessions
   # if vm.globals.len == 0:
   #   vm.globals = Table[string, Value]()
-  when defined(vancodeJitDynasm):
+  when defined(vancodeJitNim):
     if vm.jit.setGlobalsPtr != nil:
       vm.jit.setGlobalsPtr(addr vm.globals)
 
@@ -702,7 +702,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
   # Voodoo placeholder for injecting custom code at the start of the main loop
   conditionalPlaceholder "VanCodeVMBeforeMainLoop", false
 
-  when defined(vancodeJitDynasm):
+  when defined(vancodeJitNim):
     # Main-chunk JIT: run natively instead of interpreting when the host
     # enabled it (compileMainHook + getOutput), the entry ran hot, and the
     # chunk compiles. Placed after the snippet so host state (globals,
@@ -720,7 +720,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       if mainFn != nil:
         return mainFn(nil, 0)
 
-  when defined(vancodeJitDynasm):
+  when defined(vancodeJitNim):
     template recordNotTakenPath(traceBuf: TraceBuffer, traceNumLocals: var int, co: CachedOps, pcIdx, tgt: int) =
       for p in pcIdx + 1 ..< tgt:
         traceBuf.pcs.add(p)
@@ -745,7 +745,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
     if pcIdx < 0 or pcIdx >= co.opcodes.len: break
     let oc = co.opcodes[pcIdx]
     
-    when defined(vancodeJitDynasm):
+    when defined(vancodeJitNim):
       if traceState == tsRecording:
         if currentChunk != cast[Chunk](traceBuf.chunk):
           traceState = tsIdle
@@ -1101,7 +1101,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         if cond:
           let tgt = co.jumpTargets[pcIdx]
           if tgt >= 0:
-            when defined(vancodeJitDynasm):
+            when defined(vancodeJitNim):
               if traceState == tsRecording:
                 recordNotTakenPath(traceBuf, traceNumLocals, co, pcIdx, tgt)
             pcIdx = tgt - 1
@@ -1119,7 +1119,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         if not cond:
           let tgt = co.jumpTargets[pcIdx]
           if tgt >= 0:
-            when defined(vancodeJitDynasm):
+            when defined(vancodeJitNim):
               if traceState == tsRecording:
                 recordNotTakenPath(traceBuf, traceNumLocals, co, pcIdx, tgt)
             pcIdx = tgt - 1
@@ -1128,7 +1128,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
       of opcJumpBack:
         let tgt = co.jumpTargets[pcIdx]
         if tgt >= 0:
-          when defined(vancodeJitDynasm):
+          when defined(vancodeJitNim):
             if traceState == tsIdle and vm.preferences.enableHotCodeDetection and vm.traceCache != nil and vm.traceCache.have(tgt, cast[pointer](currentChunk)):
               let entry = vm.traceCache.get(tgt, cast[pointer](currentChunk))
               let numLocals = entry.numLocals
@@ -1177,7 +1177,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                 # body, resource exhaustion): every recording of this loop
                 # fails the same way, so leave a negative marker and never
                 # re-record it. Without this every back-edge re-ran the
-                # full DynASM attempt (mmap/codegen/munmap). Shape failures
+                # full JIT attempt (mmap/codegen/munmap). Shape failures
                 # (branch-dependent) are deliberately NOT marked: a later
                 # window may capture a compilable path.
                 if traceBuf.failKind in {tfOpcode, tfResource}:
@@ -1244,7 +1244,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
             co.callSites[pcIdx].calleeOps = vm.getCachedOps(p.chunk)
           co.callSites[pcIdx].resolved = true
         vm.markHotProc(p)
-        when defined(vancodeJitDynasm):
+        when defined(vancodeJitNim):
           if p.kind == pkNative and p.jitForeign == nil and
              atomicLoadN(addr p.jitCodePtr, AtomicAcquire) == nil:
             if traceState == tsRecording:
@@ -1454,7 +1454,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
             return rv
         else:
           restoreFrame()
-          when defined(vancodeJitDynasm):
+          when defined(vancodeJitNim):
             if traceState == tsPaused:
               traceState = tsRecording
             elif traceState == tsRecording and traceCurrentProc >= 0:
@@ -1631,7 +1631,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
 
   if result == nil or result.typeId == tyNil:
     if stack.len > 0:
-      # when defined(vancodeJitDynasm):
+      # when defined(vancodeJitNim):
       #   stderr.writeLine "DEBUG: stack.len at end = " & $stack.len & " last.typeId = " & $stack[^1].typeId
       return stack[^1]
     else:

@@ -8,7 +8,7 @@
 #          https://github.com/openpeeps/vancode
 
 ## Host emit helpers for JIT-compiling host-defined opcodes. Hosts admit their own opcodes via `extendCaseStmt` on the
-## `vmJitDynasmAllowCase` / `vmJit*EmitCase` anchors; the injected emit
+## `vmJitNimAllowCase` / `vmJitNim*EmitCase` anchors; the injected emit
 ## branches are one-liner calls into these helpers so all machine-code
 ## knowledge stays vancode-owned. Host behavior arrives as registered
 ## bridges (`registerJitHostBridge`); a missing bridge makes the helper
@@ -17,12 +17,10 @@
 import std/strutils
 import pkg/voodoo/extensibles
 
-import ./dynasm/wrapper
+import dynasm
+import ./emit_nim
 import ./compiler_bridge
 import ../[vm, value, chunk]
-when defined(vancodeJitNim):
-  import dynasm
-  import ./emit_nim
 
 ## Re-exported from `compiler_bridge`, which owns the table so the
 ## shared `resetJitState` can clear it without an import cycle.
@@ -44,112 +42,62 @@ proc emitRawMeta*(cached: CachedOps, pc: int, ch: Chunk): int32 =
     ints: @[cached.getArg1Int(pc).int64, cached.arg2[pc]],
     strs: @[ch.file]))
 
-proc emitConstPush*(d: ptr ptr dasm_State, cached: CachedOps, pc: int,
+proc emitConstPush*(a: var Assembler, cached: CachedOps, pc: int,
     ch: Chunk, bridgeName: string): bool =
   ## Push a chunk string constant as a tagged ring index: immortalize the
   ## chars, then pushg through the host bridge (which roots a fresh Value).
   let fn = findJitHostBridge(bridgeName)
   if fn == nil: return false
-  vancode_pushg(d, jitImmortalStr(cached.getArg1Str(pc, ch)), fn)
+  npushG(a, jitImmortalStr(cached.getArg1Str(pc, ch)), fn)
   true
 
-proc emitFloatPush*(d: ptr ptr dasm_State, cached: CachedOps, pc: int,
+proc emitFloatPush*(a: var Assembler, cached: CachedOps, pc: int,
     ch: Chunk, bridgeName: string): bool =
   ## Push a chunk float constant as a tagged ring index (floats never
   ## travel raw: no float arithmetic exists on the native stack).
   let fn = findJitHostBridge(bridgeName)
   if fn == nil: return false
-  vancode_pushg(d, jitImmortalFloat(cached.getArg1Float(pc)), fn)
+  npushG(a, jitImmortalFloat(cached.getArg1Float(pc)), fn)
   true
 
-proc emitGlobalPush*(d: ptr ptr dasm_State, cached: CachedOps, pc: int,
+proc emitGlobalPush*(a: var Assembler, cached: CachedOps, pc: int,
     ch: Chunk, bridgeName: string): bool =
   ## Push a global by name through the host bridge (ints/bools travel
   ## raw, everything else as a tagged index — decided by the bridge).
   let fn = findJitHostBridge(bridgeName)
   if fn == nil: return false
-  vancode_pushg(d, jitImmortalStr(cached.getArg1Str(pc, ch)), fn)
+  npushG(a, jitImmortalStr(cached.getArg1Str(pc, ch)), fn)
   true
 
-proc emitGlobalPop*(d: ptr ptr dasm_State, cached: CachedOps, pc: int,
+proc emitGlobalPop*(a: var Assembler, cached: CachedOps, pc: int,
     ch: Chunk, bridgeName: string): bool =
   ## Pop one slot into a global through the host bridge (no push back:
   ## net -1, matching the interpreter).
   let fn = findJitHostBridge(bridgeName)
   if fn == nil: return false
-  vancode_pop_host(d, jitImmortalStr(cached.getArg1Str(pc, ch)), fn)
+  npopHost(a, jitImmortalStr(cached.getArg1Str(pc, ch)), fn)
   true
 
-proc emitHostCallValue*(d: ptr ptr dasm_State, nArgs: int,
+proc emitHostCallValue*(a: var Assembler, nArgs: int,
     bridgeName: string, metaId: int32): bool =
   ## Call a host bridge with the top `nArgs` slots as flatArgs (ints raw,
   ## Values tagged) and push its int64 result. Net -(nArgs-1), matching a
   ## CallD-shaped op. `metaId` rides the procId slot for site metadata.
   let fn = findJitHostBridge(bridgeName)
   if fn == nil: return false
-  emitCallArgs(d, nArgs)
-  vancode_call_invoke(d, nArgs.cint, metaId, fn)
-  vancode_call_finish(d, jitCallDropBytes(nArgs).cint)
+  emitCallArgsNim(a, nArgs)
+  ncallInvoke(a, nArgs, metaId.int, fn)
+  ncallFinish(a, jitCallDropBytes(nArgs))
   true
 
-proc emitHostCallVoid*(d: ptr ptr dasm_State, nArgs: int,
+proc emitHostCallVoid*(a: var Assembler, nArgs: int,
     bridgeName: string, metaId: int32): bool =
   ## Like `emitHostCallValue` but the bridge returns nothing meaningful:
   ## drop its dummy push. Net -nArgs, matching a pop-only op.
   let fn = findJitHostBridge(bridgeName)
   if fn == nil: return false
-  emitCallArgs(d, nArgs)
-  vancode_call_invoke(d, nArgs.cint, metaId, fn)
-  vancode_call_finish(d, jitCallDropBytes(nArgs).cint)
-  vancode_discard(d, 1)
+  emitCallArgsNim(a, nArgs)
+  ncallInvoke(a, nArgs, metaId.int, fn)
+  ncallFinish(a, jitCallDropBytes(nArgs))
+  ndiscard(a, 1)
   true
-
-when defined(vancodeJitNim):
-  ## Pure-Nim twins of the helpers above, for hosts extending the
-  ## `vmJitNim*EmitCase` anchors. Same contracts, `var Assembler` session.
-  proc emitConstPushNim*(a: var Assembler, cached: CachedOps, pc: int,
-      ch: Chunk, bridgeName: string): bool =
-    let fn = findJitHostBridge(bridgeName)
-    if fn == nil: return false
-    npushG(a, jitImmortalStr(cached.getArg1Str(pc, ch)), fn)
-    true
-
-  proc emitFloatPushNim*(a: var Assembler, cached: CachedOps, pc: int,
-      ch: Chunk, bridgeName: string): bool =
-    let fn = findJitHostBridge(bridgeName)
-    if fn == nil: return false
-    npushG(a, jitImmortalFloat(cached.getArg1Float(pc)), fn)
-    true
-
-  proc emitGlobalPushNim*(a: var Assembler, cached: CachedOps, pc: int,
-      ch: Chunk, bridgeName: string): bool =
-    let fn = findJitHostBridge(bridgeName)
-    if fn == nil: return false
-    npushG(a, jitImmortalStr(cached.getArg1Str(pc, ch)), fn)
-    true
-
-  proc emitGlobalPopNim*(a: var Assembler, cached: CachedOps, pc: int,
-      ch: Chunk, bridgeName: string): bool =
-    let fn = findJitHostBridge(bridgeName)
-    if fn == nil: return false
-    npopHost(a, jitImmortalStr(cached.getArg1Str(pc, ch)), fn)
-    true
-
-  proc emitHostCallValueNim*(a: var Assembler, nArgs: int,
-      bridgeName: string, metaId: int32): bool =
-    let fn = findJitHostBridge(bridgeName)
-    if fn == nil: return false
-    emitCallArgsNim(a, nArgs)
-    ncallInvoke(a, nArgs, metaId.int, fn)
-    ncallFinish(a, jitCallDropBytes(nArgs))
-    true
-
-  proc emitHostCallVoidNim*(a: var Assembler, nArgs: int,
-      bridgeName: string, metaId: int32): bool =
-    let fn = findJitHostBridge(bridgeName)
-    if fn == nil: return false
-    emitCallArgsNim(a, nArgs)
-    ncallInvoke(a, nArgs, metaId.int, fn)
-    ncallFinish(a, jitCallDropBytes(nArgs))
-    ndiscard(a, 1)
-    true
