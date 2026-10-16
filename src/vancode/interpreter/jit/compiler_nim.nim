@@ -330,6 +330,9 @@ proc compileProcNim*(vm: Vm, theProc: Proc,
     var stackDepth = 0
     var typeStack: seq[SlotKind] = @[]
     var localTypes: seq[SlotKind] = @[]
+    # Set to pc+1 when a self tail call consumes its trailing ReturnVal
+    # (dead after the loop back-edge): the return emits nothing.
+    var skipReturnAt = -1
     let callerMaxLocal = maxLocalFor(cached, theProc.paramCount)
     var inlineHigh = callerMaxLocal
     # Loop-carried float locals defeat single-pass typing (a use precedes
@@ -342,6 +345,23 @@ proc compileProcNim*(vm: Vm, theProc: Proc,
       if oc == opcJumpBack:
         hasBackEdge = true
         break
+    # Self tail calls (`return self(args)`) below become a jump to the
+    # proc top: a loop edge with no opcJumpBack. Reserve label 0 for it,
+    # and treat the body as a loop for the float-typing bail-outs (same
+    # single-pass hazard: a use precedes the pop re-establishing kind).
+    var hasSelfTail = false
+    for pc in 0 ..< opCount:
+      if cached.opcodes[pc] == opcCallD and
+          cached.arg2[pc].int == theProc.procId and
+          pc + 1 < opCount and cached.opcodes[pc + 1] == opcReturnVal and
+          pc notin labelForTarget and (pc + 1) notin labelForTarget:
+        hasSelfTail = true
+        break
+    if hasSelfTail:
+      hasBackEdge = true
+      if 0 notin labelForTarget:
+        labelForTarget[0] = nextLabel
+        inc nextLabel
 
     for pc in 0 ..< opCount:
       let oc = cached.opcodes[pc]
@@ -598,9 +618,14 @@ proc compileProcNim*(vm: Vm, theProc: Proc,
           let condKT = typeStack.tpop()
           typeStack.tpush(condKT)
         of opcReturnVal:
-          nreturnVal(jit.a)
-          dec stackDepth
-          discard typeStack.tpop()
+          if pc == skipReturnAt:
+            # Consumed by a self-tail back-edge above (dead after the
+            # jump): emit nothing, depth/types already match loop top.
+            skipReturnAt = -1
+          else:
+            nreturnVal(jit.a)
+            dec stackDepth
+            discard typeStack.tpop()
         of opcReturnVoid, opcHalt:
           nreturnVoid(jit.a)
         of opcNoop:
@@ -620,24 +645,48 @@ proc compileProcNim*(vm: Vm, theProc: Proc,
             # after finalize, so emit a hole and back-patch below.
             # Void callees leave nothing behind (FinishVoid), matching the
             # interpreter; anything else would leak a phantom slot.
-            if callee.nArgs > 0:
+            if pc + 1 < opCount and cached.opcodes[pc + 1] == opcReturnVal and
+                pc notin labelForTarget and (pc + 1) notin labelForTarget and
+                stackDepth - callee.nArgs == 0:
+              # Self tail call (`return self(args)`): reuse the frame as a
+              # loop. Statically nothing sits below the args (the depth
+              # check), and nothing jumps here or to the return (the label
+              # checks), so the args are exactly the top slots: pop them
+              # into the param slots and jump to the proc top instead of
+              # recursing natively (which would grow the machine stack one
+              # frame per lap). The trailing ReturnVal is dead after the
+              # jump: skip it, leaving depth/types as the loop top expects.
+              skipReturnAt = pc + 1
+              for ai in countdown(callee.nArgs - 1, 0):
+                npopL(jit.a, ai)
+              stackDepth -= callee.nArgs
+              for ai in 0 ..< callee.nArgs:
+                while localTypes.len <= ai: localTypes.add(skUnknown)
+                localTypes[ai] = kindFromTypeId(callArgKinds[ai])
+              njumpBack(jit.a, labelForTarget[0])
+            elif callee.nArgs > 0:
               emitCallArgsNim(jit.a, callee.nArgs)
               selfHoles.add(ncallSelfHole(jit.a, callee.nArgs))
               if callee.hasResult:
                 ncallFinish(jit.a, jitCallDropBytes(callee.nArgs))
               else:
                 ncallFinishVoid(jit.a, jitCallDropBytes(callee.nArgs))
+              # Native self-call consumes args and pushes result (if any).
+              stackDepth -= callee.nArgs
+              if callee.hasResult:
+                inc stackDepth
+                typeStack.tpush(theProc.procResultKind)
             else:
               selfHoles.add(ncallSelfHole(jit.a, 0))
               if callee.hasResult:
                 ncallFinish(jit.a, 0)
               else:
                 ncallFinishVoid(jit.a, 0)
-            # Native self-call consumes args and pushes result (if any).
-            stackDepth -= callee.nArgs
-            if callee.hasResult:
-              inc stackDepth
-              typeStack.tpush(theProc.procResultKind)
+              # Native self-call consumes args and pushes result (if any).
+              stackDepth -= callee.nArgs
+              if callee.hasResult:
+                inc stackDepth
+                typeStack.tpush(theProc.procResultKind)
           else:
             # Non-self call: try inline expansion first for tiny
             # straight-line leaf callees (e.g. a predicate called per loop

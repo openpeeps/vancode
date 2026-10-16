@@ -1340,6 +1340,32 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           if stack.len < p.paramCount:
             raise newException(ValueError,
               "Not enough arguments on stack for call to " & p.name & ": need " & $p.paramCount & ", have " & $stack.len)
+          # Hot-proc JIT: a tail loop never leaves this frame, so the
+          # compile trigger on the normal path below never fires for
+          # self-recursive procs (the count only ever equals the
+          # threshold here). Attempt compilation exactly once — nil
+          # keeps interpreting without retrying, same as below.
+          if p.jitForeign == nil and vm.jit.compileProcHook != nil and
+              p.jitCallCount == vm.preferences.hotProcThreshold:
+            let hookFn = vm.jit.compileProcHook(cast[pointer](vm),
+              cast[pointer](p))
+            if hookFn != nil:
+              p.jitForeign = hookFn
+          if p.jitForeign != nil:
+            # Run the whole remaining tail loop natively: self tail
+            # calls inside are a loop back-edge, so this returns the
+            # final value. Same frame discipline as the normal path.
+            storeFrame()
+            let callResult =
+              if p.paramCount > 0:
+                p.jitForeign(stack{^p.paramCount}, p.paramCount)
+              else:
+                p.jitForeign(nil, 0)
+            restoreFrame()
+            if p.hasResult:
+              stack.push(callResult)
+            inc(pcIdx)
+            continue
           stackBottom = stack.len - p.paramCount
           currentChunk = p.chunk
           let siteOpsTail = co.callSites[pcIdx].calleeOps
