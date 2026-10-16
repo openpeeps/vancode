@@ -11,10 +11,16 @@
 
 import ../[chunk, vm, value]
 import ./compiler_dynasm
+when defined(vancodeJitNim):
+  import ./compiler_nim
 
-proc compileProc*(vm: Vm, theProc: Proc): ForeignProc =
+proc compileProc*(vm: Vm, theProc: Proc,
+    isMain = false): ForeignProc =
   if theProc == nil or theProc.kind != pkNative or theProc.chunk == nil: return nil
-  compiler_dynasm.compileProc(vm, theProc)
+  when defined(vancodeJitNim):
+    compiler_nim.compileProcNim(vm, theProc, isMain)
+  else:
+    compiler_dynasm.compileProc(vm, theProc, isMain)
 
 proc compileMainHookImpl*(vm: Vm, script: Script, main: Chunk): ForeignProc =
   ## Eagerly JIT-compile a main chunk so hosts can run it natively instead
@@ -32,4 +38,4 @@ proc compileMainHookImpl*(vm: Vm, script: Script, main: Chunk): ForeignProc =
   # without an anchor the pointer would dangle. `Script.mainProc` exists
   # for exactly this and outlives the interpret() call using the closure.
   script.mainProc = fake
-  compiler_dynasm.compileProc(vm, fake, isMain = true)
+  compileProc(vm, fake, true)

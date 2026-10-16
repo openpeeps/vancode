@@ -874,3 +874,43 @@ proc ncallSelf*(a: var Assembler, nArgs: int, selfAddr: int64) =
       movk x16, p2, lsl, 32
       movk x16, p3, lsl, 48
       blr x16
+
+when defined(amd64):
+  proc ncallSelfHole*(a: var Assembler, nArgs: int): int =
+    ## Emit a self-call with a zero address; returns the final-buffer
+    ## offset of the 8-byte address field for `ncallSelfPatch`.
+    ncallSelf(a, nArgs, 0)
+    result = int(a.offset()) - 8
+    # movabs rax is REX.W + B8 + imm64; assert the shape so a future
+    # encoder change fails loudly instead of patching the wrong bytes.
+    assert a.staging[result - 2] == 0x48'u8
+    assert a.staging[result - 1] == 0xB8'u8
+
+  proc ncallSelfPatch*(base: pointer, hole: int, selfAddr: pointer) =
+    ## Write the self address into a hole recorded by `ncallSelfHole`.
+    ## Applies to the final buffer; the caller owns the RW/RX transitions.
+    let u = cast[uint64](selfAddr)
+    let dst = cast[ptr UncheckedArray[byte]](cast[int](base) + hole)
+    for i in 0 ..< 8:
+      dst[i] = cast[byte]((u shr (i * 8)) and 0xFF'u64)
+else:
+  proc ncallSelfHole*(a: var Assembler, nArgs: int): int =
+    ## Emit a self-call with a zero address; returns the final-buffer
+    ## offset of the 16-byte movz/movk sequence for `ncallSelfPatch`.
+    ncallSelf(a, nArgs, 0)
+    result = int(a.offset()) - 16
+    # movz x16 followed by 3x movk x16; op halfwords are fixed.
+    assert a.staging[result + 2] == 0x80'u8
+    assert a.staging[result + 3] == 0xD2'u8
+    for k in 1 ..< 4:
+      assert a.staging[result + k * 4 + 2] == 0x80'u8
+      assert a.staging[result + k * 4 + 3] == 0xF2'u8
+
+  proc ncallSelfPatch*(base: pointer, hole: int, selfAddr: pointer) =
+    ## Write the self address into a hole recorded by `ncallSelfHole`.
+    let u = cast[uint64](selfAddr)
+    let dst = cast[ptr UncheckedArray[byte]](cast[int](base) + hole)
+    for k in 0 ..< 4:
+      let chunk = (u shr (k * 16)) and 0xFFFF'u64
+      dst[k * 4] = cast[byte](chunk and 0xFF'u64)
+      dst[k * 4 + 1] = cast[byte]((chunk shr 8) and 0xFF'u64)

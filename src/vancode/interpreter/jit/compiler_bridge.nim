@@ -17,6 +17,9 @@ import ./jit_mem
 import ./jit_values
 export jit_values
 import ../[vm, value, chunk]
+when defined(vancodeJitNim):
+  import dynasm
+  import ./emit_nim
 
 const jitArm64* = defined(arm64) or defined(aarch64)
   ## True when the JIT host is ARM64. The ARM64 operand stack uses 16-byte
@@ -60,6 +63,19 @@ proc emitCallArgs*(d: ptr ptr dasm_State, nArgs: int) =
   else:
     for i in 0 ..< nArgs:
       vancode_call_move_one(d, (2 * nArgs * 8 - (i + 1) * 8).cint, (i * 8).cint)
+
+when defined(vancodeJitNim):
+  proc emitCallArgsNim*(a: var Assembler, nArgs: int) =
+    ## Pure-Nim twin of `emitCallArgs` (same layout contract, same
+    ## ARM64 16-byte-stride note). See `emitCallArgs` for the full story.
+    ncallAlloc(a, nArgs)
+    when jitArm64:
+      let alloc = jitCallAllocSize(nArgs)
+      for i in 0 ..< nArgs:
+        ncallMoveOne(a, alloc + (nArgs - 1 - i) * 16, i * 8)
+    else:
+      for i in 0 ..< nArgs:
+        ncallMoveOne(a, 2 * nArgs * 8 - (i + 1) * 8, i * 8)
 
 var jitFnTable*: array[65536, pointer]
 var jitProcTable*: array[65536, pointer]
@@ -280,6 +296,17 @@ const jitCodeBufReuseSize* = 128 * 1024
 var jitLiveCodeBufs: seq[tuple[p: pointer, size: int]] = @[]
 var jitSpareCodeBuf: pointer = nil
 
+when defined(vancodeJitNim):
+  var jitLiveNimBufs: seq[ExecutableBuffer] = @[]
+
+  proc jitTrackNimBuf*(buf: ExecutableBuffer) =
+    ## Register a live pure-Nim JIT buffer of the current generation.
+    ## Compilers call this exactly once per buffer they hand out.
+    if buf.mem == nil: return
+    for b in jitLiveNimBufs:
+      if b.mem == buf.mem: return
+    jitLiveNimBufs.add(buf)
+
 proc jitTrackCodeBuf*(p: pointer, size: int) =
   ## Register a live native code buffer of the current generation.
   ## Compilers call this exactly once per buffer they hand out; buffers
@@ -321,6 +348,10 @@ proc resetJitState*() =
     else:
       freeJitCode(p, size)
   jitLiveCodeBufs.setLen(0)
+  when defined(vancodeJitNim):
+    for i in 0 ..< jitLiveNimBufs.len:
+      jitLiveNimBufs[i].destroy()
+    jitLiveNimBufs.setLen(0)
   resetJitTables()
   resetJitHostMeta()
   for _, p in jitFloatConsts:

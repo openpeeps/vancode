@@ -14,6 +14,8 @@ import pkg/threading/channels
 import std/tables
 import ../[chunk, vm, value]
 import ./compiler, ./cache, ./compiler_bridge, ./compiler_trace, ./trace_types, ./jit_mem, ./dynasm/wrapper
+when defined(vancodeJitNim):
+  import ./compiler_nim
 
 var globalBackend {.global.}: pointer = nil
 var globalVm {.global.}: Vm = nil
@@ -26,7 +28,10 @@ proc detectRecursiveAndCompile*(vm: Vm; enableJit: bool = true) =
       if p.kind == pkNative and p.chunk != nil and p.jitForeign == nil:
         let cached = vm.getCachedOps(p.chunk)
         if cached != nil and hasBinaryRecursiveArith(cached):
-          let code = compileRecursiveIterative(cached)
+          when defined(vancodeJitNim):
+            let code = compileRecursiveIterativeNim(cached)
+          else:
+            let code = compileRecursiveIterative(cached)
           if code != nil:
             let nLocals = p.paramCount
             type JitFn = proc (locals: ptr int64, count: cint): int64 {.cdecl.}
@@ -45,7 +50,8 @@ proc installJit*(vm: Vm) =
   globalBackend = cast[pointer](1)
   globalVm = vm
   setJitVm(vm)
-  compileProcHook = compileProc
+  compileProcHook = proc (vm: Vm, theProc: Proc): ForeignProc {.nimcall.} =
+    compileProc(vm, theProc)
   jitRecompileHook = nil
   vm.jit = JitHooks(
     getForeign: nil,
@@ -58,7 +64,10 @@ proc installJit*(vm: Vm) =
     # per generation.
     compileTrace: proc (trace: pointer): pointer =
       let tb = cast[TraceBuffer](trace)
-      result = compileTrace(globalVm, tb),
+      when defined(vancodeJitNim):
+        result = compileTraceNim(globalVm, tb)
+      else:
+        result = compileTrace(globalVm, tb),
     compileProcHook: proc (vmPtr: pointer, procPtr: pointer): ForeignProc {.nimcall.} =
       compileProc(cast[Vm](vmPtr), cast[Proc](procPtr)),
     compileMainHook: proc (vmPtr: pointer, scriptPtr: pointer,

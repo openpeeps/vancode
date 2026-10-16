@@ -20,6 +20,9 @@ import pkg/voodoo/extensibles
 import ./dynasm/wrapper
 import ./compiler_bridge
 import ../[vm, value, chunk]
+when defined(vancodeJitNim):
+  import dynasm
+  import ./emit_nim
 
 ## Re-exported from `compiler_bridge`, which owns the table so the
 ## shared `resetJitState` can clear it without an import cycle.
@@ -100,3 +103,53 @@ proc emitHostCallVoid*(d: ptr ptr dasm_State, nArgs: int,
   vancode_call_finish(d, jitCallDropBytes(nArgs).cint)
   vancode_discard(d, 1)
   true
+
+when defined(vancodeJitNim):
+  ## Pure-Nim twins of the helpers above, for hosts extending the
+  ## `vmJitNim*EmitCase` anchors. Same contracts, `var Assembler` session.
+  proc emitConstPushNim*(a: var Assembler, cached: CachedOps, pc: int,
+      ch: Chunk, bridgeName: string): bool =
+    let fn = findJitHostBridge(bridgeName)
+    if fn == nil: return false
+    npushG(a, jitImmortalStr(cached.getArg1Str(pc, ch)), fn)
+    true
+
+  proc emitFloatPushNim*(a: var Assembler, cached: CachedOps, pc: int,
+      ch: Chunk, bridgeName: string): bool =
+    let fn = findJitHostBridge(bridgeName)
+    if fn == nil: return false
+    npushG(a, jitImmortalFloat(cached.getArg1Float(pc)), fn)
+    true
+
+  proc emitGlobalPushNim*(a: var Assembler, cached: CachedOps, pc: int,
+      ch: Chunk, bridgeName: string): bool =
+    let fn = findJitHostBridge(bridgeName)
+    if fn == nil: return false
+    npushG(a, jitImmortalStr(cached.getArg1Str(pc, ch)), fn)
+    true
+
+  proc emitGlobalPopNim*(a: var Assembler, cached: CachedOps, pc: int,
+      ch: Chunk, bridgeName: string): bool =
+    let fn = findJitHostBridge(bridgeName)
+    if fn == nil: return false
+    npopHost(a, jitImmortalStr(cached.getArg1Str(pc, ch)), fn)
+    true
+
+  proc emitHostCallValueNim*(a: var Assembler, nArgs: int,
+      bridgeName: string, metaId: int32): bool =
+    let fn = findJitHostBridge(bridgeName)
+    if fn == nil: return false
+    emitCallArgsNim(a, nArgs)
+    ncallInvoke(a, nArgs, metaId.int, fn)
+    ncallFinish(a, jitCallDropBytes(nArgs))
+    true
+
+  proc emitHostCallVoidNim*(a: var Assembler, nArgs: int,
+      bridgeName: string, metaId: int32): bool =
+    let fn = findJitHostBridge(bridgeName)
+    if fn == nil: return false
+    emitCallArgsNim(a, nArgs)
+    ncallInvoke(a, nArgs, metaId.int, fn)
+    ncallFinish(a, jitCallDropBytes(nArgs))
+    ndiscard(a, 1)
+    true
