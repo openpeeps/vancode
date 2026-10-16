@@ -16,6 +16,9 @@ when not defined(amd64) and not defined(arm64):
   {.error: "vancode Nim JIT needs amd64 or arm64".}
 
 import dynasm
+import ../value
+import ./jit_layout
+import ./jit_values
 
 type
   NimJit* = object
@@ -557,7 +560,8 @@ proc npushG*(a: var Assembler, namePtr: pointer, bridgeFn: pointer) =
       blr x16
       str x0, [sp, -16], pre
 
-proc npopG*(a: var Assembler, namePtr: pointer, bridgeFn: pointer) =
+proc npopG*(a: var Assembler, namePtr: pointer, bridgeFn: pointer,
+    kind: int32) =
   let nameAddr = cast[int64](namePtr)
   let bridgeAddr = cast[int64](bridgeFn)
   when defined(amd64):
@@ -565,7 +569,7 @@ proc npopG*(a: var Assembler, namePtr: pointer, bridgeFn: pointer) =
       arch x64
       pop rsi
       movabs rdi, nameAddr
-      mov edx, 2
+      mov edx, kind
       movabs rax, bridgeAddr
       call rax
   else:
@@ -584,7 +588,7 @@ proc npopG*(a: var Assembler, namePtr: pointer, bridgeFn: pointer) =
       movk x0, p1, lsl, 16
       movk x0, p2, lsl, 32
       movk x0, p3, lsl, 48
-      mov x2, 2
+      mov x2, kind
       movz x16, r0
       movk x16, r1, lsl, 16
       movk x16, r2, lsl, 32
@@ -846,6 +850,21 @@ proc ncallFinish*(a: var Assembler, dropBytes: int) =
       add sp, sp, x9
       str x0, [sp, -16], pre
 
+proc ncallFinishVoid*(a: var Assembler, dropBytes: int) =
+  ## Like `ncallFinish` but pushes nothing: for `CallD` to a `void` callee
+  ## (e.g. `array.add`), where the interpreter leaves no result behind.
+  ## Emitting the pushing variant here would leak one phantom slot per
+  ## call and corrupt the native operand stack.
+  when defined(amd64):
+    dynasm a:
+      arch x64
+      add rsp, dropBytes
+  else:
+    dynasm a:
+      arch aarch64
+      mov x9, dropBytes
+      add sp, sp, x9
+
 proc ncallSelf*(a: var Assembler, nArgs: int, selfAddr: int64) =
   ## selfAddr is the final JIT buffer address. When it is not known
   ## yet, pass 0 and patch the movabs afterwards (see Phase 3).
@@ -914,3 +933,376 @@ else:
       let chunk = (u shr (k * 16)) and 0xFFFF'u64
       dst[k * 4] = cast[byte](chunk and 0xFF'u64)
       dst[k * 4 + 1] = cast[byte]((chunk shr 8) and 0xFF'u64)
+
+proc ngetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
+  ## Indexed load `a[i]`: inline tagged-array/int-index/int-element fast
+  ## path, slow bridge otherwise. Net stack effect -1. Labels are
+  ## pc-suffixed (`pc` is unique per session). `kinds` packs the
+  ## compiler-baked slot kinds (arr in bits 0-7, idx in bits 8-15) for
+  ## the slow bridge, which reproduces `opcGetI` semantics exactly.
+  let slowLbl = "giS" & $pc
+  let doneLbl = "giD" & $pc
+  let slowAddr = cast[int64](slowFn)
+  let ringBase = jitRingBase()
+  let epochBase = jitRingEpochBase()
+  when defined(amd64):
+    dynasm a:
+      arch x64
+      pop r12
+      pop rsi
+      mov rax, rsi
+      `shr` rax, 32
+      test eax, eax
+      jz fwd(slowLbl)
+      mov ecx, esi
+      `and` ecx, jitRingMask
+      `shl` rcx, 3
+      movabs r8, ringBase
+      add r8, rcx
+      mov r9, [r8]
+      `shr` rcx, 1
+      movabs r8, epochBase
+      add r8, rcx
+      cmp [r8], eax
+      jne fwd(slowLbl)
+      mov rax, [r9]
+      cmp rax, tyArrayObject
+      jne fwd(slowLbl)
+      mov r8, [r9 + offValObj]
+      test r8, r8
+      jz fwd(slowLbl)
+      cmp byte [r8], 0
+      jne fwd(slowLbl)
+      mov r10, [r8 + offObjFields]
+      cmp r12, 0
+      jl fwd(slowLbl)
+      cmp r12, r10
+      jge fwd(slowLbl)
+      mov r8, [r8 + offObjFieldsPtr]
+      test r8, r8
+      jz fwd(slowLbl)
+      mov r10, r12
+      `shl` r10, 4
+      add r10, r8
+      add r10, blockDataOff
+      mov rax, [r10]
+      cmp rax, tyInt
+      jne fwd(slowLbl)
+      mov rax, [r10 + offVsInt]
+      push rax
+      jmp fwd(doneLbl)
+    a.localLabel(slowLbl)
+    dynasm a:
+      arch x64
+      mov rdi, rsi
+      mov rsi, r12
+      mov edx, kinds
+      push rbx
+      mov rbx, rsp
+      `and` rsp, -16
+      movabs rax, slowAddr
+      call rax
+      mov rsp, rbx
+      pop rbx
+      push rax
+    a.localLabel(doneLbl)
+  else:
+    let rb0 = int(cast[uint64](ringBase) and 0xFFFF'u64)
+    let rb1 = int((cast[uint64](ringBase) shr 16) and 0xFFFF'u64)
+    let rb2 = int((cast[uint64](ringBase) shr 32) and 0xFFFF'u64)
+    let rb3 = int((cast[uint64](ringBase) shr 48) and 0xFFFF'u64)
+    let eb0 = int(cast[uint64](epochBase) and 0xFFFF'u64)
+    let eb1 = int((cast[uint64](epochBase) shr 16) and 0xFFFF'u64)
+    let eb2 = int((cast[uint64](epochBase) shr 32) and 0xFFFF'u64)
+    let eb3 = int((cast[uint64](epochBase) shr 48) and 0xFFFF'u64)
+    let sb0 = int(cast[uint64](slowAddr) and 0xFFFF'u64)
+    let sb1 = int((cast[uint64](slowAddr) shr 16) and 0xFFFF'u64)
+    let sb2 = int((cast[uint64](slowAddr) shr 32) and 0xFFFF'u64)
+    let sb3 = int((cast[uint64](slowAddr) shr 48) and 0xFFFF'u64)
+    let kk0 = int(kinds and 0xFFFF)
+    dynasm a:
+      arch aarch64
+      ldr x9, [sp], 16
+      ldr x10, [sp], 16
+      lsr x11, x10, 32
+      cbz x11, fwd(slowLbl)
+      `and` x12, x10, jitRingMask
+      lsl x12, x12, 3
+      movz x13, rb0
+      movk x13, rb1, lsl, 16
+      movk x13, rb2, lsl, 32
+      movk x13, rb3, lsl, 48
+      add x13, x13, x12
+      ldr x14, [x13]
+      lsr x12, x12, 1
+      movz x13, eb0
+      movk x13, eb1, lsl, 16
+      movk x13, eb2, lsl, 32
+      movk x13, eb3, lsl, 48
+      add x13, x13, x12
+      ldr w14, [x13]
+      cmp w14, w11
+      b.ne fwd(slowLbl)
+      ldr x13, [x14]
+      cmp x13, tyArrayObject
+      b.ne fwd(slowLbl)
+      ldr x13, [x14, offValObj]
+      cbz x13, fwd(slowLbl)
+      ldrb w14, [x13]
+      cbnz w14, fwd(slowLbl)
+      ldr x14, [x13, offObjFields]
+      cmp x9, 0
+      b.lt fwd(slowLbl)
+      cmp x9, x14
+      b.ge fwd(slowLbl)
+      ldr x15, [x13, offObjFieldsPtr]
+      cbz x15, fwd(slowLbl)
+      lsl x14, x9, 4
+      add x14, x14, x15
+      add x14, x14, blockDataOff
+      ldr x11, [x14]
+      cmp x11, tyInt
+      b.ne fwd(slowLbl)
+      ldr x11, [x14, offVsInt]
+      str x11, [sp, -16], pre
+      b fwd(doneLbl)
+    a.localLabel(slowLbl)
+    dynasm a:
+      arch aarch64
+      mov x0, x10
+      mov x1, x9
+      movz x2, kk0
+      movz x16, sb0
+      movk x16, sb1, lsl, 16
+      movk x16, sb2, lsl, 32
+      movk x16, sb3, lsl, 48
+      blr x16
+      str x0, [sp, -16], pre
+    a.localLabel(doneLbl)
+
+proc nsetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
+  ## Indexed store `a[i] = v`: inline fast path when the compiler proves
+  ## the stored value is int/bool (raw slot stored with the matching tag),
+  ## slow bridge otherwise. Net stack effect -3 (pops val+idx+arr).
+  ## Guard chain (container resolve, bounds) is identical to `ngetI`.
+  let slowLbl = "siS" & $pc
+  let doneLbl = "siD" & $pc
+  let slowAddr = cast[int64](slowFn)
+  let valKind = ((kinds shr 16) and 0xFF).int32
+  let ringBase = jitRingBase()
+  let epochBase = jitRingEpochBase()
+  when defined(amd64):
+    if valKind == tyInt.int32 or valKind == tyBool.int32:
+      dynasm a:
+        arch x64
+        pop r11
+        pop r12
+        pop rsi
+        mov rax, rsi
+        `shr` rax, 32
+        test eax, eax
+        jz fwd(slowLbl)
+        mov ecx, esi
+        `and` ecx, jitRingMask
+        `shl` rcx, 3
+        movabs r8, ringBase
+        add r8, rcx
+        mov r9, [r8]
+        `shr` rcx, 1
+        movabs r8, epochBase
+        add r8, rcx
+        cmp [r8], eax
+        jne fwd(slowLbl)
+        mov rax, [r9]
+        cmp rax, tyArrayObject
+        jne fwd(slowLbl)
+        mov r8, [r9 + offValObj]
+        test r8, r8
+        jz fwd(slowLbl)
+        cmp byte [r8], 0
+        jne fwd(slowLbl)
+        mov r10, [r8 + offObjFields]
+        cmp r12, 0
+        jl fwd(slowLbl)
+        cmp r12, r10
+        jge fwd(slowLbl)
+        mov r8, [r8 + offObjFieldsPtr]
+        test r8, r8
+        jz fwd(slowLbl)
+        mov r10, r12
+        `shl` r10, 4
+        add r10, r8
+        add r10, blockDataOff
+        mov rax, valKind
+        mov [r10], rax
+        mov [r10 + offVsInt], r11
+        jmp fwd(doneLbl)
+      a.localLabel(slowLbl)
+      dynasm a:
+        arch x64
+        mov rdi, rsi
+        mov rsi, r12
+        mov rdx, r11
+        mov ecx, kinds
+        push rbx
+        mov rbx, rsp
+        `and` rsp, -16
+        movabs rax, slowAddr
+        call rax
+        mov rsp, rbx
+        pop rbx
+      a.localLabel(doneLbl)
+    else:
+      dynasm a:
+        arch x64
+        pop r11
+        pop r12
+        pop rsi
+        mov rdi, rsi
+        mov rsi, r12
+        mov rdx, r11
+        mov ecx, kinds
+        push rbx
+        mov rbx, rsp
+        `and` rsp, -16
+        movabs rax, slowAddr
+        call rax
+        mov rsp, rbx
+        pop rbx
+  else:
+    let rb0 = int(cast[uint64](ringBase) and 0xFFFF'u64)
+    let rb1 = int((cast[uint64](ringBase) shr 16) and 0xFFFF'u64)
+    let rb2 = int((cast[uint64](ringBase) shr 32) and 0xFFFF'u64)
+    let rb3 = int((cast[uint64](ringBase) shr 48) and 0xFFFF'u64)
+    let eb0 = int(cast[uint64](epochBase) and 0xFFFF'u64)
+    let eb1 = int((cast[uint64](epochBase) shr 16) and 0xFFFF'u64)
+    let eb2 = int((cast[uint64](epochBase) shr 32) and 0xFFFF'u64)
+    let eb3 = int((cast[uint64](epochBase) shr 48) and 0xFFFF'u64)
+    let sb0 = int(cast[uint64](slowAddr) and 0xFFFF'u64)
+    let sb1 = int((cast[uint64](slowAddr) shr 16) and 0xFFFF'u64)
+    let sb2 = int((cast[uint64](slowAddr) shr 32) and 0xFFFF'u64)
+    let sb3 = int((cast[uint64](slowAddr) shr 48) and 0xFFFF'u64)
+    let kk0 = int(kinds and 0xFFFF)
+    let kk1 = int((kinds shr 16) and 0xFFFF)
+    if valKind == tyInt.int32 or valKind == tyBool.int32:
+      dynasm a:
+        arch aarch64
+        ldr x9, [sp], 16
+        ldr x10, [sp], 16
+        ldr x11, [sp], 16
+        lsr x12, x11, 32
+        cbz x12, fwd(slowLbl)
+        `and` x13, x11, jitRingMask
+        lsl x13, x13, 3
+        movz x14, rb0
+        movk x14, rb1, lsl, 16
+        movk x14, rb2, lsl, 32
+        movk x14, rb3, lsl, 48
+        add x14, x14, x13
+        ldr x15, [x14]
+        lsr x13, x13, 1
+        movz x14, eb0
+        movk x14, eb1, lsl, 16
+        movk x14, eb2, lsl, 32
+        movk x14, eb3, lsl, 48
+        add x14, x14, x13
+        ldr w14, [x14]
+        cmp w14, w12
+        b.ne fwd(slowLbl)
+        ldr x14, [x15]
+        cmp x14, tyArrayObject
+        b.ne fwd(slowLbl)
+        ldr x14, [x15, offValObj]
+        cbz x14, fwd(slowLbl)
+        ldrb w15, [x14]
+        cbnz w15, fwd(slowLbl)
+        ldr x15, [x14, offObjFields]
+        cmp x10, 0
+        b.lt fwd(slowLbl)
+        cmp x10, x15
+        b.ge fwd(slowLbl)
+        ldr x14, [x14, offObjFieldsPtr]
+        cbz x14, fwd(slowLbl)
+        lsl x15, x10, 4
+        add x15, x15, x14
+        add x15, x15, blockDataOff
+        mov x14, valKind
+        str x14, [x15]
+        str x9, [x15, offVsInt]
+        b fwd(doneLbl)
+      a.localLabel(slowLbl)
+      dynasm a:
+        arch aarch64
+        mov x0, x11
+        mov x1, x10
+        mov x2, x9
+        movz x3, kk0
+        movk x3, kk1, lsl, 16
+        movz x16, sb0
+        movk x16, sb1, lsl, 16
+        movk x16, sb2, lsl, 32
+        movk x16, sb3, lsl, 48
+        blr x16
+      a.localLabel(doneLbl)
+    else:
+      dynasm a:
+        arch aarch64
+        ldr x9, [sp], 16
+        ldr x10, [sp], 16
+        ldr x11, [sp], 16
+        mov x0, x11
+        mov x1, x10
+        mov x2, x9
+        movz x3, kk0
+        movk x3, kk1, lsl, 16
+        movz x16, sb0
+        movk x16, sb1, lsl, 16
+        movk x16, sb2, lsl, 32
+        movk x16, sb3, lsl, 48
+        blr x16
+
+proc ncallInvokeTyped*(a: var Assembler, nArgs: int, procId: int,
+    bridgeFn: pointer, typesPtr: pointer) =
+  ## Like `ncallInvoke` but passes a baked arg-kind array (`jitImmortalTypes`)
+  ## so the bridge boxes raw slots with exact types (int/bool/float) instead
+  ## of defaulting everything to `tyInt`. Nil `typesPtr` == `ncallInvoke`.
+  let bridgeAddr = cast[int64](bridgeFn)
+  let typesAddr = cast[int64](typesPtr)
+  when defined(amd64):
+    dynasm a:
+      arch x64
+      push rbx
+      mov rbx, rsp
+      `and` rsp, -16
+      lea rsi, [rbx + 8]
+      mov edx, nArgs
+      movabs rcx, typesAddr
+      mov edi, procId
+      movabs rax, bridgeAddr
+      call rax
+      mov rsp, rbx
+      pop rbx
+  else:
+    let r0 = int(cast[uint64](bridgeFn) and 0xFFFF'u64)
+    let r1 = int((cast[uint64](bridgeFn) shr 16) and 0xFFFF'u64)
+    let r2 = int((cast[uint64](bridgeFn) shr 32) and 0xFFFF'u64)
+    let r3 = int((cast[uint64](bridgeFn) shr 48) and 0xFFFF'u64)
+    let t0 = int(cast[uint64](typesAddr) and 0xFFFF'u64)
+    let t1 = int((cast[uint64](typesAddr) shr 16) and 0xFFFF'u64)
+    let t2 = int((cast[uint64](typesAddr) shr 32) and 0xFFFF'u64)
+    let t3 = int((cast[uint64](typesAddr) shr 48) and 0xFFFF'u64)
+    dynasm a:
+      arch aarch64
+      mov x20, sp
+      mov x2, nArgs
+      movz x3, t0
+      movk x3, t1, lsl, 16
+      movk x3, t2, lsl, 32
+      movk x3, t3, lsl, 48
+      mov x0, procId
+      mov x1, x20
+      movz x16, r0
+      movk x16, r1, lsl, 16
+      movk x16, r2, lsl, 32
+      movk x16, r3, lsl, 48
+      blr x16

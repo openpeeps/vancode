@@ -34,6 +34,7 @@ type
     chunk*: pointer     # raw Chunk pointer (for string table access)
     selfProcId*: int    # procId for self-recursive call detection (-1 = none)
     selfParamCount*: int  # param count for self-recursive calls
+    selfHasResult*: bool  # whether a self-call leaves a result behind
     failKind*: TraceFailKind  # set by compileTrace on failure (tfNone = ok)
 
   TraceExitReason* = enum

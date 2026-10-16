@@ -162,6 +162,8 @@ proc jitImmortalFloat*(f: float64): pointer =
 
 var jitStrConsts = initTable[string, pointer]()
 
+var jitTypesTable = initTable[string, pointer]()
+
 proc jitImmortalStr*(s: string): pointer =
   ## Immortal C string cache for baking string constants into JIT code.
   ## Shared-alloc memory never moves and is never freed; bounded by the
@@ -209,31 +211,33 @@ proc setJitVm*(vm: Vm) =
   jitGlobalVm = vm
 
 proc jitBridgePushG*(namePtr: pointer): int64 {.cdecl, exportc.} =
-  ## JIT bridge: push a global variable value by name
-  let name = cast[cstring](namePtr)
-  if name == nil: return 0
-  let h = hash($name).uint32
-  for i in 0..<jitGlobalsCount:
-    if jitGlobalsKeys[i] == h:
-      return jitGlobalsVals[i]
-  0
+  ## JIT bridge: push a global variable value by name. Reads the LIVE
+  ## `vm.globals` table on every call (never the snapshot cache, which
+  ## would go stale the moment either side writes): ints/bools travel raw,
+  ## everything else as a fresh tagged ring index — the same convention as
+  ## every other native-stack producer. Missing keys raise exactly like
+  ## the interpreter's `opcPushG` (`Table.[]`).
+  if jitGlobalVm == nil: return 0
+  let name = $cast[cstring](namePtr)
+  let v = jitGlobalVm.globals[name]
+  if v == nil:
+    return jitRootValue(nil)
+  case v.typeId
+  of tyInt: result = v.intVal
+  of tyBool: result = v.boolVal.ord.int64
+  else: result = jitRootValue(v)
 
 proc jitBridgePopG*(namePtr: pointer, val: int64, typeId: int32) {.cdecl, exportc.} =
-  ## JIT bridge: pop a value into a global variable by name
-  let name = cast[cstring](namePtr)
-  if name == nil: return
-  let h = hash($name).uint32
-  for i in 0..<jitGlobalsCount:
-    if jitGlobalsKeys[i] == h:
-      jitGlobalsVals[i] = val
-      jitGlobalsTypes[i] = typeId
-      return
-  # New global: add it
-  if jitGlobalsCount < 256:
-    jitGlobalsKeys[jitGlobalsCount] = h
-    jitGlobalsVals[jitGlobalsCount] = val
-    jitGlobalsTypes[jitGlobalsCount] = typeId
-    inc jitGlobalsCount
+  ## JIT bridge: pop a value into a global by name, writing the LIVE table
+  ## so the interpreter observes it. `typeId` is the compiler-baked slot
+  ## kind; live tagged slots resolve first, raw slots box by kind.
+  if jitGlobalVm == nil: return
+  let name = $cast[cstring](namePtr)
+  let (rv, rok) = jitTryUnroot(val)
+  if rok:
+    jitGlobalVm.globals[name] = rv
+  else:
+    jitGlobalVm.globals[name] = jitSlotToValue(val, typeId)
 
 proc findProcById*(procId: int): Proc =
   ## Find a Proc by its procId across all imported modules
@@ -318,6 +322,9 @@ proc resetJitState*() =
   for _, p in jitFloatConsts:
     deallocShared(p)
   jitFloatConsts.clear()
+  for _, p in jitTypesTable:
+    deallocShared(p)
+  jitTypesTable.clear()
   for _, p in jitStrConsts:
     deallocShared(p)
   jitStrConsts.clear()
@@ -387,6 +394,71 @@ proc jitBridgeSetItem*(arrVal: int64, index: int64, valPtr: int64) {.cdecl, expo
   let vs = cast[Value](valPtr)
   if vs != nil:
     arr.objectVal.fields[index.int] = vs.toStorage
+
+proc jitGetItemSlow*(arrSlot, idxSlot: int64, kinds: int32): int64 {.cdecl, exportc.} =
+  ## Slow path for JIT `GetI`: byte-for-byte interpreter semantics
+  ## (`opcGetI`), including raised defects on bad containers/indices.
+  ## The inline fast path handles tagged-array/int-index/int-element;
+  ## everything else lands here. `kinds` packs compiler-baked slot kinds
+  ## (arr in bits 0-7, idx in bits 8-15) so exotic slots resolve exactly.
+  ## Resolve-first: a live tagged index always wins over the baked kind,
+  ## so untyped `CallD` results flowing in here still behave.
+  let (av, aok) = jitTryUnroot(arrSlot)
+  let arr =
+    if aok: av
+    else: jitSlotToValue(arrSlot, kinds and 0xFF)
+  let (iv, iok) = jitTryUnroot(idxSlot)
+  let idxV =
+    if iok: iv
+    else: jitSlotToValue(idxSlot, (kinds shr 8) and 0xFF)
+  result = jitPackResult(arr.objectVal.fields[idxV.intVal].toValue)
+
+proc jitSetItemSlow*(arrSlot, idxSlot, valSlot: int64,
+    kinds: int32): int64 {.cdecl, exportc.} =
+  ## Slow path for JIT `SetI`: mirrors the `opcSetI` store switch exactly.
+  ## `kinds` packs arr/idx/val slot kinds (bits 0-7/8-15/16-23).
+  let (av, aok) = jitTryUnroot(arrSlot)
+  let arr =
+    if aok: av
+    else: jitSlotToValue(arrSlot, kinds and 0xFF)
+  let (iv, iok) = jitTryUnroot(idxSlot)
+  let idxV =
+    if iok: iv
+    else: jitSlotToValue(idxSlot, (kinds shr 8) and 0xFF)
+  let (vv0, vok) = jitTryUnroot(valSlot)
+  let vv =
+    if vok: vv0
+    else: jitSlotToValue(valSlot, (kinds shr 16) and 0xFF)
+  let idx = idxV.intVal
+  case vv.typeId
+  of tyInt:
+    arr.objectVal.fields[idx] = ValueStorage(typeId: tyInt, intVal: vv.intVal)
+  of tyBool:
+    arr.objectVal.fields[idx] = ValueStorage(typeId: tyBool, boolVal: vv.boolVal)
+  of tyFloat:
+    arr.objectVal.fields[idx] = ValueStorage(typeId: tyFloat, floatVal: vv.floatVal)
+  of tyNil:
+    arr.objectVal.fields[idx] = ValueStorage(typeId: tyNil)
+  else:
+    arr.objectVal.fields[idx] = ValueStorage(typeId: vv.typeId, refVal: vv)
+  result = 0
+
+proc jitImmortalTypes*(kinds: openArray[int32]): pointer =
+  ## Immortal per-`CallD`-site arg-kind array for typed native calls
+  ## (mirrors `jitImmortalFloat`). Content-deduplicated; freed at
+  ## `resetJitState`. Nil for empty input.
+  if kinds.len == 0: return nil
+  var key = newStringOfCap(kinds.len * 4)
+  for k in kinds:
+    key.add(cast[char](k and 0xFF))
+    key.add(cast[char]((k shr 8) and 0xFF))
+    key.add(cast[char]((k shr 16) and 0xFF))
+    key.add(cast[char]((k shr 24) and 0xFF))
+  if key in jitTypesTable: return jitTypesTable[key]
+  let p = allocShared0(kinds.len * 4)
+  copyMem(p, unsafeAddr kinds[0], kinds.len * 4)
+  jitTypesTable[key] = p
+  result = p
 
 proc jitBridgeConstrObj*(count: int32, flatArgs: ptr int64): int64 {.cdecl, exportc.} =
   ## JIT bridge: construct an object from flat arg array (positional values, no keys).

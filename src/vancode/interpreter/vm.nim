@@ -235,7 +235,11 @@ proc markHot(vm: Vm, currentChunk: Chunk) =
     vm.hotCounts.mgetOrPut($currentChunk, 0).inc
 
 proc markHotProc(vm: Vm, theProc: Proc) =
-  if vm.preferences.enableHotCodeDetection and theProc != nil:
+  # Only native procs can JIT-compile (threshold + queue below); foreign
+  # calls (e.g. `len` in a hot loop, millions of hits) skip the accounting
+  # table entirely instead of burning a string hash per call.
+  if vm.preferences.enableHotCodeDetection and theProc != nil and
+      theProc.kind == pkNative:
     theProc.jitCallCount.inc
     vm.hotProcCounts.mgetOrPut(theProc.name, 0).inc
     if theProc.jitCallCount == vm.preferences.hotProcThreshold:
@@ -730,9 +734,11 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
           if nidx + 1 > traceNumLocals: traceNumLocals = nidx + 1
         if notTakenOc notin {opcPushI, opcPushTrue, opcPushFalse, opcPushNil,
                              opcPushL, opcPopL, opcIncL, opcDecL,
+                             opcPushG, opcPopG,
                              opcAddI, opcSubI, opcMultI, opcDivI, opcModI, opcNegI,
                              opcEqI, opcLessI, opcGreaterI,
                              opcInvB, opcDiscard,
+                             opcGetI, opcSetI,
                              opcJumpFwd, opcJumpFwdF, opcJumpFwdT,
                              opcReturnVal, opcReturnVoid, opcHalt, opcNoop}:
           traceState = tsIdle
@@ -757,9 +763,11 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
               traceNumLocals = idx + 1
           if oc notin {opcPushI, opcPushTrue, opcPushFalse, opcPushNil,
                        opcPushL, opcPopL, opcIncL, opcDecL,
+                       opcPushG, opcPopG,
                        opcAddI, opcSubI, opcMultI, opcDivI, opcModI, opcNegI,
                        opcEqI, opcLessI, opcGreaterI,
                        opcInvB, opcDiscard,
+                       opcGetI, opcSetI,
                        opcJumpFwd, opcJumpFwdF, opcJumpFwdT, opcJumpBack,
                        opcCallD, opcReturnVal, opcReturnVoid, opcHalt,
                        opcNoop}:
@@ -1129,7 +1137,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         let tgt = co.jumpTargets[pcIdx]
         if tgt >= 0:
           when defined(vancodeJitNim):
-            if traceState == tsIdle and vm.preferences.enableHotCodeDetection and vm.traceCache != nil and vm.traceCache.have(tgt, cast[pointer](currentChunk)):
+            if traceState == tsIdle and vm.preferences.enableHotCodeDetection and vm.traceCache != nil and vm.traceCache.probe(tgt, cast[pointer](currentChunk)) == 1:
               let entry = vm.traceCache.get(tgt, cast[pointer](currentChunk))
               let numLocals = entry.numLocals
               if traceFlatLocals.len < numLocals:
@@ -1141,18 +1149,37 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                   if idx < stack.len: stack[idx].typeId
                   else: tyInt
                 traceFlatLocals[i] =
-                  if idx < stack.len and stack[idx].typeId == tyInt: stack[idx].intVal
+                  if idx < stack.len:
+                    case stack[idx].typeId
+                    of tyInt: stack[idx].intVal
+                    of tyBool: stack[idx].boolVal.ord.int64
+                    else: jitRootValue(stack[idx])
                   else: 0
               type TraceFn = proc (locals: ptr int64, count: cint): int64 {.cdecl.}
               let fnPtr = cast[TraceFn](entry.code)
-              discard fnPtr(addr traceFlatLocals[0], numLocals.cint)
+              if numLocals > 0:
+                discard fnPtr(addr traceFlatLocals[0], numLocals.cint)
+              else:
+                # Zero-local traces (globals-only loops) still execute for
+                # effects: pass a dummy frame, never nil (rbx must point
+                # somewhere valid even if no slot is addressed).
+                var traceNoLocals: int64 = 0
+                discard fnPtr(addr traceNoLocals, 0)
               for j in 0..<numLocals:
                 let idx = stackBottom + j
                 ensureLocal(j)
                 case traceOrigTypes[j]
                 of tyInt: stack[idx] = initValue(traceFlatLocals[j])
                 of tyBool: stack[idx] = initValue(traceFlatLocals[j] != 0)
-                else: stack[idx] = initValue(traceFlatLocals[j])
+                else:
+                  # Ref locals (arrays, objects): the native code mutates
+                  # them in place and never reassigns the slot, so the
+                  # tagged entry index still resolves to the same Value.
+                  # A replaced slot resolves to its new Value; a raw int
+                  # left behind boxes as before.
+                  let (rv, rok) = jitTryUnroot(traceFlatLocals[j])
+                  if rok: stack[idx] = rv
+                  else: stack[idx] = initValue(traceFlatLocals[j])
               # Skip trailing discards that the guard already consumed
               var scanPc = pcIdx + 1
               while scanPc < co.opcodes.len and co.opcodes[scanPc] == opcDiscard:
@@ -1178,20 +1205,26 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                 # fails the same way, so leave a negative marker and never
                 # re-record it. Without this every back-edge re-ran the
                 # full JIT attempt (mmap/codegen/munmap). Shape failures
-                # (branch-dependent) are deliberately NOT marked: a later
-                # window may capture a compilable path.
+                # (branch-dependent) are retried a few times — a later
+                # window may capture a compilable path — then capped, so
+                # permanently one-sided loops stop being re-recorded.
                 if traceBuf.failKind in {tfOpcode, tfResource}:
                   if vm.traceCache == nil:
                     vm.traceCache = newTraceCache()
                   vm.traceCache.addFailed(tgt, cast[pointer](currentChunk))
+                elif traceBuf.failKind == tfShape:
+                  if vm.traceCache == nil:
+                    vm.traceCache = newTraceCache()
+                  if vm.traceCache.noteShapeFail(tgt,
+                      cast[pointer](currentChunk)):
+                    vm.traceCache.addFailed(tgt, cast[pointer](currentChunk))
               traceState = tsIdle
               pcIdx = tgt - 1
             elif traceState == tsIdle and vm.preferences.enableHotCodeDetection:
               loopHotCount += 1
               let hotThreshold = 50
               if loopHotCount >= hotThreshold and
-                 (vm.traceCache == nil or (not vm.traceCache.have(tgt, cast[pointer](currentChunk)) and
-                  not vm.traceCache.haveFailed(tgt, cast[pointer](currentChunk)))):
+                 (vm.traceCache == nil or vm.traceCache.probe(tgt, cast[pointer](currentChunk)) == 0):
                 traceState = tsRecording
                 traceStartPc = tgt
                 traceBuf = TraceBuffer(pcs: @[], anchorPc: tgt, cached: cast[pointer](co), chunk: cast[pointer](currentChunk), selfProcId: -1)
@@ -1256,7 +1289,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
             elif traceState == tsPending and p.chunk != currentChunk:
               traceState = tsRecording
               traceStartPc = 0
-              traceBuf = TraceBuffer(pcs: @[], anchorPc: -1, cached: cast[pointer](co), chunk: cast[pointer](currentChunk), selfProcId: procId, selfParamCount: p.paramCount)
+              traceBuf = TraceBuffer(pcs: @[], anchorPc: -1, cached: cast[pointer](co), chunk: cast[pointer](currentChunk), selfProcId: procId, selfParamCount: p.paramCount, selfHasResult: p.hasResult)
               traceNumLocals = 0
               traceCurrentProc = procId
         # Tail-call optimization: reuse the current frame for self-recursive

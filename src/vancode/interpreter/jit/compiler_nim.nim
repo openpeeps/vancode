@@ -27,15 +27,61 @@ proc jitNimSupported*(oc: Opcode): bool =
     case oc
     of opcPushI, opcPushTrue, opcPushFalse,
        opcPushL, opcPopL, opcIncL, opcDecL, opcPushNil,
+       opcPushG, opcPopG,
        opcAddI, opcSubI, opcMultI, opcDivI, opcModI, opcNegI,
        opcEqI, opcLessI, opcGreaterI,
        opcInvB, opcDiscard,
+       opcGetI, opcSetI,
        opcJumpFwd, opcJumpFwdF, opcJumpFwdT, opcJumpBack,
        opcReturnVal, opcReturnVoid, opcHalt,
        opcNoop, opcCallD:
       result = true
     else:
       result = false
+
+type SlotKind = enum
+  ## Abstract type of one native-stack slot, tracked by both JIT compilers
+  ## over the linear op stream. Decides inline-vs-bridge lowering (SetI
+  ## value stores, `CallD` arg boxes) so guards stay sound: ints/bools are
+  ## exact, everything else takes the slow bridge with full semantics.
+  ## NOTE: a raw slot is ambiguous (int and bool share the encoding), so
+  ## `skUnknown` holding a bool boxes as `tyInt` on slow paths — the same
+  ## convention as the untyped `CallD` bridge (`jitUnpackArg`).
+  skInt
+  skBool
+  skFloat
+  skRef
+  skUnknown
+
+proc kindToTypeId*(k: SlotKind): int32 =
+  ## Box tag baked per `CallD` arg / slow-bridge slot (`tyAny` = unpack).
+  case k
+  of skInt: tyInt.int32
+  of skBool: tyBool.int32
+  of skFloat: tyFloat.int32
+  else: tyAny.int32
+
+proc procResultKind*(tp: Proc): SlotKind =
+  ## Abstract result type from the callee's static return flags
+  ## (set by codegen). All-false = int, matching the JIT closures.
+  if tp == nil: return skUnknown
+  if tp.jitReturnBool: skBool
+  elif tp.jitReturnString or tp.jitReturnRef: skRef
+  else: skInt
+
+proc tpush*(s: var seq[SlotKind], k: SlotKind) {.inline.} =
+  s.add(k)
+
+proc tpop*(s: var seq[SlotKind]): SlotKind {.inline.} =
+  if s.len == 0: return skUnknown
+  result = s.pop()
+
+proc tpopN*(s: var seq[SlotKind], n: int) {.inline.} =
+  for _ in 0 ..< min(n, s.len): discard s.pop()
+
+proc localKind*(locals: var seq[SlotKind], idx: int): SlotKind {.inline.} =
+  while locals.len <= idx: locals.add(skUnknown)
+  result = locals[idx]
 
 proc publishNimCode(theProc: Proc, codeBuf: ExecutableBuffer,
     opcodes: seq[Opcode], cached: CachedOps, opCount: int,
@@ -241,6 +287,8 @@ proc compileProcNim*(vm: Vm, theProc: Proc,
     # unconditionally (`add rsp,n*8`) corrupts the native stack and crashes
     # on `ret`. Skip no-op discards instead.
     var stackDepth = 0
+    var typeStack: seq[SlotKind] = @[]
+    var localTypes: seq[SlotKind] = @[]
 
     for pc in 0 ..< opCount:
       let oc = cached.opcodes[pc]
@@ -253,53 +301,118 @@ proc compileProcNim*(vm: Vm, theProc: Proc,
         of opcPushI:
           npushI(jit.a, cached.getArg1Int(pc).int)
           inc stackDepth
+          typeStack.tpush(skInt)
         of opcPushTrue:
           npushTrue(jit.a)
           inc stackDepth
+          typeStack.tpush(skBool)
         of opcPushFalse:
           npushFalse(jit.a)
           inc stackDepth
+          typeStack.tpush(skBool)
         of opcPushNil:
           npushNil(jit.a)
           inc stackDepth
+          typeStack.tpush(skRef)
         of opcPushL:
-          npushL(jit.a, cached.getArg1Int(pc).int)
+          let pushIdx = cached.getArg1Int(pc).int
+          npushL(jit.a, pushIdx)
           inc stackDepth
+          typeStack.tpush(localTypes.localKind(pushIdx))
         of opcPopL:
-          npopL(jit.a, cached.getArg1Int(pc).int)
+          let popIdx = cached.getArg1Int(pc).int
+          npopL(jit.a, popIdx)
           dec stackDepth
+          while localTypes.len <= popIdx: localTypes.add(skUnknown)
+          localTypes[popIdx] = typeStack.tpop()
         of opcIncL:
-          nincL(jit.a, cached.getArg1Int(pc).int)
+          let incIdx = cached.getArg1Int(pc).int
+          nincL(jit.a, incIdx)
+          while localTypes.len <= incIdx: localTypes.add(skUnknown)
+          localTypes[incIdx] = skInt
         of opcDecL:
-          ndecL(jit.a, cached.getArg1Int(pc).int)
+          let decIdx = cached.getArg1Int(pc).int
+          ndecL(jit.a, decIdx)
+          while localTypes.len <= decIdx: localTypes.add(skUnknown)
+          localTypes[decIdx] = skInt
+        of opcPushG:
+          npushG(jit.a,
+            jitImmortalStr(cached.getArg1Str(pc, theProc.chunk)),
+            cast[pointer](jitBridgePushG))
+          inc stackDepth
+          # Globals are untyped at compile time (they mutate): unknown is
+          # sound — inline guards still fire on the runtime value, only
+          # slow paths consult the kind.
+          typeStack.tpush(skUnknown)
+        of opcPopG:
+          let popGKind = typeStack.tpop().kindToTypeId
+          npopG(jit.a,
+            jitImmortalStr(cached.getArg1Str(pc, theProc.chunk)),
+            cast[pointer](jitBridgePopG), popGKind)
+          dec stackDepth
         of opcAddI:
           naddI(jit.a)
           dec stackDepth
+          typeStack.tpopN(2)
+          typeStack.tpush(skInt)
         of opcSubI:
           nsubI(jit.a)
           dec stackDepth
+          typeStack.tpopN(2)
+          typeStack.tpush(skInt)
         of opcMultI:
           nmulI(jit.a)
           dec stackDepth
+          typeStack.tpopN(2)
+          typeStack.tpush(skInt)
         of opcDivI:
           ndivI(jit.a)
           dec stackDepth
+          typeStack.tpopN(2)
+          typeStack.tpush(skInt)
         of opcModI:
           nmodI(jit.a)
           dec stackDepth
+          typeStack.tpopN(2)
+          typeStack.tpush(skInt)
         of opcNegI:
           nnegI(jit.a)
+          discard typeStack.tpop()
+          typeStack.tpush(skInt)
         of opcEqI:
           neqI(jit.a)
           dec stackDepth
+          typeStack.tpopN(2)
+          typeStack.tpush(skBool)
         of opcLessI:
           nlessI(jit.a)
           dec stackDepth
+          typeStack.tpopN(2)
+          typeStack.tpush(skBool)
         of opcGreaterI:
           ngreaterI(jit.a)
           dec stackDepth
+          typeStack.tpopN(2)
+          typeStack.tpush(skBool)
         of opcInvB:
           ninvB(jit.a)
+          discard typeStack.tpop()
+          typeStack.tpush(skBool)
+        of opcGetI:
+          let getIdxK = typeStack.tpop()
+          let getArrK = typeStack.tpop()
+          typeStack.tpush(skInt)
+          ngetI(jit.a, jitGetItemSlow,
+            getArrK.kindToTypeId or (getIdxK.kindToTypeId shl 8), pc)
+          dec stackDepth
+        of opcSetI:
+          let setValK = typeStack.tpop()
+          let setIdxK = typeStack.tpop()
+          let setArrK = typeStack.tpop()
+          nsetI(jit.a, jitSetItemSlow,
+            setArrK.kindToTypeId or (setIdxK.kindToTypeId shl 8) or
+            (setValK.kindToTypeId shl 16), pc)
+          stackDepth -= 3
         of opcDiscard:
           let n = cached.getArg1Int(pc).int
           if pc in labelForTarget:
@@ -307,10 +420,11 @@ proc compileProcNim*(vm: Vm, theProc: Proc,
             # interpreter's trailing Discard would pop it, but native already
             # did. Skip to keep stack balanced. Depth already accounts for
             # the pop at the jump, so no change here.
-            discard
+            discard typeStack.tpop()
           elif stackDepth >= n and n > 0:
             ndiscard(jit.a, n)
             stackDepth -= n
+            typeStack.tpopN(n)
           else:
             # No-op in interpreter (`if stack.len >= n`), skip to avoid
             # corrupting saved regs / return address.
@@ -324,13 +438,16 @@ proc compileProcNim*(vm: Vm, theProc: Proc,
           # Fall-through keeps depth (pop then push back, Discard pops next).
           # Jump path pops (no push back) and lands on a skipped Discard.
           # Linear tracking follows fall-through, so no change here.
-          discard
+          let condK = typeStack.tpop()
+          typeStack.tpush(condK)
         of opcJumpFwdT:
           njumpFwdT(jit.a, labelForTarget.getOrDefault(jtTargets[pc], 0))
-          discard
+          let condKT = typeStack.tpop()
+          typeStack.tpush(condKT)
         of opcReturnVal:
           nreturnVal(jit.a)
           dec stackDepth
+          discard typeStack.tpop()
         of opcReturnVoid, opcHalt:
           nreturnVoid(jit.a)
         of opcNoop:
@@ -339,29 +456,54 @@ proc compileProcNim*(vm: Vm, theProc: Proc,
           let targetProcId = cached.arg2[pc].int
           let callee = resolveCallTarget(vm, theProc, cached, pc,
             targetProcId)
+          var callArgKinds = newSeq[int32](callee.nArgs)
+          for k in 0 ..< callee.nArgs:
+            # Pops come off last-arg-first; the bridge reads flatArgs order
+            # (first arg at index 0), so fill back to front.
+            callArgKinds[callee.nArgs - 1 - k] = typeStack.tpop().kindToTypeId
+          let callTypes = jitImmortalTypes(callArgKinds)
           if targetProcId == theProc.procId:
             # Direct self-recursion: the buffer address is only final
             # after finalize, so emit a hole and back-patch below.
+            # Void callees leave nothing behind (FinishVoid), matching the
+            # interpreter; anything else would leak a phantom slot.
             if callee.nArgs > 0:
               emitCallArgsNim(jit.a, callee.nArgs)
               selfHoles.add(ncallSelfHole(jit.a, callee.nArgs))
-              ncallFinish(jit.a, jitCallDropBytes(callee.nArgs))
+              if callee.hasResult:
+                ncallFinish(jit.a, jitCallDropBytes(callee.nArgs))
+              else:
+                ncallFinishVoid(jit.a, jitCallDropBytes(callee.nArgs))
             else:
               selfHoles.add(ncallSelfHole(jit.a, 0))
-              ncallFinish(jit.a, 0)
+              if callee.hasResult:
+                ncallFinish(jit.a, 0)
+              else:
+                ncallFinishVoid(jit.a, 0)
           elif callee.nArgs > 0:
             emitCallArgsNim(jit.a, callee.nArgs)
-            ncallInvoke(jit.a, callee.nArgs, targetProcId,
-              callee.bridgeFn)
-            ncallFinish(jit.a, jitCallDropBytes(callee.nArgs))
+            ncallInvokeTyped(jit.a, callee.nArgs, targetProcId,
+              callee.bridgeFn, callTypes)
+            if callee.hasResult:
+              ncallFinish(jit.a, jitCallDropBytes(callee.nArgs))
+            else:
+              ncallFinishVoid(jit.a, jitCallDropBytes(callee.nArgs))
           else:
             ncallAlloc(jit.a, 0)
-            ncallInvoke(jit.a, 0, targetProcId, callee.bridgeFn)
-            ncallFinish(jit.a, 0)
+            ncallInvokeTyped(jit.a, 0, targetProcId, callee.bridgeFn,
+              callTypes)
+            if callee.hasResult:
+              ncallFinish(jit.a, 0)
+            else:
+              ncallFinishVoid(jit.a, 0)
           # Native call sequence consumes args and pushes result (if any).
           stackDepth -= callee.nArgs
           if callee.hasResult:
             inc stackDepth
+            if targetProcId == theProc.procId:
+              typeStack.tpush(theProc.procResultKind)
+            else:
+              typeStack.tpush(callee.tp.procResultKind)
         else:
           discard
 
@@ -473,6 +615,8 @@ proc compileTraceNim*(vm: Vm, trace: TraceBuffer): pointer =
 
   var jit = initNimJit()
   var selfHoles: seq[int] = @[]
+  var traceTypeStack: seq[SlotKind] = @[]
+  var traceLocalTypes: seq[SlotKind] = @[]
   try:
     nprologue(jit.a)
     ndefLabel(jit.a, 0)
@@ -489,48 +633,104 @@ proc compileTraceNim*(vm: Vm, trace: TraceBuffer): pointer =
         case oc
         of opcPushI:
           npushI(jit.a, cached.getArg1Int(pc).int)
+          traceTypeStack.tpush(skInt)
         of opcPushTrue:
           npushTrue(jit.a)
+          traceTypeStack.tpush(skBool)
         of opcPushFalse:
           npushFalse(jit.a)
+          traceTypeStack.tpush(skBool)
         of opcPushNil:
           npushNil(jit.a)
+          traceTypeStack.tpush(skRef)
         of opcPushL:
-          npushL(jit.a, cached.getArg1Int(pc).int)
+          let tPushIdx = cached.getArg1Int(pc).int
+          npushL(jit.a, tPushIdx)
+          traceTypeStack.tpush(traceLocalTypes.localKind(tPushIdx))
         of opcPopL:
-          npopL(jit.a, cached.getArg1Int(pc).int)
+          let tPopIdx = cached.getArg1Int(pc).int
+          npopL(jit.a, tPopIdx)
+          while traceLocalTypes.len <= tPopIdx: traceLocalTypes.add(skUnknown)
+          traceLocalTypes[tPopIdx] = traceTypeStack.tpop()
         of opcIncL:
-          nincL(jit.a, cached.getArg1Int(pc).int)
+          let tIncIdx = cached.getArg1Int(pc).int
+          nincL(jit.a, tIncIdx)
+          while traceLocalTypes.len <= tIncIdx: traceLocalTypes.add(skUnknown)
+          traceLocalTypes[tIncIdx] = skInt
         of opcDecL:
-          ndecL(jit.a, cached.getArg1Int(pc).int)
+          let tDecIdx = cached.getArg1Int(pc).int
+          ndecL(jit.a, tDecIdx)
+          while traceLocalTypes.len <= tDecIdx: traceLocalTypes.add(skUnknown)
+          traceLocalTypes[tDecIdx] = skInt
         of opcAddI:
           naddI(jit.a)
+          traceTypeStack.tpopN(2)
+          traceTypeStack.tpush(skInt)
         of opcSubI:
           nsubI(jit.a)
+          traceTypeStack.tpopN(2)
+          traceTypeStack.tpush(skInt)
         of opcMultI:
           nmulI(jit.a)
+          traceTypeStack.tpopN(2)
+          traceTypeStack.tpush(skInt)
         of opcDivI:
           ndivI(jit.a)
+          traceTypeStack.tpopN(2)
+          traceTypeStack.tpush(skInt)
         of opcModI:
           nmodI(jit.a)
+          traceTypeStack.tpopN(2)
+          traceTypeStack.tpush(skInt)
         of opcNegI:
           nnegI(jit.a)
+          discard traceTypeStack.tpop()
+          traceTypeStack.tpush(skInt)
         of opcEqI:
           neqI(jit.a)
+          traceTypeStack.tpopN(2)
+          traceTypeStack.tpush(skBool)
         of opcLessI:
           nlessI(jit.a)
+          traceTypeStack.tpopN(2)
+          traceTypeStack.tpush(skBool)
         of opcGreaterI:
           ngreaterI(jit.a)
+          traceTypeStack.tpopN(2)
+          traceTypeStack.tpush(skBool)
         of opcInvB:
           ninvB(jit.a)
+          discard traceTypeStack.tpop()
+          traceTypeStack.tpush(skBool)
+        of opcGetI:
+          let tGetIdxK = traceTypeStack.tpop()
+          let tGetArrK = traceTypeStack.tpop()
+          traceTypeStack.tpush(skInt)
+          ngetI(jit.a, jitGetItemSlow,
+            tGetArrK.kindToTypeId or (tGetIdxK.kindToTypeId shl 8), pc)
+        of opcSetI:
+          let tSetValK = traceTypeStack.tpop()
+          let tSetIdxK = traceTypeStack.tpop()
+          let tSetArrK = traceTypeStack.tpop()
+          nsetI(jit.a, jitSetItemSlow,
+            tSetArrK.kindToTypeId or (tSetIdxK.kindToTypeId shl 8) or
+            (tSetValK.kindToTypeId shl 16), pc)
         of opcDiscard:
           if pc in labelForTarget:
-            discard  # this discard is the target of a forward jump — the
-                     # jump_fwd_f already popped the condition natively
+            discard traceTypeStack.tpop()  # jump already popped natively
           else:
             ndiscard(jit.a, cached.getArg1Int(pc).int)
+            traceTypeStack.tpopN(cached.getArg1Int(pc).int)
         of opcPushG, opcPopG:
-          discard
+          let ch = cast[Chunk](trace.chunk)
+          if oc == opcPushG:
+            npushG(jit.a, jitImmortalStr(cached.getArg1Str(pc, ch)),
+              cast[pointer](jitBridgePushG))
+            traceTypeStack.tpush(skUnknown)
+          else:
+            let tPopGKind = traceTypeStack.tpop().kindToTypeId
+            npopG(jit.a, jitImmortalStr(cached.getArg1Str(pc, ch)),
+              cast[pointer](jitBridgePopG), tPopGKind)
         of opcJumpFwd:
           let tgt = jtTargets[pc]
           if tgt >= 0 and tgt in labelForTarget:
@@ -543,12 +743,16 @@ proc compileTraceNim*(vm: Vm, trace: TraceBuffer): pointer =
             njumpFwdF(jit.a, labelForTarget[tgt])
           else:
             njumpFwdF(jit.a, 1)
+          let tCondK = traceTypeStack.tpop()
+          traceTypeStack.tpush(tCondK)
         of opcJumpFwdT:
           let tgt = jtTargets[pc]
           if tgt >= 0 and tgt in labelForTarget:
             njumpFwdT(jit.a, labelForTarget[tgt])
           else:
             njumpFwdT(jit.a, 1)
+          let tCondKT = traceTypeStack.tpop()
+          traceTypeStack.tpush(tCondKT)
         of opcJumpBack:
           let tgt = jtTargets[pc]
           if tgt >= 0 and tgt in labelForTarget:
@@ -558,14 +762,27 @@ proc compileTraceNim*(vm: Vm, trace: TraceBuffer): pointer =
         of opcCallD:
           let targetProc = cached.arg2[pc].int
           if targetProc == trace.selfProcId:
+            # Native self-call passes raw slots straight through (no
+            # bridge, no boxing): arg kinds are only stack accounting.
+            # Void self-callees push nothing (FinishVoid).
+            traceTypeStack.tpopN(trace.selfParamCount)
             if trace.selfParamCount > 0:
               emitCallArgsNim(jit.a, trace.selfParamCount)
               selfHoles.add(ncallSelfHole(jit.a, trace.selfParamCount))
-              ncallFinish(jit.a,
-                jitCallDropBytes(trace.selfParamCount))
+              if trace.selfHasResult:
+                ncallFinish(jit.a,
+                  jitCallDropBytes(trace.selfParamCount))
+              else:
+                ncallFinishVoid(jit.a,
+                  jitCallDropBytes(trace.selfParamCount))
             else:
               selfHoles.add(ncallSelfHole(jit.a, 0))
-              ncallFinish(jit.a, 0)
+              if trace.selfHasResult:
+                ncallFinish(jit.a, 0)
+              else:
+                ncallFinishVoid(jit.a, 0)
+            if trace.selfHasResult:
+              traceTypeStack.tpush(skUnknown)
           else:
             # Cross-proc call inside a hot loop: same bridge sequence the
             # method compiler uses. The bridge resolves the callee per call
@@ -576,17 +793,32 @@ proc compileTraceNim*(vm: Vm, trace: TraceBuffer): pointer =
               trace.failKind = tfOpcode
               jit.a.execBuf.destroy()
               return nil
+            var tCallArgKinds = newSeq[int32](callee.nArgs)
+            for k in 0 ..< callee.nArgs:
+              tCallArgKinds[callee.nArgs - 1 - k] =
+                traceTypeStack.tpop().kindToTypeId
+            let tCallTypes = jitImmortalTypes(tCallArgKinds)
             if callee.nArgs > 0:
               emitCallArgsNim(jit.a, callee.nArgs)
-              ncallInvoke(jit.a, callee.nArgs, targetProc,
-                callee.bridgeFn)
-              ncallFinish(jit.a, jitCallDropBytes(callee.nArgs))
+              ncallInvokeTyped(jit.a, callee.nArgs, targetProc,
+                callee.bridgeFn, tCallTypes)
+              if callee.hasResult:
+                ncallFinish(jit.a, jitCallDropBytes(callee.nArgs))
+              else:
+                ncallFinishVoid(jit.a, jitCallDropBytes(callee.nArgs))
             else:
               ncallAlloc(jit.a, 0)
-              ncallInvoke(jit.a, 0, targetProc, callee.bridgeFn)
-              ncallFinish(jit.a, 0)
+              ncallInvokeTyped(jit.a, 0, targetProc, callee.bridgeFn,
+                tCallTypes)
+              if callee.hasResult:
+                ncallFinish(jit.a, 0)
+              else:
+                ncallFinishVoid(jit.a, 0)
+            if callee.hasResult:
+              traceTypeStack.tpush(callee.tp.procResultKind)
         of opcReturnVal:
           nreturnVal(jit.a)
+          discard traceTypeStack.tpop()
         of opcReturnVoid, opcHalt:
           nreturnVoid(jit.a)
         of opcNoop:

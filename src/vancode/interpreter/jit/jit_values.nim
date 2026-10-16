@@ -20,6 +20,9 @@
 import ../value
 
 const jitValueRingSize* = 4096
+const jitRingMask* = 0xFFF
+  ## Low bits selecting the ring slot inside a tagged index. Emitters bake
+  ## this into `and` guards; it must match `jitRootValue`/`jitUnrootValue`.
 var jitValueRing: array[jitValueRingSize, Value]
 var jitRingEpoch: array[jitValueRingSize, uint32]
 var jitValueRingPos = 0
@@ -66,6 +69,34 @@ proc jitClearRing*() =
     jitValueRing[i] = nil
   zeroMem(addr jitRingEpoch[0], sizeof(jitRingEpoch))
   jitValueRingPos = 0
+
+proc jitRingBase*(): int64 =
+  ## Base address of the root ring (baked into JIT guards as an immediate).
+  result = cast[int64](addr jitValueRing[0])
+
+proc jitRingEpochBase*(): int64 =
+  ## Base address of the ring epoch table (baked into JIT guards).
+  result = cast[int64](addr jitRingEpoch[0])
+
+proc jitSlotToValue*(slot: int64, kind: int32): Value =
+  ## Resolve one native-stack slot to a `Value` using the compiler-baked
+  ## kind tag (a `TypeId`: `tyInt` = raw int, `tyBool` = raw 0/1,
+  ## `tyFloat` = raw float bits, anything else = tagged ring index with a
+  ## raw-int fallback). Used by the JIT slow bridges so guard failures
+  ## reproduce interpreter semantics exactly, including raised defects.
+  ## NOTE: an `unknown` slot holding a bool boxes as `tyInt` (raw 0/1 is
+  ## ambiguous) — same convention as the `CallD` bridge (`jitUnpackArg`).
+  case kind
+  of tyBool:
+    result = Value(typeId: tyBool, boolVal: slot != 0)
+  of tyFloat:
+    result = Value(typeId: tyFloat, floatVal: cast[float64](slot))
+  of tyInt:
+    result = initValue(slot)
+  else:
+    let (v, ok) = jitTryUnroot(slot)
+    if ok: result = v
+    else: result = initValue(slot)
 
 proc jitUnpackArg*(slot: int64): Value =
   ## Bridge argument convention: tagged slots resolve to their `Value`,
