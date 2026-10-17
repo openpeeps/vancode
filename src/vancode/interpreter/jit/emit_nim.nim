@@ -534,9 +534,11 @@ proc nfib*(a: var Assembler) =
   else:
     dynasm a:
       arch aarch64
-      # Same shape: x8 = prev, x9 = current, x10 = steps left
+      # Same shape: x8 = prev, x9 = current, x10 = steps left.
+      # Early-out for n <= 1 (the loop needs >= 1 lap: n=1 would
+      # start steps at 0 and count down from -1 forever).
       ldr x0, [x0]
-      cmp x0, 0
+      cmp x0, 1
       b.le fwd("fib_done")
       mov x8, xzr
       mov x9, 1
