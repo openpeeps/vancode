@@ -375,12 +375,17 @@ proc ndiscard*(a: var Assembler, n: int) =
       # Drop n operand slots by rewinding rsp (8 bytes each on x64)
       add rsp, bytes
   else:
-    let bytes = n * 16
-    dynasm a:
-      arch aarch64
-      # Same, but arm64 slots are 16 bytes wide
-      mov x9, bytes
-      add sp, sp, x9
+    # Pop into XZR, one 16-byte slot per Discard unit: post-index LDR
+    # is the canonical SP bump (the same form nreturnVal uses).
+    # Deliberately not `mov x9, bytes; add sp, sp, x9`: an ADD-shifted
+    # with SP destination is the one encoding our reference assembler
+    # refuses to emit (it canonicalizes `add sp, sp, xN` to the
+    # extended form), and on-device fault isolation pointed at it
+    # (branch-free code runs; the first sp-arithmetic faults).
+    for _ in 0 ..< n:
+      dynasm a:
+        arch aarch64
+        ldr xzr, [sp], 16
 
 proc njumpFwd*(a: var Assembler, target: int) =
   let lbl = "L" & $target
