@@ -940,44 +940,6 @@ proc ncallFinishVoid*(a: var Assembler, dropBytes: int) =
       mov x9, dropBytes
       add sp, sp, x9
 
-proc ncallFinishKeep*(a: var Assembler, arrayBytes: int) =
-  ## Trace-only `CallD` finish: drop just the flatArgs array, keep the
-  ## stale operand slots above it, then push the bridge result. The
-  ## interpreter's foreign-call path never pops arguments (they are
-  ## still on the stack for the trailing `Discard`, which pops the
-  ## result); the consuming `ncallFinish` drops the argument too, so a
-  ## `call; discard` pair in a recorded loop drifts one slot per lap
-  ## and the trace teardown returns into garbage (SIGSEGV/SIGILL or a
-  ## phantom extra print after the loop, depending on layout).
-  when defined(amd64):
-    dynasm a:
-      arch x64
-      # Drop the array only; the operand stays for Discard, like interp
-      add rsp, arrayBytes
-      push rax
-  else:
-    dynasm a:
-      arch aarch64
-      mov x9, arrayBytes
-      add sp, sp, x9
-      str x0, [sp, -16], pre
-
-proc ncallFinishVoidKeep*(a: var Assembler, arrayBytes: int) =
-  ## Trace-only `void CallD` finish: drop just the flatArgs array, keep
-  ## the operand for the trailing `Discard` (same drift as above: the
-  ## consuming `ncallFinishVoid` plus `Discard` eats one live slot per
-  ## lap — e.g. `echo x` in a hot loop).
-  when defined(amd64):
-    dynasm a:
-      arch x64
-      # Drop the array only; the operand stays for Discard, like interp
-      add rsp, arrayBytes
-  else:
-    dynasm a:
-      arch aarch64
-      mov x9, arrayBytes
-      add sp, sp, x9
-
 proc ncallSelf*(a: var Assembler, nArgs: int, selfAddr: int64) =
   ## selfAddr is the final JIT buffer address. When it is not known
   ## yet, pass 0 and patch the movabs afterwards (see Phase 3).

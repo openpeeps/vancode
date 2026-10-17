@@ -1171,11 +1171,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                     of tyBool: stack[idx].boolVal.ord.int64
                     of tyFloat: cast[int64](stack[idx].floatVal)
                     else: jitRootValue(stack[idx])
-                  else: 999 # mirror ensureLocal's placeholder int
-              # Depth snapshot before the native run: the resume logic
-              # below needs the pre-existing interpreter depth to
-              # reconcile trailing loop-exit discards (see below).
-              let preSyncDepth = stack.len - stackBottom
+                  else: 0
               type TraceFn = proc (locals: ptr int64, count: cint): int64 {.cdecl.}
               let fnPtr = cast[TraceFn](entry.code)
               if numLocals > 0:
@@ -1188,49 +1184,31 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                 discard fnPtr(addr traceNoLocals, 0)
               for j in 0..<numLocals:
                 let idx = stackBottom + j
-                # Materialize missing slots exactly like the interpreter
-                # does on first touch (ensureLocal): a traced loop that
-                # popped a local below the stack top (ordinary Discard /
-                # frame-truncate churn) would otherwise leave it stale or
-                # missing here, while nojit regrows it. The native frame
-                # holds the true value, so grow first, then write it
-                # back unconditionally.
-                while stack.len <= idx:
-                  stack.push(initValue(999))
-                case traceOrigTypes[j]
-                of tyInt: stack[idx] = initValue(traceFlatLocals[j])
-                of tyBool: stack[idx] = initValue(traceFlatLocals[j] != 0)
-                of tyFloat:
-                  stack[idx] = initValue(cast[float64](traceFlatLocals[j]))
-                else:
-                  # Ref locals (arrays, objects): the native code mutates
-                  # them in place and never reassigns the slot, so the
-                  # tagged entry index still resolves to the same Value.
-                  # A replaced slot resolves to its new Value; a raw int
-                  # left behind boxes as before.
-                  let (rv, rok) = jitTryUnroot(traceFlatLocals[j])
-                  if rok: stack[idx] = rv
-                  else: stack[idx] = initValue(traceFlatLocals[j])
-              # Reconcile trailing loop-exit discards. In nojit the exit
-              # lap pushes the condition triple and these discards pop it
-              # plus the loop's now-dead temps, landing exactly on the
-              # live base. The native run evaluated the exit on its own
-              # stack, so the interpreter triple was never pushed — but
-              # the dead temps below ARE still here and must go, or every
-              # later base-relative slot read resolves off-by-debris.
-              # Pop count = (missing slots regrown above) + K - 1 (the
-              # condition the guard consumed): m==0,K==1 (plain while)
-              # pops 0, m==1,K==3 (for/range with a scratch) pops all 3.
+                # Only sync slots the interpreter materialized. Growing the
+                # stack here for never-touched locals (e.g. a variable
+                # inside an untaken branch) leaves debris that the
+                # interpreter never has — and `interpret` returns the top
+                # of stack as the main result. Skipping matches nojit
+                # exactly: both observe the placeholder on first read.
+                if idx < stack.len:
+                  case traceOrigTypes[j]
+                  of tyInt: stack[idx] = initValue(traceFlatLocals[j])
+                  of tyBool: stack[idx] = initValue(traceFlatLocals[j] != 0)
+                  of tyFloat:
+                    stack[idx] = initValue(cast[float64](traceFlatLocals[j]))
+                  else:
+                    # Ref locals (arrays, objects): the native code mutates
+                    # them in place and never reassigns the slot, so the
+                    # tagged entry index still resolves to the same Value.
+                    # A replaced slot resolves to its new Value; a raw int
+                    # left behind boxes as before.
+                    let (rv, rok) = jitTryUnroot(traceFlatLocals[j])
+                    if rok: stack[idx] = rv
+                    else: stack[idx] = initValue(traceFlatLocals[j])
+              # Skip trailing discards that the guard already consumed
               var scanPc = pcIdx + 1
               while scanPc < co.opcodes.len and co.opcodes[scanPc] == opcDiscard:
                 inc scanPc
-              let trailK = scanPc - (pcIdx + 1)
-              let missingM = max(0, numLocals - preSyncDepth)
-              var popN = 0
-              if trailK > 0:
-                popN = max(0, missingM + trailK - 1)
-              if popN > 0 and stack.len >= popN:
-                stack.setLen(stack.len - popN)
               if scanPc > pcIdx + 1:
                 pcIdx = scanPc - 1  # will be inc'd by inc(pcIdx)
             elif traceState == tsRecording and tgt == traceStartPc:
