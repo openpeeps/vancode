@@ -35,6 +35,31 @@ when defined(vancodeJitNim):
     let f = cast[JitFn](buf.ptrAt(AssemblyOffset(0)))
     check f(addr locals[0], 1) == 222
     buf.destroy()
+
+  test "bisect t5slow OOB index takes slow path":
+    # Same ngetI shape, but the index is out of bounds, so the inline
+    # fast path must bail to the bridge, which raises like the
+    # interpreter (no SIGSEGV allowed).
+    stderr.writeLine("[bisect] t5slow assemble")
+    stderr.flushFile()
+    let arr = initArray(1)
+    arr.objectVal.fields[0] = ValueStorage(typeId: tyInt, intVal: 9)
+    let tag = jitRootValue(arr)
+    var s = initNimJit()
+    nprologue(s.a)
+    npushL(s.a, 0)
+    npushI(s.a, 5)
+    ngetI(s.a, jitGetItemSlow,
+      (tyAny.int32 or (tyInt.int32 shl 8)).int32, 8102)
+    nreturnVal(s.a)
+    var buf = nimJitFinish(s)
+    var locals = @[tag]
+    stderr.writeLine("[bisect] t5slow call")
+    stderr.flushFile()
+    let f = cast[JitFn](buf.ptrAt(AssemblyOffset(0)))
+    expect IndexDefect:
+      discard f(addr locals[0], 1)
+    buf.destroy()
 else:
   test "nim jit disabled":
     skip()
