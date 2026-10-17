@@ -1211,8 +1211,14 @@ proc compileTraceNim*(vm: Vm, trace: TraceBuffer): pointer =
           if targetProc == trace.selfProcId:
             # Native self-call passes raw slots straight through (no
             # bridge, no boxing): arg kinds are only stack accounting.
-            # Void self-callees push nothing (FinishVoid).
-            traceTypeStack.tpopN(trace.selfParamCount)
+            # Void self-callees keep their operands (Keep finish): the
+            # interpreter's restoreFrame truncates the args and the
+            # trailing Discard pops the operand, so consuming it in the
+            # call AND popping it in Discard eats one live slot per lap.
+            # Non-void self-callees consume (truncate-equivalent) and
+            # push the result, exactly like the method compiler.
+            if trace.selfHasResult:
+              traceTypeStack.tpopN(trace.selfParamCount)
             if trace.selfParamCount > 0:
               emitCallArgsNim(jit.a, trace.selfParamCount)
               selfHoles.add(ncallSelfHole(jit.a, trace.selfParamCount))
@@ -1220,8 +1226,8 @@ proc compileTraceNim*(vm: Vm, trace: TraceBuffer): pointer =
                 ncallFinish(jit.a,
                   jitCallDropBytes(trace.selfParamCount))
               else:
-                ncallFinishVoid(jit.a,
-                  jitCallDropBytes(trace.selfParamCount))
+                ncallFinishVoidKeep(jit.a,
+                  jitCallAllocSize(trace.selfParamCount))
             else:
               selfHoles.add(ncallSelfHole(jit.a, 0))
               if trace.selfHasResult:
@@ -1241,9 +1247,20 @@ proc compileTraceNim*(vm: Vm, trace: TraceBuffer): pointer =
               jit.a.execBuf.destroy()
               return nil
             var tCallArgKinds = newSeq[int32](callee.nArgs)
-            for k in 0 ..< callee.nArgs:
-              tCallArgKinds[callee.nArgs - 1 - k] =
-                traceTypeStack.tpop().kindToTypeId
+            # Void callees keep their operands on the machine stack (see
+            # ncallFinishVoidKeep): peek the kinds without popping, so the
+            # kind stack stays in sync. Non-void callees consume (like the
+            # interpreter's frame truncate) and push the result: pop.
+            if callee.hasResult:
+              for k in 0 ..< callee.nArgs:
+                tCallArgKinds[callee.nArgs - 1 - k] =
+                  traceTypeStack.tpop().kindToTypeId
+            else:
+              for k in 0 ..< callee.nArgs:
+                let peekIdx = traceTypeStack.len - 1 - (callee.nArgs - 1 - k)
+                tCallArgKinds[callee.nArgs - 1 - k] =
+                  if peekIdx >= 0: traceTypeStack[peekIdx].kindToTypeId
+                  else: tyAny.int32
             let tCallTypes = jitImmortalTypes(tCallArgKinds)
             if callee.nArgs > 0:
               emitCallArgsNim(jit.a, callee.nArgs)
@@ -1252,7 +1269,7 @@ proc compileTraceNim*(vm: Vm, trace: TraceBuffer): pointer =
               if callee.hasResult:
                 ncallFinish(jit.a, jitCallDropBytes(callee.nArgs))
               else:
-                ncallFinishVoid(jit.a, jitCallDropBytes(callee.nArgs))
+                ncallFinishVoidKeep(jit.a, jitCallAllocSize(callee.nArgs))
             else:
               ncallAlloc(jit.a, 0)
               ncallInvokeTyped(jit.a, 0, targetProc, callee.bridgeFn,
