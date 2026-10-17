@@ -624,12 +624,21 @@ proc npopG*(a: var Assembler, namePtr: pointer, bridgeFn: pointer,
     dynasm a:
       arch x64
       # Pop the value into rsi, pass name + baked slot kind so the bridge
-      # boxes raw slots exactly; nothing is pushed back (net -1)
+      # boxes raw slots exactly; nothing is pushed back (net -1).
+      # The bridge call needs the same rbx-parked 16-byte alignment as
+      # every other bridge trampoline: the pop above flips rsp parity,
+      # so calling bare faults inside the bridge (movaps) depending on
+      # the loop's stack depth at this site.
       pop rsi
+      push rbx
+      mov rbx, rsp
+      `and` rsp, -16
       movabs rdi, nameAddr
       mov edx, kind
       movabs rax, bridgeAddr
       call rax
+      mov rsp, rbx
+      pop rbx
   else:
     let p0 = int(cast[uint64](namePtr) and 0xFFFF'u64)
     let p1 = int((cast[uint64](namePtr) shr 16) and 0xFFFF'u64)
@@ -1138,8 +1147,8 @@ proc ngetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
       movk x13, eb2, lsl, 32
       movk x13, eb3, lsl, 48
       add x13, x13, x12
-      ldr w14, [x13]
-      cmp w14, w11
+      ldr w15, [x13]
+      cmp w15, w11
       b.ne fwd(slowLbl)
       ldr x13, [x14]
       cmp x13, tyArrayObject
@@ -1486,8 +1495,8 @@ proc ngetF*(a: var Assembler, slowFn: pointer, objKind: int32,
       movk x13, eb2, lsl, 32
       movk x13, eb3, lsl, 48
       add x13, x13, x12
-      ldr w14, [x13]
-      cmp w14, w11
+      ldr w15, [x13]
+      cmp w15, w11
       b.ne fwd(slowLbl)
       ldr x13, [x14]
       cmp x13, tyObjectStorage

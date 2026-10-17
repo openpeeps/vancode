@@ -1009,6 +1009,13 @@ proc compileTraceNim*(vm: Vm, trace: TraceBuffer): pointer =
     ndefLabel(jit.a, 0)
 
     var definedLabels: seq[int] = @[]
+    # A void CallD consumes its operands natively (like the
+    # interpreter's frame truncate) while the interpreter's trailing
+    # Discard then pops a live slot below (harmless there: locals
+    # regrow on demand). Emitting that Discard natively would pop a
+    # live machine slot (or underflow into the saved frame) once per
+    # lap, so void calls suppress the immediately following Discard.
+    var skipDiscardAt = -1
     for pc in trace.pcs:
       let oc = cached.opcodes[pc]
 
@@ -1163,7 +1170,10 @@ proc compileTraceNim*(vm: Vm, trace: TraceBuffer): pointer =
           nfloatBinop(jit.a, jitFloatGreater,
             tGreaterFAK.kindToTypeId or (tGreaterFBK.kindToTypeId shl 8))
         of opcDiscard:
-          if pc in labelForTarget:
+          if pc == skipDiscardAt:
+            # Void-call trailing Discard: already accounted (see above).
+            skipDiscardAt = -1
+          elif pc in labelForTarget:
             discard traceTypeStack.tpop()  # jump already popped natively
           else:
             ndiscard(jit.a, cached.getArg1Int(pc).int)
@@ -1211,8 +1221,16 @@ proc compileTraceNim*(vm: Vm, trace: TraceBuffer): pointer =
           if targetProc == trace.selfProcId:
             # Native self-call passes raw slots straight through (no
             # bridge, no boxing): arg kinds are only stack accounting.
-            # Void self-callees push nothing (FinishVoid).
+            # Like the interpreter's frame truncate, the call consumes
+            # its operands; a void self-call followed by Discard would
+            # then pop a live slot once per lap, so that Discard is
+            # suppressed (see skipDiscardAt): the interpreter's pop is
+            # a harmless regrowable-local pop with no native analogue.
             traceTypeStack.tpopN(trace.selfParamCount)
+            let selfNext = trace.pcs.find(pc) + 1
+            if not trace.selfHasResult and selfNext < trace.pcs.len and
+                cached.opcodes[trace.pcs[selfNext]] == opcDiscard:
+              skipDiscardAt = trace.pcs[selfNext]
             if trace.selfParamCount > 0:
               emitCallArgsNim(jit.a, trace.selfParamCount)
               selfHoles.add(ncallSelfHole(jit.a, trace.selfParamCount))
@@ -1245,6 +1263,13 @@ proc compileTraceNim*(vm: Vm, trace: TraceBuffer): pointer =
               tCallArgKinds[callee.nArgs - 1 - k] =
                 traceTypeStack.tpop().kindToTypeId
             let tCallTypes = jitImmortalTypes(tCallArgKinds)
+            if not callee.hasResult:
+              # Void call followed by Discard (see above): suppress the
+              # Discard, which has no native analogue.
+              let crossNext = trace.pcs.find(pc) + 1
+              if crossNext < trace.pcs.len and
+                  cached.opcodes[trace.pcs[crossNext]] == opcDiscard:
+                skipDiscardAt = trace.pcs[crossNext]
             if callee.nArgs > 0:
               emitCallArgsNim(jit.a, callee.nArgs)
               ncallInvokeTyped(jit.a, callee.nArgs, targetProc,
