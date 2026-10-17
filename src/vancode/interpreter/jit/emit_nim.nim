@@ -987,21 +987,32 @@ else:
     # The movz/movk sequence is 16 bytes and `blr x16` follows it:
     # the sequence starts 20 bytes before the end.
     result = int(a.offset()) - 20
-    # movz x16 followed by 3x movk x16; op halfwords are fixed.
+    # movz x16 followed by 3x movk x16; op halfwords are fixed, and the
+    # hw field (byte 2, bits 6-5) selects the halfword: 0, 1, 2, 3 for
+    # shifts 0, 16, 32, 48. A zero hole immediate keeps all payload
+    # bits clear, so byte 2 reads 0x80 | hw << 5 exactly.
     assert a.staging[result + 2] == 0x80'u8
     assert a.staging[result + 3] == 0xD2'u8
     for k in 1 ..< 4:
-      assert a.staging[result + k * 4 + 2] == 0x80'u8
+      assert a.staging[result + k * 4 + 2] == (0x80 or (k shl 5)).uint8
       assert a.staging[result + k * 4 + 3] == 0xF2'u8
 
   proc ncallSelfPatch*(base: pointer, hole: int, selfAddr: pointer) =
     ## Write the self address into a hole recorded by `ncallSelfHole`.
+    ## Each movz/movk carries one 16-bit halfword in bits 20-5, so the
+    ## patch preserves Rd (byte 0, low 5 bits), hw + opcode bit (byte 2,
+    ## high 3 bits) and the opcode byte, writing imm[2:0] into byte 0's
+    ## high 3 bits, imm[10:3] into byte 1, imm[15:11] into byte 2's low
+    ## 5 bits. Blanket byte writes would clobber the register field.
     let u = cast[uint64](selfAddr)
     let dst = cast[ptr UncheckedArray[byte]](cast[int](base) + hole)
     for k in 0 ..< 4:
       let chunk = (u shr (k * 16)) and 0xFFFF'u64
-      dst[k * 4] = cast[byte](chunk and 0xFF'u64)
-      dst[k * 4 + 1] = cast[byte]((chunk shr 8) and 0xFF'u64)
+      dst[k * 4] = (dst[k * 4] and 0x1F) or
+        cast[byte]((chunk and 0x7) shl 5)
+      dst[k * 4 + 1] = cast[byte]((chunk shr 3) and 0xFF)
+      dst[k * 4 + 2] = (dst[k * 4 + 2] and 0xE0) or
+        cast[byte]((chunk shr 11) and 0x1F)
 
 proc ngetI*(a: var Assembler, slowFn: pointer, kinds: int32, pc: int) =
   ## Indexed load `a[i]`: inline tagged-array/int-index/int-element fast
