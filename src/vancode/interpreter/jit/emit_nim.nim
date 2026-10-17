@@ -546,7 +546,8 @@ proc nfib*(a: var Assembler) =
       mov x11, x9
       add x9, x9, x8
       mov x8, x11
-      sub x10, x10, 1
+      # SUBS sets flags (plain sub does not): b.ne counts steps to zero
+      subs x10, x10, 1
       b.ne bwd("fib_loop")
       mov x0, x9
       ret()
