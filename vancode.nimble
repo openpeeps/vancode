@@ -3,7 +3,7 @@
 version       = "0.3.0"
 author        = "George Lemon"
 description   = "A flexible AST, Codegen and Virtual Machine library"
-license       = "LGPL-3.0-or-later"
+license       = "MIT"
 srcDir        = "src"
 
 
