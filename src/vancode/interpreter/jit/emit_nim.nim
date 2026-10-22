@@ -846,11 +846,17 @@ proc ncallAlloc*(a: var Assembler, nArgs: int) =
   else:
     # Round up to 16 bytes (Apple Silicon faults on misaligned
     # sp at blr, which nArgs*8 caused for odd arities).
+    # Reserve via XZR pre-index stores (the same canonical form
+    # npushI/nreturnVal use). Deliberately not `mov x9, bytes;
+    # sub sp, sp, x9`: ADD/SUB-shifted with SP destination is the
+    # encoding our reference assembler refuses (see ndiscard) and
+    # on-device isolation faults on the first such SP-arithmetic
+    # (void-call SIGBUS with everything else proven).
     let bytes = ((nArgs * 8 + 15) div 16) * 16
-    dynasm a:
-      arch aarch64
-      mov x9, bytes
-      sub sp, sp, x9
+    for _ in 0 ..< bytes div 16:
+      dynasm a:
+        arch aarch64
+        str xzr, [sp, -16], pre
 
 proc ncallMoveOne*(a: var Assembler, srcDisp: int, dstDisp: int) =
   when defined(amd64):
@@ -927,10 +933,16 @@ proc ncallFinish*(a: var Assembler, dropBytes: int) =
       add rsp, dropBytes
       push rax
   else:
+    # Drop via XZR post-index loads (the canonical SP bump ndiscard
+    # and nreturnVal use). Deliberately not `mov x9, dropBytes;
+    # add sp, sp, x9` (see ncallAlloc/ndiscard: the shifted-register
+    # SP encoding faults on-device; void-call SIGBUS).
+    for _ in 0 ..< dropBytes div 16:
+      dynasm a:
+        arch aarch64
+        ldr xzr, [sp], 16
     dynasm a:
       arch aarch64
-      mov x9, dropBytes
-      add sp, sp, x9
       str x0, [sp, -16], pre
 
 proc ncallFinishVoid*(a: var Assembler, dropBytes: int) =
@@ -944,10 +956,12 @@ proc ncallFinishVoid*(a: var Assembler, dropBytes: int) =
       # Same cleanup, but the bridge result in rax is simply dropped
       add rsp, dropBytes
   else:
-    dynasm a:
-      arch aarch64
-      mov x9, dropBytes
-      add sp, sp, x9
+    # Same XZR-pop cleanup as ncallFinish (see above): no
+    # `mov x9, dropBytes; add sp, sp, x9` SP-arithmetic.
+    for _ in 0 ..< dropBytes div 16:
+      dynasm a:
+        arch aarch64
+        ldr xzr, [sp], 16
 
 proc ncallSelf*(a: var Assembler, nArgs: int, selfAddr: int64) =
   ## selfAddr is the final JIT buffer address. When it is not known
