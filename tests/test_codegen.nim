@@ -26,6 +26,16 @@ proc mkVar(name: string, typ: string, val: Node): Node =
   let defs = newIdentDefs([newIdent(name)], ty, val)
   newTree(nkVar, newTree(nkBlock, defs))
 
+proc mkVarT(name: string, ty: Node, val: Node): Node =
+  ## `mkVar` variant taking a type node, for generic annotations like
+  ## `array[int]` that a plain name string cannot spell.
+  let defs = newIdentDefs([newIdent(name)], ty, val)
+  newTree(nkVar, newTree(nkBlock, defs))
+
+proc arrayTypeNode(elem: Node): Node =
+  ## Type reference `array[elem]` (right-nested for nesting).
+  newTree(nkIndex, newIdent("array"), elem)
+
 proc mkLet(name: string, typ: string, val: Node): Node =
   let ty = if typ.len==0: newEmpty() else: newIdent(typ)
   let defs = newIdentDefs([newIdent(name)], ty, val)
@@ -569,6 +579,61 @@ suite "codegen: declarations – proc / iterator / object / array":
     let arr2 = newTree(nkArray, newIntLit(1), newStringLit("hi"))
     expect(CodeGenError):
       discard e2.run(@[mkVar("b","", arr2)])
+
+  test "annotated array[int] supports indexed reads":
+    let e = newEnv()
+    let arr = newTree(nkArray, newIntLit(10), newIntLit(20), newIntLit(30))
+    let varA = mkVarT("a", arrayTypeNode(newIdent("int")), arr)
+    var cap:int64=0
+    e.script.addProc(e.module, "cap", @[paramDef("v", ttyInt)], ttyVoid, proc(a:StackView,c:int):Value = cap=a[0].intVal)
+    let idx = newTree(nkBracket, newIdent("a"), newIntLit(1))
+    discard e.run(@[varA, newTree(nkCall, newIdent("cap"), idx)])
+    check cap==20
+
+  test "annotated array[User] indexes to object values":
+    let e = newEnv()
+    let obj = mkObjectNode("User", @[("name", "string"), ("age", "int")])
+    proc mkUser(n: string, age: int): Node =
+      newTree(nkCall, newIdent("User"),
+        newTree(nkColon, newIdent("name"), newStringLit(n)),
+        newTree(nkColon, newIdent("age"), newIntLit(age)))
+    let arr = newTree(nkArray, mkUser("Alice", 30), mkUser("Bob", 25))
+    let varU = mkVarT("users", arrayTypeNode(newIdent("User")), arr)
+    var cap:int64=0
+    e.script.addProc(e.module, "cap", @[paramDef("v", ttyInt)], ttyVoid, proc(a:StackView,c:int):Value = cap=a[0].intVal)
+    let ageOfSecond = newTree(nkDot, newTree(nkBracket, newIdent("users"), newIntLit(1)), newIdent("age"))
+    discard e.run(@[obj, varU, newTree(nkCall, newIdent("cap"), ageOfSecond)])
+    check cap==25
+
+  test "nested array[array[int]] indexes twice":
+    let e = newEnv()
+    let outer = newTree(nkArray,
+      newTree(nkArray, newIntLit(1), newIntLit(2)),
+      newTree(nkArray, newIntLit(3), newIntLit(4)))
+    let varM = mkVarT("m", arrayTypeNode(arrayTypeNode(newIdent("int"))), outer)
+    var cap:int64=0
+    e.script.addProc(e.module, "cap", @[paramDef("v", ttyInt)], ttyVoid, proc(a:StackView,c:int):Value = cap=a[0].intVal)
+    let idx = newTree(nkBracket, newTree(nkBracket, newIdent("m"), newIntLit(1)), newIntLit(0))
+    discard e.run(@[varM, newTree(nkCall, newIdent("cap"), idx)])
+    check cap==3
+
+  test "triple nested array[array[array[int]]] indexes three times":
+    let e = newEnv()
+    let outer = newTree(nkArray,
+      newTree(nkArray, newTree(nkArray, newIntLit(1)), newTree(nkArray, newIntLit(2))))
+    let varT = mkVarT("t", arrayTypeNode(arrayTypeNode(arrayTypeNode(newIdent("int")))), outer)
+    var cap:int64=0
+    e.script.addProc(e.module, "cap", @[paramDef("v", ttyInt)], ttyVoid, proc(a:StackView,c:int):Value = cap=a[0].intVal)
+    let idx = newTree(nkBracket, newTree(nkBracket, newTree(nkBracket, newIdent("t"), newIntLit(0)), newIntLit(1)), newIntLit(0))
+    discard e.run(@[varT, newTree(nkCall, newIdent("cap"), idx)])
+    check cap==2
+
+  test "annotated array[int] rejects wrong element type":
+    let e = newEnv()
+    let arr = newTree(nkArray, newStringLit("x"))
+    let varA = mkVarT("a", arrayTypeNode(newIdent("int")), arr)
+    expect(CodeGenError):
+      discard e.run(@[varA])
 
   test "object storage anonymous":
     let e = newEnv()

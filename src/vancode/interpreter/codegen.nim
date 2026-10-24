@@ -592,6 +592,14 @@ proc instantiate(gen: CodeGen, sym: Sym, args: seq[Sym],
     gen.popScope()
   result.genericInstArgs = some(args)
   result.genericBase = some(sym)
+  # Array instantiations must also populate `arrayTy`: indexed access
+  # (`genArrayAccess`), `sameType` and `$` read the field, not the
+  # generic args. Only literals (`genArray`) and proc params
+  # (`collectParams`) set it today, so every other `array[T]`
+  # (var/let/return/nested positions) crashes on first indexed read
+  # with `arrayTy == nil`.
+  if result.kind == skType and result.tyKind == ttyArray and args.len == 1:
+    result.arrayTy = args[0]
 
 proc inferGenericArgs(gen: CodeGen, sym: Sym,
                       argTypes: seq[Sym], callNode: Node): seq[Option[Sym]] =
@@ -763,8 +771,17 @@ proc lookup(gen: CodeGen, symName: Node, quiet = false): Sym =
     name = symName.varType
   of nkIndex:
     if symName[0].kind == nkIndex:
-      # todo handle deeply nested generic instantiation
-      return gen.lookup(symName[0], quiet)  # generic instantiation
+      # Left-nested application `f[a][b]`: resolve the inner first, then
+      # apply the outer args when the result is still generic. No
+      # frontend produces this shape today (nesting associates right),
+      # so this is a backstop for hand-built ASTs, not a tested path.
+      let inner = gen.lookup(symName[0], quiet)
+      if inner == nil or not inner.isGeneric:
+        return inner
+      var genericParams: seq[Sym]
+      for param in symName[1..^1]:
+        genericParams.add(gen.lookup(param))
+      return gen.instantiate(inner, genericParams, errorNode = symName)
     name = symName[0]  # generic instantiation
   of nkBracket:
     name = unwrapBaseIdent(symName)
