@@ -2579,18 +2579,176 @@ proc genTypeDef*(node: Node): Sym {.codegen.} =
         discard gen.genObject(defNode)
       else: discard # todo
 
+proc namedArgName*(arg: Node): string =
+  ## Name of an `nkColon` named argument (`name=value`), else "".
+  if arg.kind == nkColon and arg.len >= 2 and arg[0].kind == nkIdent:
+    return arg[0].ident
+
+proc paramNameList*(sym: Sym): seq[string] =
+  ## Ordered parameter names of a callable symbol.
+  if sym.kind == skProc:
+    for p in sym.procParams:
+      if p.name.kind == nkIdent:
+        result.add(p.name.ident)
+      elif p.name.kind == nkPostfix and p.name.len > 1 and p.name[1].kind == nkIdent:
+        result.add(p.name[1].ident)
+  elif sym.kind == skIterator:
+    for p in sym.iterParams:
+      if p.name.kind == nkIdent:
+        result.add(p.name.ident)
+      elif p.name.kind == nkPostfix and p.name.len > 1 and p.name[1].kind == nkIdent:
+        result.add(p.name[1].ident)
+
+proc matchNamedOverload*(sym: Sym, posCount: int, names: seq[string],
+                          errorNode: Node = nil): Sym =
+  ## Resolve the overload whose parameters cover all `names` and fit
+  ## `posCount` positionals. Reports unknown names; returns nil when
+  ## nothing matches.
+  var cands: seq[Sym]
+  if sym.kind in {skProc, skIterator}:
+    cands = @[sym]
+  elif sym.kind == skChoice:
+    cands = sym.choices
+  else:
+    return nil
+  # Single candidate: unknown names are reported precisely.
+  if cands.len == 1 and cands[0].kind in {skProc, skIterator}:
+    let pn = paramNameList(cands[0])
+    for n in names:
+      var found = false
+      for p in pn:
+        if p == n or lowerName(p) == lowerName(n):
+          found = true
+          break
+      if not found:
+        if errorNode != nil:
+          errorNode.error("unknown parameter: " & n)
+        return nil
+  for c in cands:
+    if c.kind notin {skProc, skIterator}:
+      continue
+    let pn = paramNameList(c)
+    if posCount > pn.len:
+      continue
+    var ok = true
+    for n in names:
+      var found = false
+      for p in pn:
+        if p == n or lowerName(p) == lowerName(n):
+          found = true
+          break
+      if not found:
+        ok = false
+        break
+    if ok:
+      return c
+  return nil
+
+proc defaultArgNode*(target: Sym, paramName: string): Node =
+  ## Default value node for `paramName` from the proc's declaration, or nil.
+  let impl = target.impl
+  if impl == nil or impl.len < 3:
+    return nil
+  let fp = impl[2]
+  if fp.kind != nkFormalParams:
+    return nil
+  for defs in fp[1..^1]:
+    if defs.len < 3:
+      continue
+    for i in 0 .. defs.len - 3:
+      var n = defs[i]
+      if n.kind == nkPostfix and n.len > 1:
+        n = n[1]
+      if n.kind == nkIdent and
+         (n.ident == paramName or lowerName(n.ident) == lowerName(paramName)):
+        let d = defs[^1]
+        if d.kind != nkEmpty:
+          return d
+        return nil
+  return nil
+
+proc reorderNamedArgs*(node: Node, target: Sym, errorNode: Node = nil): seq[Node] =
+  ## Reorder call arguments with `nkColon` named args into declaration
+  ## order. `node` is the call node, `target` the resolved overload.
+  ## Returns args complete up to the last provided slot (middle gaps are
+  ## filled with their defaults; trailing defaults are left for callProc).
+  let en = if errorNode != nil: errorNode else: node
+  let pn = paramNameList(target)
+  var slots = newSeq[Node](pn.len)
+  var posIdx = 0
+  if node.len > 1:
+    for a in node[1..^1]:
+      let nm = namedArgName(a)
+      if nm.len > 0:
+        var idx = -1
+        for i, p in pn:
+          if p == nm or lowerName(p) == lowerName(nm):
+            idx = i
+            break
+        if idx < 0:
+          en.error("unknown parameter: " & nm)
+          return @[]
+        if slots[idx] != nil:
+          en.error("duplicate argument for parameter: " & nm)
+          return @[]
+        slots[idx] = a[1]
+      else:
+        while posIdx < slots.len and slots[posIdx] != nil:
+          inc posIdx
+        if posIdx >= slots.len:
+          en.error("too many positional arguments")
+          return @[]
+        slots[posIdx] = a
+        inc posIdx
+  var last = -1
+  for i in 0 ..< slots.len:
+    if slots[i] != nil:
+      last = i
+  if last < 0:
+    return @[]
+  for i in 0 .. last:
+    if slots[i] == nil:
+      let d = defaultArgNode(target, pn[i])
+      if d == nil:
+        en.error("missing required argument: " & pn[i])
+        return @[]
+      slots[i] = d
+  return slots[0..last]
+
 # This injects the extended module, which contains built-in procedures and types
 injectExtendedModule()
 
 when not declared(procCallOverwrite):
   proc procCall*(node: Node, procSym: Sym): Sym {.codegen.} =
     ## Generate code for a procedure call
+    var target = procSym
+    var argNodes: seq[Node]
+    if node.len > 1:
+      var hasNamed = false
+      var posCount = 0
+      var names: seq[string]
+      for a in node[1..^1]:
+        let nm = namedArgName(a)
+        if nm.len > 0:
+          hasNamed = true
+          names.add(nm)
+        else:
+          inc posCount
+      if hasNamed:
+        target = matchNamedOverload(procSym, posCount, names, node)
+        if target == nil:
+          node.error("no overload matches the given named arguments")
+          return gen.module.sym"any"
+        argNodes = reorderNamedArgs(node, target, node)
+      else:
+        for a in node[1..^1]:
+          argNodes.add(a)
     var argTypes: seq[Sym]
-    for arg in node[1..^1]:
+    for arg in argNodes:
       let argSym: Sym = gen.genExpr(arg)
       assert argSym != nil, "Expression must return a symbol"
       argTypes.add(argSym)
-    return gen.callProc(procSym, argTypes, errorNode = node)
+    return gen.callProc(target, argTypes, errorNode = node)
 
 proc genExpr*(node: Node, varUnwrap = true): Sym {.codegen.} =
   # Generates code for an expression.
