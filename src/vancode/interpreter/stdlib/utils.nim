@@ -102,6 +102,31 @@ proc addProc*(script: Script, module: Module, name: string,
   if impl != nil:
     script.procs.add(theProc)
 
+proc addVar*(script: Script, module: Module, name: string,
+             ty: TypeKind, val: Value, varKind: SymKind = skConst,
+             exportSym = true) =
+  ## Host-side global variable, mirroring `addProc` for procs.
+  ## Declares `name` of type `ty` in `module` and emits its initializer
+  ## into `script.mainChunk`, so a fresh VM picks the value up by running
+  ## the chunk. Exported when `exportSym` is set, so importing modules
+  ## see it through `mergeModule`. `val` must have a literal form
+  ## (bool/int/float/string/nil, see `defaultNodeFromValue`).
+  assert varKind in skVars, "addVar kind must be skVar, skLet or skConst"
+  let lit = defaultNodeFromValue(val)
+  assert lit != nil, "addVar value has no literal form"
+  var nameNode = ast.newIdent(name)
+  if exportSym:
+    nameNode = ast.newTree(nkPostfix, ast.newIdent("*"), nameNode)
+  let varNodeKind =
+    case varKind
+    of skVar: nkVar
+    of skLet: nkLet
+    else: nkConst
+  let varNode = ast.newTree(varNodeKind,
+    ast.newTree(nkBlock, newIdentDefs([nameNode], ast.newIdent($ty), lit)))
+  var gen = initCodeGen(script, module, script.mainChunk)
+  gen.genVar(varNode)
+
 proc paramDef*(name: string, kind: TypeKind, val: Value = nil,
               sym: Sym = nil; mut: bool = false,
               isOpt: bool = false, kindStr = ""): TempParamDef {.inline.} =
