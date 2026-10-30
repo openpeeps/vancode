@@ -26,11 +26,11 @@ It's also pretty flexible so you can easily extend it with your own custom nodes
 - [x] Support for multiple data types and operations
 - [x] FFI for calling Nim code or external libraries
 - [x] JIT (Just-In-Time) compilation for improved performance
-- [ ] Built-in package manager for easy distribution and installation
 - [x] Written in Nim language
 
 > [!NOTE]
-> VanCode is far from being a complete solution, I'm planning to add more features and improvements as I go, while still learning about how to design a good flexible interpreter and VM.
+> VanCode is far from being a complete solution, I'm planning to add more features and
+> improvements as I go, while still learning about how to design a good flexible interpreter and VM.
 
 ## Examples
 Let's showcase some cool examples!
@@ -114,29 +114,16 @@ VanCode's VM comes with a set of prebuilt instructions for executing the bytecod
 ## Extend AST, Codegen and VM with Voodoo
 VanCode provides a powerful and flexible way to extend the AST, Codegen and VM with your own custom nodes, instructions and operations using Nim's macro system.
 
-_todo example here_
-
-
-> [!NOTE]
-> For a full example of how to use Voodoo to extend the AST, Codegen and VM, check the [Tim Engine](https://github.com/openpeeps/tim/blob/main/src/tim/engine/transformers.nim) transformers module.
 
 ## Projects using VanCode
 Here you can find some cool little projects and DSLs engines.
 
-- [Tim Engine](https://github.com/openpeeps/tim) - A beautiful template engine and DSL for generating HTML templates
-- [Dfkup](https://github.com/dfkup/dfkup) - A scripting language easy to learn and work with so you don't f*ck up!
-- [bowdy Stylesheet](https://github.com/openpeeps/bowdy) - A CSS preprocessor and DSL for writing CSS (alternative to SassC, DartSass)
-
-## Roadmap
-- [x] JIT compilation (pure-Nim backend via the dynasm package)
-- [ ] Self-contained executable generation (Similar to how Node/Bun generate self-contained executables)
-- [ ] VM Hot code optimization
-- [ ] Add more Voodoo flexibility and extensibility features to the AST, Codegen and VM
+- [tim](https://github.com/openpeeps/tim) - A beautiful template engine and DSL for generating HTML templates
+- [dfkup](https://github.com/dfkup/dfkup) - A scripting language easy to learn and work with so you don't f*ck up!
+- [bowdy](https://github.com/openpeeps/bowdy) - A CSS preprocessor and DSL for writing CSS (alternative to SassC, DartSass)
 
 Notes:
-- https://vivekn.dev/blog/bytecode-vm-scratch/
 - https://github.com/liquidev/hayago - VanCode contains work from hayago, a very interesting project that is no longer maintained but provides a good reference for Nim-based bytecode VMs. Cheers to the author! 😻
-- https://blog.reverberate.org/2012/12/hello-jit-world-joy-of-simple-jits.html
 
 ### ❤ Contributions & Support
 - 🐛 Found a bug? [Create a new Issue](https://github.com/openpeeps/vancode/issues)
