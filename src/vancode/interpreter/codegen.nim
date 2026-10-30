@@ -2027,6 +2027,18 @@ proc genGetField*(node: Node): Sym {.codegen.} =
       # fnSym found as skProc — fall through to UFCS below
     # For nkIdent, also fall through to UFCS (treat as `ident(receiver)`)
 
+  # JSON values use bracket notation: dot access is a compile error, so
+  # it can never reach the UFCS fallback below and crash in `opcGetF`
+  # (which only handles object storage). Method-style calls (`o.keys()`)
+  # still go through UFCS.
+  if valTy.tyKind == ttyJson and node[1].kind notin {nkBracket, nkCall}:
+    if not gen.checkTypes:
+      # gradual mode: dynamic get instead of the guidance error.
+      gen.chunk.emit(opcGetF)
+      gen.chunk.emit(0'u8)
+      return gen.module.sym"any"
+    node[1].error("Use bracket notation to access JSON fields or items")
+
   if valTy.tyKind notin {ttyObject, ttyClass, ttyInterface}:
     # Only objects/classes/interfaces can be accessed with dot/bracket
     # For non object/json receiver: treat `a.b` as `b(a)` and `a.b(x)` as `b(a, x)`.
@@ -2058,15 +2070,6 @@ proc genGetField*(node: Node): Sym {.codegen.} =
     return gen.callProc(fnSym, argTypes, node)
 
     # node[0].error(ErrTypeMismatch % [$valTy.name, "object|json"])
-
-  # If it's JSON, dot notation is not supported
-  if valTy.tyKind == ttyJson and node[1].kind notin {nkBracket, nkCall}:
-    if not gen.checkTypes:
-      # gradual mode: dynamic get instead of the guidance error.
-      gen.chunk.emit(opcGetF)
-      gen.chunk.emit(0'u8)
-      return gen.module.sym"any"
-    node[1].error("Use bracket notation to access JSON fields or items")
 
   # Method call on receiver: item.fn(...)
   if node[1].kind == nkCall:
