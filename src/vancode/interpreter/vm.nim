@@ -19,7 +19,9 @@
 ## the VanCode framework.
 
 import std/[strutils, tables, critbits, algorithm,
-          json, options, hashes, dynlib, sysatomics]
+          json, options, hashes, sysatomics]
+when not defined(wasm):
+  import std/dynlib
 
 import pkg/voodoo/extensibles
 import ./chunk, ./value
@@ -585,9 +587,9 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
     elif a.typeId == tyFloat and b.typeId == tyFloat:
       stack.push(initValue(op(a.someVal, b.someVal)))
     elif a.typeId == tyInt and b.typeId == tyFloat:
-      stack.push(initValue(op(toFloat(a.intVal), b.floatVal)))
+      stack.push(initValue(op(a.intVal.float, b.floatVal)))
     elif a.typeId == tyFloat and b.typeId == tyInt:
-      stack.push(initValue(op(a.floatVal, toFloat(b.intVal))))
+      stack.push(initValue(op(a.floatVal, b.intVal.float)))
     else:
       stack.push(initValue(op(a.someVal, b.someVal)))
     
@@ -599,9 +601,9 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
     let b {.inject.} = stack.pop()
     let a {.inject.} = stack.pop()
     if a.typeId == tyInt and b.typeId == tyFloat:
-      stack.push(initValue(`op`(toFloat(a.intVal), b.floatVal)))
+      stack.push(initValue(`op`(a.intVal.float, b.floatVal)))
     elif a.typeId == tyFloat and b.typeId == tyInt:
-      stack.push(initValue(`op`(a.floatVal, toFloat(b.intVal))))
+      stack.push(initValue(`op`(a.floatVal, b.intVal.float)))
     else:
       stack.push(initValue(`op`(a.someVal, b.someVal)))
     
@@ -947,7 +949,7 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         var jsonValue: JsonNode # the value to be pushed onto the stack
         case key.typeId
         of tyInt:
-          jsonValue = obj.jsonVal[key.intVal]
+          jsonValue = obj.jsonVal[key.intVal.int]
         of tyString:
           jsonValue = obj.jsonVal[key.stringVal[]]
         else: discard
@@ -1005,8 +1007,8 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         let nAF = stack.len
         let bAF = sAF[nAF - 1]
         let aAF = sAF[nAF - 2]
-        let av = if aAF.typeId == tyInt: aAF.intVal.toFloat else: aAF.floatVal
-        let bv = if bAF.typeId == tyInt: bAF.intVal.toFloat else: bAF.floatVal
+        let av = if aAF.typeId == tyInt: aAF.intVal.float else: aAF.floatVal
+        let bv = if bAF.typeId == tyInt: bAF.intVal.float else: bAF.floatVal
         let rAF = case oc
           of opcAddF: av + bv
           of opcSubF: av - bv
@@ -1073,8 +1075,8 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         let bCmpF = sCmpF[nCmpF - 1]
         let aCmpF = sCmpF[nCmpF - 2]
         let
-          av = if aCmpF.typeId == tyInt: aCmpF.intVal.toFloat else: aCmpF.floatVal
-          bv = if bCmpF.typeId == tyInt: bCmpF.intVal.toFloat else: bCmpF.floatVal
+          av = if aCmpF.typeId == tyInt: aCmpF.intVal.float else: aCmpF.floatVal
+          bv = if bCmpF.typeId == tyInt: bCmpF.intVal.float else: bCmpF.floatVal
         let rCmpF = case oc
           of opcEqF: av == bv
           of opcLessF: av < bv

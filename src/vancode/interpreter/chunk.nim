@@ -10,7 +10,9 @@
 #          Made by Humans from OpenPeeps
 #          https://github.com/openpeeps/vancode
 
-import std/[tables, hashes, dynlib, strutils, atomics]
+import std/[tables, hashes, strutils, atomics]
+when not defined(wasm):
+  import std/dynlib
 import pkg/voodoo/extensibles
 import ./value
 
@@ -112,8 +114,10 @@ type
 
   Script* {.acyclic.} = ref object
     stdpos*: int
-    libs*: Table[string, LibHandle]
-      ## a table of dynamic libraries loaded by this script
+    when not defined(wasm):
+      libs*: Table[string, LibHandle]
+        ## a table of dynamic libraries loaded by this script
+        ## (unavailable on wasm32-standalone: no dynamic loading)
     procs*: seq[Proc]
       ## all procs declared in this script
     procsExport*: seq[Proc]

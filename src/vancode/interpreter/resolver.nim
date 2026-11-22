@@ -38,12 +38,19 @@ type
 
 proc newDiskFS*(): VirtualFileSystem =
   ## Create a virtual file system that interacts with the actual disk.
-  ## 
+  ##
   ## This is the default file system used by the resolver, but it can be replaced with
   ## an in-memory or embedded file system for testing or special use cases.
+  ##
+  ## Unavailable on wasm32-standalone (no filesystem): use `newInMemoryFS`.
   result = VirtualFileSystem()
-  result.existsProc = proc(path: string): bool = os.fileExists(path)
-  result.readProc   = proc(path: string): string = readFile(path)
+  when defined(wasm):
+    result.existsProc = proc(path: string): bool = false
+    result.readProc = proc(path: string): string =
+      raise newException(ResolverError, "Filesystem unavailable in this build: " & path)
+  else:
+    result.existsProc = proc(path: string): bool = os.fileExists(path)
+    result.readProc   = proc(path: string): string = readFile(path)
 
 proc newInMemoryFS*(map: TableRef[string, string]): VirtualFileSystem =
   ## Create a virtual file system from an in-memory map of file paths to contents.

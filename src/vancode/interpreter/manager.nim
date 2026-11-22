@@ -4,7 +4,8 @@
 
 import std/[tables, options, os, locks, sets, sequtils, strutils, hashes]
 import pkg/checksums/md5 as md5
-import pkg/flysystem
+when not defined(wasm):
+  import pkg/flysystem
 import ./ast
 import ./chunk
 import ./sym
@@ -35,7 +36,8 @@ type
     lruHead*, lruTail*: LruNode
     lruIndex*: Table[string, LruNode]
     resolver*: FileResolver
-    driver*: Option[LocalDriver]
+    when not defined(wasm):
+      driver*: Option[LocalDriver]
     policy*: CompilationPolicy
     fbeVersion*: uint32
     pkgResolver*: Option[proc(pkgImport: string): Option[string] {.closure.}]
@@ -56,12 +58,14 @@ proc newModuleManager*(resolver = initResolver(),
   result.pathToHash = initTable[string, string]()
   result.lruIndex = initTable[string, LruNode]()
   if cacheRoot.isSome:
-    let root = cacheRoot.get()
-    # ensure dir exists via flysystem driver
-    let d = newLocalDriver(root)
-    result.driver = some(d)
+    when not defined(wasm):
+      let root = cacheRoot.get()
+      # ensure dir exists via flysystem driver
+      let d = newLocalDriver(root)
+      result.driver = some(d)
   else:
-    result.driver = none(LocalDriver)
+    when not defined(wasm):
+      result.driver = none(LocalDriver)
 
 proc computeHash*(source: string): string =
   ## Hex md5 of source content. Primary cache key.
@@ -165,25 +169,29 @@ proc put*(m: ModuleManager, entry: ModuleEntry) =
     if isNew:
       m.evictIfNeeded()
     # persistent write (best-effort)
-    if m.driver.isSome and entry.ast != nil:
-      try:
-        let rel = h & ".fbe"
-        m.driver.get().write(rel, fbe.toFbe(entry.ast, m.fbeVersion))
-      except: discard
+    when not defined(wasm):
+      if m.driver.isSome and entry.ast != nil:
+        try:
+          let rel = h & ".fbe"
+          m.driver.get().write(rel, fbe.toFbe(entry.ast, m.fbeVersion))
+        except: discard
 
 proc tryLoadPersistent*(m: ModuleManager, hash: string): Option[ModuleEntry] =
   ## Attempt to load Ast from flysystem persistent cache. Returns entry with ast only.
-  if m.driver.isNone: return none(ModuleEntry)
-  let rel = hash & ".fbe"
-  withLock m.lock:
-    let d = m.driver.get()
-    if not d.exists(rel): return none(ModuleEntry)
-    try:
-      let data = d.read(rel)
-      let ast = fbe.fromFbe(data, Ast, m.fbeVersion)
-      result = some(ModuleEntry(hash: hash, ast: ast, fbeVersion: m.fbeVersion))
-    except:
-      result = none(ModuleEntry)
+  when defined(wasm):
+    return none(ModuleEntry)
+  else:
+    if m.driver.isNone: return none(ModuleEntry)
+    let rel = hash & ".fbe"
+    withLock m.lock:
+      let d = m.driver.get()
+      if not d.exists(rel): return none(ModuleEntry)
+      try:
+        let data = d.read(rel)
+        let ast = fbe.fromFbe(data, Ast, m.fbeVersion)
+        result = some(ModuleEntry(hash: hash, ast: ast, fbeVersion: m.fbeVersion))
+      except:
+        result = none(ModuleEntry)
 
 proc invalidate*(m: ModuleManager, path: string, recursive = true) =
   let norm = normalizedPath(path)
@@ -226,9 +234,10 @@ proc clear*(m: ModuleManager, clearPersistent = false) =
     m.lruIndex.clear()
     m.lruHead = nil
     m.lruTail = nil
-  if clearPersistent and m.driver.isSome:
-    # best-effort: delete all .fbe files? No-op for now — caller can wipe dir
-    discard
+  when not defined(wasm):
+    if clearPersistent and m.driver.isSome:
+      # best-effort: delete all .fbe files? No-op for now — caller can wipe dir
+      discard
 
 proc dependencies*(m: ModuleManager, path: string): seq[string] =
   let norm = normalizedPath(path)

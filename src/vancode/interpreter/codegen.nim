@@ -25,7 +25,17 @@ import std/[macros, options, os, hashes,
 
 import ./[ast, chunk, errors, sym, value, resolver, policy, manager]
 import pkg/voodoo/extensibles
-import ../manager/packager
+when defined(wasm):
+  # No filesystem, child processes or network in the browser playground:
+  # the legacy Packager distribution layer is unavailable. A minimal
+  # shape keeps the legacy pkgr field compiling; lookups report missing.
+  type
+    Packager*[C] = ref object
+      disabled*: bool
+  proc hasPackage*[C](pkgr: Packager[C], pkgName: string): bool = false
+  proc getModulePath*[C](pkgr: Packager[C], pkgName, path: string): string = ""
+else:
+  import ../manager/packager
 import ../manager/configurator
 
 var globalTypeCounter* {.global.}: int = 0
@@ -225,11 +235,15 @@ template sensitive*(gen: CodeGen): bool =
   else:
     false
 
-import std/terminal
+when not defined(wasm):
+  import std/terminal
 proc warn(node: Node, msg: string) =
   # Output a warning message on the given node.
-  stdout.styledWriteLine(fgYellow, styleBright, "Warning ",
-      resetStyle, fgDefault, ErrorFmt % ["", $node.ln, $node.col, msg])
+  when not defined(wasm):
+    stdout.styledWriteLine(fgYellow, styleBright, "Warning ",
+        resetStyle, fgDefault, ErrorFmt % ["", $node.ln, $node.col, msg])
+  else:
+    discard
 
 proc allocCtx*(allocator: ContextAllocator): Context =
   ## Allocate a new context
@@ -3963,7 +3977,12 @@ proc genImport*(node: Node) {.codegen.} =
       if node.kind == nkImport:
         let baseDir =
           if gen.module.src.isSome: parentDir(absolutePath(gen.module.src.get()))
-          else: getCurrentDir()
+          else:
+            when defined(wasm):
+              # no CWD on wasm32-standalone; pkg imports resolve via pkgResolver
+              "."
+            else:
+              getCurrentDir()
         path = absolutePath(withExt, baseDir)
       else:
         path = withExt
