@@ -1322,6 +1322,14 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
                 # fallback to vm.importedModules if present
                 if chunkPath in vm.importedModules:
                   vm.importedModules[chunkPath]
+                elif procId >= 0 and procId < script.procs.len:
+                  # Shared stdlib/iterator symbols (native `&` overloads,
+                  # the inlined `..`/`items` iterators, ...) carry the
+                  # creating script's path, so calls emitted from an
+                  # importing chunk reference a path the root script never
+                  # registers under its own map. The callee lives in the
+                  # shared proc prefix, so the root script is its owner.
+                  script
                 else:
                   raise newException(ValueError,
                     "opcCallD: target module not found: " & chunkPath)
@@ -1514,6 +1522,10 @@ proc interpret*(vm: Vm, script: Script, startChunk: Chunk,
         if pScript == currentChunk.file: targetScript = script
         elif pScript in script.scripts: targetScript = script.scripts[pScript]
         elif pScript in vm.importedModules: targetScript = vm.importedModules[pScript]
+        elif pId >= 0 and pId < script.procs.len:
+          # Same shared-symbol case as opcCallD: a proc value carrying
+          # the creating script's path resolves against the root script.
+          targetScript = script
         if targetScript == nil or pId < 0 or pId >= targetScript.procs.len:
           raise newException(ValueError, "opcCallI: target proc not found")
         let p = targetScript.procs[pId]

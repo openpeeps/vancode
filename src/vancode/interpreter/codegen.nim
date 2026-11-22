@@ -4067,6 +4067,17 @@ proc genImport*(node: Node) {.codegen.} =
     of nkInclude:
       if gen.includeBasePath.isSome:
         path = absolutePath(gen.includeBasePath.get() / path)
+      else:
+        # No base path (e.g. the `tim src` CLI): resolve relative to the
+        # importing file first, mirroring `@import`. The as-written form
+        # stays valid as a CWD-relative fallback.
+        try:
+          let relPath = absolutePath(path,
+            parentDir(absolutePath(gen.module.src.get())))
+          if gen.resolver.fileExists(relPath):
+            path = relPath
+        except CatchableError:
+          discard
 
       let aFile = absolutePath(gen.module.src.get())
       
